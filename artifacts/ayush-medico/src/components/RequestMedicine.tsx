@@ -500,10 +500,13 @@ export default function RequestMedicine() {
                           Choose a photo or PDF of your prescription
                         </label>
                       )}
+
                       <input
                         id="request-prescription"
+                        name="prescription"
                         type="file"
-                        accept="image/*,application/pdf"
+                        accept="image/*"
+                        capture="environment"
                         onChange={handleFileChange}
                         data-testid="input-prescription-file"
                         className="sr-only"
