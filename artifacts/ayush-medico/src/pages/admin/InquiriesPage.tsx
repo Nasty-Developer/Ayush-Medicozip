@@ -246,10 +246,13 @@ function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
 
   const handleDelete = async () => {
     setDeleting(true);
-    await onDelete();
-    setDeleting(false);
-    setShowDeleteConfirm(false);
-    onClose();
+    try {
+      await onDelete();
+      setShowDeleteConfirm(false);
+      onClose();
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const fields = [

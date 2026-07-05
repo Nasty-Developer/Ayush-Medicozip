@@ -70,11 +70,14 @@ export default function RequestMedicine() {
   }, [requestToken]);
 
   // ── Save to Firestore ────────────────────────────────────────────────────────
+  // Returns immediately after addDocument so channel launch is never blocked
+  // by prescription upload. Upload runs as fire-and-forget.
   const saveToFirestore = async (
     values: RequestFormValues,
     source: Source
   ): Promise<string> => {
     const requestId = generateRequestId();
+    const fileToUpload = prescriptionFile; // capture ref before state might clear
     const docId = await addDocument("medicine-requests", {
       requestId,
       customerName: values.customerName,
@@ -82,20 +85,28 @@ export default function RequestMedicine() {
       medicineName: values.medicineName,
       quantity: values.quantity,
       notes: values.notes || "",
-      hasPrescription: !!prescriptionFile,
+      hasPrescription: !!fileToUpload,
       prescriptionUrl: null,
+      prescriptionUploadStatus: fileToUpload ? "pending" : null,
       source,
       status: "pending",
     });
 
-    // Upload prescription asynchronously after creating the doc
-    if (prescriptionFile) {
-      try {
-        const url = await uploadPrescription(prescriptionFile, docId);
-        await updateDocument("medicine-requests", docId, { prescriptionUrl: url });
-      } catch {
-        // Non-fatal: the request is saved; prescription upload will show "uploading"
-      }
+    // Fire-and-forget: upload prescription after returning
+    if (fileToUpload) {
+      void (async () => {
+        try {
+          const url = await uploadPrescription(fileToUpload, docId);
+          await updateDocument("medicine-requests", docId, {
+            prescriptionUrl: url,
+            prescriptionUploadStatus: "uploaded",
+          });
+        } catch {
+          void updateDocument("medicine-requests", docId, {
+            prescriptionUploadStatus: "failed",
+          }).catch(() => {});
+        }
+      })();
     }
     return requestId;
   };

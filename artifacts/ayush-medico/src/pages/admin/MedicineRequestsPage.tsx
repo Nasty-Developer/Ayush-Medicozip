@@ -210,10 +210,13 @@ function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete }: {
 
   const handleDelete = async () => {
     setDeleting(true);
-    await onDelete();
-    setDeleting(false);
-    setShowDeleteConfirm(false);
-    onClose();
+    try {
+      await onDelete();
+      setShowDeleteConfirm(false);
+      onClose();
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const fields = [
@@ -507,9 +510,9 @@ export default function MedicineRequestsPage() {
           { label: "Pending",   value: pending,   cls: "text-blue-600 dark:text-blue-400" },
           { label: "Ordered",   value: ordered,   cls: "text-violet-600 dark:text-violet-400" },
           { label: "Delivered", value: delivered, cls: "text-emerald-600 dark:text-emerald-400" },
-          { label: "Today",     value: todayCount,cls: "text-amber-600 dark:text-amber-400" },
-          { label: "WhatsApp",  value: waSrc,     cls: "text-[#25D366]" },
-          { label: "Website",   value: webSrc + emailSrc, cls: "text-primary" },
+          { label: "Today",     value: todayCount, cls: "text-amber-600 dark:text-amber-400" },
+          { label: "WhatsApp",  value: waSrc,      cls: "text-[#25D366]" },
+          { label: "Website",   value: webSrc,     cls: "text-primary" },
         ].map((s) => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-3 text-center shadow-sm">
             <p className={`text-xl font-bold ${s.cls}`}>{s.value}</p>
