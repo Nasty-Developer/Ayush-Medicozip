@@ -274,13 +274,13 @@ export default function AdminLayout() {
     return unsub;
   }, [user]);
 
-  // Real-time badge: pending medicine requests
+  // Real-time badge: pending medicine requests (stored in "inquiries" with type="medicine-request")
   useEffect(() => {
     if (!user) return;
     const unsub = subscribeToCollection(
-      "medicine-requests",
-      [where("status", "==", "pending")],
-      (docs) => setPendingRequests(docs.length),
+      "inquiries",
+      [where("type", "==", "medicine-request")],
+      (docs) => setPendingRequests(docs.filter((d: Record<string, unknown>) => d.status === "pending").length),
       () => setPendingRequests(0)
     );
     return unsub;

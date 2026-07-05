@@ -66,8 +66,12 @@ export default function GeneralInquiry() {
   });
 
   const saveToFirestore = async (values: InquiryFormValues, source: SubmitSource): Promise<string> => {
+    if (!isFirebaseConfigured) {
+      throw new Error("Firebase is not configured. Set VITE_FIREBASE_* environment variables.");
+    }
     const inquiryId = generateInquiryId();
     await addDocument("inquiries", {
+      type: "inquiry",                          // differentiates from medicine-request type
       inquiryId,
       customerName: values.customerName,
       mobileNumber: values.mobileNumber,
@@ -77,8 +81,7 @@ export default function GeneralInquiry() {
       preferredContact: values.preferredContact,
       source,
       status: "pending",
-      // Backward-compat fields so old InquiriesPage (if any) still works
-      channel: source === "website" ? "normal" : source,
+      channel: source === "website" ? "normal" : source, // backward-compat
     });
     return inquiryId;
   };
@@ -138,11 +141,15 @@ export default function GeneralInquiry() {
         description: `Your inquiry (${id}) has been received. We'll contact you via ${values.preferredContact}.`,
       });
       finishSubmission(id);
-    } catch {
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error("[GeneralInquiry] Submit failed:", err);
       toast({
         variant: "destructive",
         title: "Submission failed",
-        description: "Could not save your inquiry. Please try WhatsApp or Email.",
+        description: import.meta.env.DEV
+          ? errMsg
+          : "Could not save your inquiry. Please try WhatsApp or Email.",
       });
     } finally {
       setSubmitting(null);
@@ -153,8 +160,11 @@ export default function GeneralInquiry() {
     setSubmitting("whatsapp");
     let id = "";
     try {
-      if (isFirebaseConfigured) id = await saveToFirestore(values, "whatsapp");
-    } catch { /* non-fatal */ }
+      id = await saveToFirestore(values, "whatsapp");
+    } catch (err) {
+      console.error("[GeneralInquiry] WhatsApp save failed:", err);
+      // Non-fatal: open WhatsApp even if Firestore save fails
+    }
     const msg = encodeURIComponent(buildWAMessage(values));
     window.setTimeout(() => {
       window.open(`https://wa.me/${WA_NUMBER}?text=${msg}`, "_blank");
@@ -168,8 +178,11 @@ export default function GeneralInquiry() {
     setSubmitting("email");
     let id = "";
     try {
-      if (isFirebaseConfigured) id = await saveToFirestore(values, "email");
-    } catch { /* non-fatal */ }
+      id = await saveToFirestore(values, "email");
+    } catch (err) {
+      console.error("[GeneralInquiry] Email save failed:", err);
+      // Non-fatal: open email even if Firestore save fails
+    }
     const subject = encodeURIComponent(`Inquiry - ${values.subject} | Ayush Medico`);
     const body = encodeURIComponent(buildEmailBody(values));
     window.setTimeout(() => {

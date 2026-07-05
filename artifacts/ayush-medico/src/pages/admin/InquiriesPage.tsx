@@ -22,6 +22,7 @@ type InquirySource = "website" | "whatsapp" | "email" | "normal";
 
 type Inquiry = {
   id: string;
+  type?: string;            // "inquiry" | "medicine-request" — filters out requests that belong in MedicineRequestsPage
   // New schema fields
   inquiryId?: string;
   subject?: string;
@@ -427,7 +428,8 @@ export default function InquiriesPage() {
       "inquiries",
       [orderBy("createdAt", "desc")],
       (docs) => {
-        const data = docs as Inquiry[];
+        // Exclude medicine-request type — those belong in MedicineRequestsPage
+        const data = (docs as Inquiry[]).filter((d) => d.type !== "medicine-request");
         const pendingCount = data.filter((d) => normalizeStatus(d.status) === "pending").length;
 
         if (initialLoadDone.current && pendingCount > prevPendingRef.current && prevPendingRef.current >= 0) {

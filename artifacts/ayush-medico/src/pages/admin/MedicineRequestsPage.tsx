@@ -9,7 +9,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import {
-  subscribeToCollection, updateDocument, deleteDocument, orderBy
+  subscribeToCollection, updateDocument, deleteDocument, orderBy, where
 } from "@/lib/firestoreHelpers";
 import { useToast } from "@/hooks/use-toast";
 
@@ -383,11 +383,15 @@ export default function MedicineRequestsPage() {
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
+    // Reads from the shared "inquiries" collection filtering by type.
+    // No orderBy to avoid requiring a composite Firestore index; sorted client-side.
     const unsub = subscribeToCollection(
-      "medicine-requests",
-      [orderBy("createdAt", "desc")],
+      "inquiries",
+      [where("type", "==", "medicine-request")],
       (docs) => {
-        const data = docs as MedicineRequest[];
+        const data = (docs as MedicineRequest[]).sort(
+          (a, b) => getTimestampSecs(b) - getTimestampSecs(a)
+        );
         const pendingCount = data.filter((d) => d.status === "pending").length;
 
         if (initialLoadDone.current && pendingCount > prevPendingRef.current && prevPendingRef.current >= 0) {
@@ -413,17 +417,19 @@ export default function MedicineRequestsPage() {
 
   const handleUpdateStatus = useCallback(async (req: MedicineRequest, status: RequestStatus) => {
     try {
-      await updateDocument("medicine-requests", req.id, { status });
-    } catch {
+      await updateDocument("inquiries", req.id, { status });
+    } catch (err) {
+      console.error("[MedicineRequestsPage] Status update failed:", err);
       toast({ variant: "destructive", title: "Failed to update status" });
     }
   }, []);
 
   const handleDelete = useCallback(async (req: MedicineRequest) => {
     try {
-      await deleteDocument("medicine-requests", req.id);
+      await deleteDocument("inquiries", req.id);
       toast({ title: "Request deleted" });
-    } catch {
+    } catch (err) {
+      console.error("[MedicineRequestsPage] Delete failed:", err);
       toast({ variant: "destructive", title: "Failed to delete request" });
     }
   }, []);

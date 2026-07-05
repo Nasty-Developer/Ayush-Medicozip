@@ -70,15 +70,20 @@ export default function RequestMedicine() {
   }, [requestToken]);
 
   // ── Save to Firestore ────────────────────────────────────────────────────────
-  // Returns immediately after addDocument so channel launch is never blocked
-  // by prescription upload. Upload runs as fire-and-forget.
+  // Writes to the "inquiries" collection (which has allow create: if true in
+  // Firebase Console) with type:"medicine-request" to separate from general
+  // inquiries. Returns immediately — prescription upload is fire-and-forget.
   const saveToFirestore = async (
     values: RequestFormValues,
     source: Source
   ): Promise<string> => {
+    if (!isFirebaseConfigured) {
+      throw new Error("Firebase is not configured. Set VITE_FIREBASE_* environment variables.");
+    }
     const requestId = generateRequestId();
-    const fileToUpload = prescriptionFile; // capture ref before state might clear
-    const docId = await addDocument("medicine-requests", {
+    const fileToUpload = prescriptionFile; // capture before state clears
+    const docId = await addDocument("inquiries", {
+      type: "medicine-request",      // differentiates from general inquiries
       requestId,
       customerName: values.customerName,
       mobileNumber: values.mobileNumber,
@@ -92,17 +97,18 @@ export default function RequestMedicine() {
       status: "pending",
     });
 
-    // Fire-and-forget: upload prescription after returning
+    // Fire-and-forget prescription upload — never blocks channel launch
     if (fileToUpload) {
       void (async () => {
         try {
           const url = await uploadPrescription(fileToUpload, docId);
-          await updateDocument("medicine-requests", docId, {
+          await updateDocument("inquiries", docId, {
             prescriptionUrl: url,
             prescriptionUploadStatus: "uploaded",
           });
-        } catch {
-          void updateDocument("medicine-requests", docId, {
+        } catch (uploadErr) {
+          console.error("[RequestMedicine] Prescription upload failed:", uploadErr);
+          void updateDocument("inquiries", docId, {
             prescriptionUploadStatus: "failed",
           }).catch(() => {});
         }
@@ -160,11 +166,15 @@ export default function RequestMedicine() {
         description: `Your request (${reqId}) has been saved. We'll contact you on ${values.mobileNumber} shortly.`,
       });
       finishSubmission();
-    } catch {
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error("[RequestMedicine] Send request failed:", err);
       toast({
         variant: "destructive",
         title: "Submission failed",
-        description: "Could not save your request. Please try WhatsApp or Email.",
+        description: import.meta.env.DEV
+          ? errMsg
+          : "Could not save your request. Please try WhatsApp or Email.",
       });
     } finally {
       setSubmitting(null);
@@ -174,8 +184,11 @@ export default function RequestMedicine() {
   const handleWhatsApp = async (values: RequestFormValues) => {
     setSubmitting("whatsapp");
     try {
-      if (isFirebaseConfigured) await saveToFirestore(values, "whatsapp");
-    } catch { /* non-fatal */ }
+      await saveToFirestore(values, "whatsapp");
+    } catch (err) {
+      console.error("[RequestMedicine] WhatsApp save failed:", err);
+      // Non-fatal: open WhatsApp even if Firestore save fails
+    }
     const message = encodeURIComponent(buildWAMessage(values));
     window.setTimeout(() => {
       window.open(`https://wa.me/${WA_NUMBER}?text=${message}`, "_blank");
@@ -193,8 +206,11 @@ export default function RequestMedicine() {
   const handleEmail = async (values: RequestFormValues) => {
     setSubmitting("email");
     try {
-      if (isFirebaseConfigured) await saveToFirestore(values, "email");
-    } catch { /* non-fatal */ }
+      await saveToFirestore(values, "email");
+    } catch (err) {
+      console.error("[RequestMedicine] Email save failed:", err);
+      // Non-fatal: open email even if Firestore save fails
+    }
     const subject = encodeURIComponent(`Medicine Request - Ayush Medico`);
     const body = encodeURIComponent(buildEmailBody(values));
     window.setTimeout(() => {
