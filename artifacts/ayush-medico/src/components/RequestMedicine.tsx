@@ -3,12 +3,18 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { PackageSearch, MessageCircle, Mail, Loader2, CheckCircle2, Paperclip, X } from "lucide-react";
+import {
+  PackageSearch, MessageCircle, Mail, Loader2, CheckCircle2,
+  Paperclip, X, Send, Hash,
+} from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRequestMedicine } from "@/context/RequestMedicineContext";
+import { addDocument, updateDocument } from "@/lib/firestoreHelpers";
+import { uploadPrescription } from "@/lib/storageHelpers";
+import { isFirebaseConfigured } from "@/lib/firebase";
 
 const requestSchema = z.object({
   customerName: z.string().min(2, "Please enter your full name"),
@@ -22,8 +28,17 @@ const requestSchema = z.object({
 });
 
 type RequestFormValues = z.infer<typeof requestSchema>;
+type Source = "website" | "whatsapp" | "email";
 
 const REQUEST_EMAIL = import.meta.env.VITE_REQUEST_EMAIL || "orders@ayushmedico.com";
+const WA_NUMBER = "919833273838";
+
+function generateRequestId(): string {
+  const now = new Date();
+  const datePart = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `REQ-${datePart}-${rand}`;
+}
 
 export default function RequestMedicine() {
   const ref = useRef(null);
@@ -31,8 +46,9 @@ export default function RequestMedicine() {
   const { toast } = useToast();
   const { prefillMedicine, requestToken } = useRequestMedicine();
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState<"whatsapp" | "email" | null>(null);
+  const [submitting, setSubmitting] = useState<"send" | "whatsapp" | "email" | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [lastRequestId, setLastRequestId] = useState("");
 
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestSchema),
@@ -53,58 +69,144 @@ export default function RequestMedicine() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestToken]);
 
-  const buildMessage = (values: RequestFormValues) => {
+  // ── Save to Firestore ────────────────────────────────────────────────────────
+  const saveToFirestore = async (
+    values: RequestFormValues,
+    source: Source
+  ): Promise<string> => {
+    const requestId = generateRequestId();
+    const docId = await addDocument("medicine-requests", {
+      requestId,
+      customerName: values.customerName,
+      mobileNumber: values.mobileNumber,
+      medicineName: values.medicineName,
+      quantity: values.quantity,
+      notes: values.notes || "",
+      hasPrescription: !!prescriptionFile,
+      prescriptionUrl: null,
+      source,
+      status: "pending",
+    });
+
+    // Upload prescription asynchronously after creating the doc
+    if (prescriptionFile) {
+      try {
+        const url = await uploadPrescription(prescriptionFile, docId);
+        await updateDocument("medicine-requests", docId, { prescriptionUrl: url });
+      } catch {
+        // Non-fatal: the request is saved; prescription upload will show "uploading"
+      }
+    }
+    return requestId;
+  };
+
+  // ── Build message strings ────────────────────────────────────────────────────
+  const buildWAMessage = (values: RequestFormValues) => {
     const lines = [
-      "New Medicine Request - Ayush Medico",
+      "Hello Ayush Medico,",
       "",
-      `Name: ${values.customerName}`,
-      `Mobile: ${values.mobileNumber}`,
-      `Medicine: ${values.medicineName}`,
+      "I would like to request the following medicine.",
+      "",
+      `Customer Name: ${values.customerName}`,
+      `Mobile Number: ${values.mobileNumber}`,
+      `Medicine Name: ${values.medicineName}`,
       `Quantity: ${values.quantity}`,
     ];
-    if (values.notes) lines.push(`Notes: ${values.notes}`);
-    if (prescriptionFile) lines.push(`Prescription: ${prescriptionFile.name} (please attach in chat)`);
+    if (values.notes) lines.push(`Additional Notes: ${values.notes}`);
+    if (prescriptionFile) lines.push(`Prescription: ${prescriptionFile.name} (please ask me to share)`);
+    lines.push("", "Please let me know whether this medicine is available.");
+    lines.push("If it is currently unavailable, kindly arrange it and inform me when it arrives.");
+    lines.push("", "Thank you.");
     return lines.join("\n");
   };
 
-  const submitViaWhatsApp = (values: RequestFormValues) => {
-    setSubmitting("whatsapp");
-    const message = encodeURIComponent(buildMessage(values));
-    window.setTimeout(() => {
-      window.open(`https://wa.me/919833273838?text=${message}`, "_blank");
-      finishSubmission("whatsapp", !!prescriptionFile);
-    }, 700);
+  const buildEmailBody = (values: RequestFormValues) => {
+    const lines = [
+      "Hello,",
+      "",
+      "I would like to request the following medicine.",
+      "",
+      `Customer Name: ${values.customerName}`,
+      `Mobile Number: ${values.mobileNumber}`,
+      `Medicine Name: ${values.medicineName}`,
+      `Quantity: ${values.quantity}`,
+    ];
+    if (values.notes) lines.push(`Additional Notes: ${values.notes}`);
+    lines.push("", "Please let me know whether this medicine is available.");
+    lines.push("If it is currently unavailable, kindly arrange it and inform me once it is available.");
+    lines.push("", "Thank you.");
+    return lines.join("\n");
   };
 
-  const submitViaEmail = (values: RequestFormValues) => {
+  // ── Submit handlers ──────────────────────────────────────────────────────────
+  const handleSendRequest = async (values: RequestFormValues) => {
+    setSubmitting("send");
+    try {
+      const reqId = await saveToFirestore(values, "website");
+      setLastRequestId(reqId);
+      toast({
+        title: "✅ Request submitted!",
+        description: `Your request (${reqId}) has been saved. We'll contact you on ${values.mobileNumber} shortly.`,
+      });
+      finishSubmission();
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Submission failed",
+        description: "Could not save your request. Please try WhatsApp or Email.",
+      });
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  const handleWhatsApp = async (values: RequestFormValues) => {
+    setSubmitting("whatsapp");
+    try {
+      if (isFirebaseConfigured) await saveToFirestore(values, "whatsapp");
+    } catch { /* non-fatal */ }
+    const message = encodeURIComponent(buildWAMessage(values));
+    window.setTimeout(() => {
+      window.open(`https://wa.me/${WA_NUMBER}?text=${message}`, "_blank");
+      toast({
+        title: "WhatsApp opened!",
+        description: prescriptionFile
+          ? "Please attach your prescription photo before sending."
+          : "Your request is pre-filled. Just hit send.",
+      });
+      finishSubmission();
+      setSubmitting(null);
+    }, 600);
+  };
+
+  const handleEmail = async (values: RequestFormValues) => {
     setSubmitting("email");
-    const subject = encodeURIComponent(`Medicine Request: ${values.medicineName}`);
-    const body = encodeURIComponent(buildMessage(values));
+    try {
+      if (isFirebaseConfigured) await saveToFirestore(values, "email");
+    } catch { /* non-fatal */ }
+    const subject = encodeURIComponent(`Medicine Request - Ayush Medico`);
+    const body = encodeURIComponent(buildEmailBody(values));
     window.setTimeout(() => {
       window.location.href = `mailto:${REQUEST_EMAIL}?subject=${subject}&body=${body}`;
-      finishSubmission("email", !!prescriptionFile);
-    }, 700);
+      toast({
+        title: "Email app opened!",
+        description: prescriptionFile
+          ? "Please attach your prescription file before sending."
+          : "Your request is pre-filled. Just hit send.",
+      });
+      finishSubmission();
+      setSubmitting(null);
+    }, 600);
   };
 
-  const finishSubmission = (channel: "whatsapp" | "email", hasFile: boolean) => {
-    setSubmitting(null);
+  const finishSubmission = () => {
     setSubmitted(true);
-    toast({
-      title: "Request ready to send!",
-      description:
-        channel === "whatsapp"
-          ? hasFile
-            ? "WhatsApp has opened with your request. Please attach the prescription photo before sending."
-            : "WhatsApp has opened with your request pre-filled. Just hit send."
-          : hasFile
-          ? "Your email app has opened with the request. Please attach the prescription file before sending."
-          : "Your email app has opened with the request pre-filled. Just hit send.",
-    });
     window.setTimeout(() => {
       setSubmitted(false);
+      setLastRequestId("");
       form.reset();
       setPrescriptionFile(null);
-    }, 3500);
+    }, 4000);
   };
 
   const onInvalid = () => {
@@ -182,10 +284,16 @@ export default function RequestMedicine() {
                   <CheckCircle2 size={36} className="text-secondary" />
                 </motion.div>
                 <h3 className="text-xl font-bold text-foreground mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                  Request Ready!
+                  Request Submitted!
                 </h3>
+                {lastRequestId && (
+                  <div className="flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                    <Hash size={11} />
+                    {lastRequestId}
+                  </div>
+                )}
                 <p className="text-muted-foreground text-sm max-w-sm">
-                  We've prepared your message. Complete sending it in the app that just opened and we'll get back to you shortly.
+                  We've received your request and will get back to you shortly on your mobile number.
                 </p>
               </motion.div>
             ) : (
@@ -309,35 +417,54 @@ export default function RequestMedicine() {
                       )}
                     />
 
-                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <div className="space-y-3 pt-2">
+                      {/* Primary: Send Request */}
                       <button
                         type="button"
                         disabled={submitting !== null}
-                        onClick={form.handleSubmit(submitViaWhatsApp, onInvalid)}
-                        data-testid="button-request-whatsapp"
-                        className="relative overflow-hidden flex items-center justify-center gap-2 flex-1 px-6 py-3.5 bg-[#25D366] text-white font-semibold rounded-xl shadow-lg shadow-green-500/25 hover:bg-[#22c35e] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
+                        onClick={form.handleSubmit(handleSendRequest, onInvalid)}
+                        data-testid="button-send-request"
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-200"
                       >
-                        {submitting === "whatsapp" ? (
+                        {submitting === "send" ? (
                           <Loader2 size={18} className="animate-spin" />
                         ) : (
-                          <MessageCircle size={18} />
+                          <Send size={18} />
                         )}
-                        Request via WhatsApp
+                        Send Request
                       </button>
-                      <button
-                        type="button"
-                        disabled={submitting !== null}
-                        onClick={form.handleSubmit(submitViaEmail, onInvalid)}
-                        data-testid="button-request-email"
-                        className="relative overflow-hidden flex items-center justify-center gap-2 flex-1 px-6 py-3.5 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/25 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
-                      >
-                        {submitting === "email" ? (
-                          <Loader2 size={18} className="animate-spin" />
-                        ) : (
-                          <Mail size={18} />
-                        )}
-                        Request via Email
-                      </button>
+
+                      {/* Secondary: WhatsApp + Email */}
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <button
+                          type="button"
+                          disabled={submitting !== null}
+                          onClick={form.handleSubmit(handleWhatsApp, onInvalid)}
+                          data-testid="button-request-whatsapp"
+                          className="relative overflow-hidden flex items-center justify-center gap-2 flex-1 px-6 py-3 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/30 font-semibold rounded-xl hover:bg-[#25D366] hover:text-white active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
+                        >
+                          {submitting === "whatsapp" ? (
+                            <Loader2 size={17} className="animate-spin" />
+                          ) : (
+                            <MessageCircle size={17} />
+                          )}
+                          Request via WhatsApp
+                        </button>
+                        <button
+                          type="button"
+                          disabled={submitting !== null}
+                          onClick={form.handleSubmit(handleEmail, onInvalid)}
+                          data-testid="button-request-email"
+                          className="relative overflow-hidden flex items-center justify-center gap-2 flex-1 px-6 py-3 bg-primary/10 text-primary border border-primary/30 font-semibold rounded-xl hover:bg-primary hover:text-white active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
+                        >
+                          {submitting === "email" ? (
+                            <Loader2 size={17} className="animate-spin" />
+                          ) : (
+                            <Mail size={17} />
+                          )}
+                          Request via Email
+                        </button>
+                      </div>
                     </div>
                   </form>
                 </Form>

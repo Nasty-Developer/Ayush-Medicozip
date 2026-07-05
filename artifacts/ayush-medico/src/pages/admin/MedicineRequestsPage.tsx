@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MessageSquare, X, Loader2, Phone, MessageCircle, Mail,
-  AlertCircle, CheckCircle2, Clock, Paperclip, ExternalLink,
-  Download, Search, Trash2, Eye, RefreshCw,
-  WifiOff, ChevronDown, Filter, Ban, Hash, RotateCcw,
+  Pill, X, Loader2, Phone, MessageCircle, Mail,
+  CheckCircle2, Clock, Paperclip, ExternalLink,
+  Download, Search, Trash2, Eye,
+  WifiOff, ChevronDown, Filter, RefreshCw,
+  PackageCheck, PackageX, Truck, ShoppingCart, Ban, Hash,
+  AlertCircle,
 } from "lucide-react";
 import {
   subscribeToCollection, updateDocument, deleteDocument, orderBy
@@ -13,63 +15,30 @@ import { useToast } from "@/hooks/use-toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-// New statuses — old records may carry legacy values; we handle both.
-type InquiryStatus = "pending" | "replied" | "follow-up" | "resolved" | "closed";
-type LegacyStatus  = "new" | "in-progress" | "completed" | "cancelled";
-type AnyStatus     = InquiryStatus | LegacyStatus;
+type RequestStatus =
+  | "pending"
+  | "contacted"
+  | "ordered"
+  | "ready"
+  | "delivered"
+  | "cancelled";
 
-type InquirySource = "website" | "whatsapp" | "email" | "normal";
+type RequestSource = "website" | "whatsapp" | "email";
 
-type Inquiry = {
+type MedicineRequest = {
   id: string;
-  // New schema fields
-  inquiryId?: string;
-  subject?: string;
-  message?: string;
-  preferredContact?: "phone" | "whatsapp" | "email";
-  source?: InquirySource;
-  // Legacy fields (medicine requests stored here before MedicineRequestsPage)
-  medicineName?: string;
-  quantity?: string;
-  channel?: InquirySource; // old field name for source
-  // Common
+  requestId?: string;
   customerName: string;
   mobileNumber: string;
-  email?: string;
+  medicineName: string;
+  quantity: string;
   notes?: string;
-  status: AnyStatus;
+  source: RequestSource;
+  status: RequestStatus;
   prescriptionUrl?: string | null;
   hasPrescription?: boolean;
   createdAt?: { seconds: number; nanoseconds?: number };
 };
-
-// ─── Normalize legacy → current ───────────────────────────────────────────────
-
-function normalizeStatus(s: AnyStatus): InquiryStatus {
-  const map: Record<LegacyStatus, InquiryStatus> = {
-    "new":         "pending",
-    "in-progress": "replied",
-    "completed":   "resolved",
-    "cancelled":   "closed",
-  };
-  return (map as Record<string, InquiryStatus>)[s] ?? (s as InquiryStatus);
-}
-
-function getSource(inq: Inquiry): InquirySource {
-  return inq.source ?? inq.channel ?? "website";
-}
-
-function getSubjectDisplay(inq: Inquiry): string {
-  if (inq.subject) return inq.subject;
-  if (inq.medicineName) return `Medicine: ${inq.medicineName}${inq.quantity ? ` (${inq.quantity})` : ""}`;
-  return "General Inquiry";
-}
-
-function getMessageDisplay(inq: Inquiry): string {
-  if (inq.message) return inq.message;
-  if (inq.notes) return inq.notes;
-  return "—";
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -95,8 +64,8 @@ function playChime() {
   } catch { /* audio not supported */ }
 }
 
-function getTimestampSecs(inq: Inquiry): number {
-  return inq.createdAt?.seconds ?? 0;
+function getTimestampSecs(r: MedicineRequest): number {
+  return r.createdAt?.seconds ?? 0;
 }
 
 function isToday(secs: number) {
@@ -136,19 +105,19 @@ function formatShortDate(secs: number) {
 
 // ─── Status / Source config ───────────────────────────────────────────────────
 
-const STATUS_CFG: Record<InquiryStatus, { label: string; icon: React.ElementType; cls: string }> = {
-  pending:     { label: "Pending",     icon: AlertCircle,  cls: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-  replied:     { label: "Replied",     icon: MessageSquare,cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  "follow-up": { label: "Follow Up",  icon: RotateCcw,    cls: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
-  resolved:    { label: "Resolved",   icon: CheckCircle2, cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-  closed:      { label: "Closed",     icon: Ban,          cls: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
+const STATUS_CFG: Record<RequestStatus, { label: string; icon: React.ElementType; cls: string }> = {
+  pending:   { label: "Pending",          icon: AlertCircle,  cls: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
+  contacted: { label: "Contacted",        icon: Phone,        cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  ordered:   { label: "Medicine Ordered", icon: ShoppingCart, cls: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+  ready:     { label: "Ready for Pickup", icon: PackageCheck, cls: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" },
+  delivered: { label: "Delivered",        icon: Truck,        cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  cancelled: { label: "Cancelled",        icon: Ban,          cls: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
 };
 
-const SOURCE_CFG: Record<InquirySource, { label: string; cls: string }> = {
+const SOURCE_CFG: Record<RequestSource, { label: string; cls: string }> = {
   website:  { label: "Website",  cls: "bg-primary/10 text-primary" },
   whatsapp: { label: "WhatsApp", cls: "bg-[#25D366]/10 text-[#25D366]" },
   email:    { label: "Email",    cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  normal:   { label: "Direct",   cls: "bg-muted text-muted-foreground" },
 };
 
 // ─── Prescription Viewer ──────────────────────────────────────────────────────
@@ -190,9 +159,9 @@ function DeleteConfirm({ name, onCancel, onConfirm, loading }: {
         <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
           <Trash2 size={20} className="text-destructive" />
         </div>
-        <h3 className="text-base font-bold text-foreground mb-1">Delete Inquiry</h3>
+        <h3 className="text-base font-bold text-foreground mb-1">Delete Request</h3>
         <p className="text-sm text-muted-foreground mb-5">
-          Delete inquiry from <strong>{name}</strong>? This cannot be undone.
+          Delete request from <strong>{name}</strong>? This cannot be undone.
         </p>
         <div className="flex gap-3">
           <button onClick={onCancel} disabled={loading}
@@ -210,35 +179,30 @@ function DeleteConfirm({ name, onCancel, onConfirm, loading }: {
   );
 }
 
-// ─── Inquiry Detail Modal ─────────────────────────────────────────────────────
+// ─── Detail Modal ─────────────────────────────────────────────────────────────
 
-function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
-  inquiry: Inquiry;
+function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete }: {
+  req: MedicineRequest;
   onClose: () => void;
-  onUpdateStatus: (s: InquiryStatus) => Promise<void>;
+  onUpdateStatus: (s: RequestStatus) => Promise<void>;
   onDelete: () => void;
 }) {
-  const [updatingStatus, setUpdatingStatus] = useState<InquiryStatus | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<RequestStatus | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const secs = getTimestampSecs(inquiry);
-  const currentStatus = normalizeStatus(inquiry.status);
-  const Cfg = STATUS_CFG[currentStatus];
-  const src = getSource(inquiry);
-  const SrcCfg = SOURCE_CFG[src] ?? SOURCE_CFG.website;
-  const displayId = inquiry.inquiryId ?? inquiry.id.slice(0, 8).toUpperCase();
+  const secs = getTimestampSecs(req);
+  const Cfg = STATUS_CFG[req.status] ?? STATUS_CFG.pending;
+  const SrcCfg = SOURCE_CFG[req.source] ?? SOURCE_CFG.website;
 
   const buildWAReply = () =>
-    `Hi ${inquiry.customerName}, this is Ayush Medico regarding your inquiry. `;
+    `Hi ${req.customerName}, this is Ayush Medico regarding your medicine request for *${req.medicineName}* (Qty: ${req.quantity}). `;
 
-  const buildEmailReply = () => {
-    const subj = getSubjectDisplay(inquiry);
-    return `Dear ${inquiry.customerName},\n\nThank you for your inquiry: "${subj}".\n\nWe will get back to you shortly.\n\nBest regards,\nAyush Medico Team\nKurla West, Mumbai`;
-  };
+  const buildEmailReply = () =>
+    `Dear ${req.customerName},\n\nThank you for your request for ${req.medicineName} (Qty: ${req.quantity}).\n\nWe wanted to update you regarding your request.\n\nBest regards,\nAyush Medico Team\nKurla West, Mumbai`;
 
-  const handleStatusChange = async (s: InquiryStatus) => {
-    if (s === currentStatus) return;
+  const handleStatusChange = async (s: RequestStatus) => {
+    if (s === req.status) return;
     setUpdatingStatus(s);
     await onUpdateStatus(s);
     setUpdatingStatus(null);
@@ -253,18 +217,15 @@ function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
   };
 
   const fields = [
-    { label: "Inquiry ID",   value: displayId },
-    { label: "Customer",     value: inquiry.customerName },
-    { label: "Mobile",       value: inquiry.mobileNumber },
-    { label: "Email",        value: inquiry.email || "—" },
-    { label: "Subject",      value: getSubjectDisplay(inquiry) },
-    { label: "Message",      value: getMessageDisplay(inquiry) },
-    inquiry.preferredContact
-      ? { label: "Pref. Contact", value: inquiry.preferredContact }
-      : null,
-    { label: "Source",       value: SrcCfg.label },
-    { label: "Received",     value: secs ? formatDate(secs) : "—" },
-  ].filter(Boolean) as { label: string; value: string }[];
+    { label: "Request ID",  value: req.requestId || req.id.slice(0, 8).toUpperCase() },
+    { label: "Customer",    value: req.customerName },
+    { label: "Mobile",      value: req.mobileNumber },
+    { label: "Medicine",    value: req.medicineName },
+    { label: "Quantity",    value: req.quantity },
+    { label: "Source",      value: SrcCfg.label },
+    { label: "Notes",       value: req.notes || "—" },
+    { label: "Received",    value: secs ? formatDate(secs) : "—" },
+  ];
 
   return (
     <>
@@ -279,7 +240,7 @@ function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
           <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border flex-shrink-0">
             <div>
               <h3 className="text-base font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                Inquiry Details
+                Medicine Request
               </h3>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${Cfg.cls}`}>
@@ -301,23 +262,24 @@ function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
               {fields.map(({ label, value }) => (
                 <div key={label} className="flex gap-3 text-sm">
                   <span className="text-xs font-semibold text-muted-foreground w-24 flex-shrink-0 pt-0.5">{label}</span>
-                  <span className="text-foreground break-words min-w-0 whitespace-pre-wrap">{value}</span>
+                  <span className="text-foreground break-words min-w-0">{value}</span>
                 </div>
               ))}
             </div>
 
-            {/* Prescription (legacy inquiries) */}
-            {inquiry.hasPrescription && (
+            {/* Prescription */}
+            {req.hasPrescription && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Paperclip size={13} className="text-primary" />
                   <p className="text-xs font-semibold text-foreground">Prescription</p>
                 </div>
-                {inquiry.prescriptionUrl ? (
-                  <PrescriptionViewer url={inquiry.prescriptionUrl} />
+                {req.prescriptionUrl ? (
+                  <PrescriptionViewer url={req.prescriptionUrl} />
                 ) : (
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border text-muted-foreground text-xs">
-                    <Loader2 size={13} className="animate-spin" /> Prescription is being uploaded…
+                    <Loader2 size={13} className="animate-spin" />
+                    Prescription is being uploaded…
                   </div>
                 )}
               </div>
@@ -327,9 +289,9 @@ function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-2">Update Status</p>
               <div className="grid grid-cols-2 gap-2">
-                {(Object.entries(STATUS_CFG) as [InquiryStatus, (typeof STATUS_CFG)[InquiryStatus]][]).map(([s, cfg]) => {
+                {(Object.entries(STATUS_CFG) as [RequestStatus, (typeof STATUS_CFG)[RequestStatus]][]).map(([s, cfg]) => {
                   const Icon = cfg.icon;
-                  const isActive = currentStatus === s;
+                  const isActive = req.status === s;
                   const isLoading = updatingStatus === s;
                   return (
                     <button
@@ -352,25 +314,23 @@ function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
           {/* Footer */}
           <div className="px-5 pb-5 pt-3 border-t border-border flex-shrink-0 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <a href={`tel:${inquiry.mobileNumber}`}
+              <a href={`tel:${req.mobileNumber}`}
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-all">
                 <Phone size={13} /> Call Customer
               </a>
               <a
-                href={`https://wa.me/91${inquiry.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(buildWAReply())}`}
+                href={`https://wa.me/91${req.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(buildWAReply())}`}
                 target="_blank" rel="noopener noreferrer"
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#25D366]/10 text-[#25D366] text-xs font-semibold hover:bg-[#25D366]/20 transition-all">
                 <MessageCircle size={13} /> Reply on WhatsApp
               </a>
-              {inquiry.email ? (
-                <a
-                  href={`mailto:${inquiry.email}?subject=${encodeURIComponent(`Re: ${getSubjectDisplay(inquiry)} — Ayush Medico`)}&body=${encodeURIComponent(buildEmailReply())}`}
-                  className="col-span-2 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-muted text-foreground text-xs font-semibold hover:bg-muted/70 transition-all">
-                  <Mail size={13} /> Reply via Email
-                </a>
-              ) : null}
-              {inquiry.prescriptionUrl && (
-                <a href={inquiry.prescriptionUrl} target="_blank" rel="noopener noreferrer"
+              <a
+                href={`mailto:?subject=${encodeURIComponent(`Re: Medicine Request — ${req.medicineName} | Ayush Medico`)}&body=${encodeURIComponent(buildEmailReply())}`}
+                className="col-span-2 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-muted text-foreground text-xs font-semibold hover:bg-muted/70 transition-all">
+                <Mail size={13} /> Reply via Email
+              </a>
+              {req.prescriptionUrl && (
+                <a href={req.prescriptionUrl} target="_blank" rel="noopener noreferrer"
                   className="col-span-2 flex items-center justify-center gap-1.5 py-2 rounded-xl text-primary text-xs font-semibold hover:bg-primary/5 transition-all">
                   <ExternalLink size={13} /> View Prescription
                 </a>
@@ -378,7 +338,7 @@ function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
             </div>
             <button onClick={() => setShowDeleteConfirm(true)}
               className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-destructive text-xs font-semibold hover:bg-destructive/5 transition-all">
-              <Trash2 size={13} /> Delete Inquiry
+              <Trash2 size={13} /> Delete Request
             </button>
           </div>
         </motion.div>
@@ -387,7 +347,7 @@ function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
       <AnimatePresence>
         {showDeleteConfirm && (
           <DeleteConfirm
-            name={inquiry.customerName}
+            name={req.customerName}
             onCancel={() => setShowDeleteConfirm(false)}
             onConfirm={handleDelete}
             loading={deleting}
@@ -400,19 +360,19 @@ function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type DateFilter   = "all" | "today" | "yesterday" | "week";
-type StatusFilter = "all" | InquiryStatus;
-type SourceFilter = "all" | InquirySource;
+type DateFilter = "all" | "today" | "yesterday" | "week";
+type StatusFilter = "all" | RequestStatus;
+type SourceFilter = "all" | RequestSource;
 
-export default function InquiriesPage() {
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+export default function MedicineRequestsPage() {
+  const [requests, setRequests] = useState<MedicineRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
-  const [selected, setSelected] = useState<Inquiry | null>(null);
+  const [selected, setSelected] = useState<MedicineRequest | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
 
@@ -421,20 +381,20 @@ export default function InquiriesPage() {
 
   useEffect(() => {
     const unsub = subscribeToCollection(
-      "inquiries",
+      "medicine-requests",
       [orderBy("createdAt", "desc")],
       (docs) => {
-        const data = docs as Inquiry[];
-        const pendingCount = data.filter((d) => normalizeStatus(d.status) === "pending").length;
+        const data = docs as MedicineRequest[];
+        const pendingCount = data.filter((d) => d.status === "pending").length;
 
         if (initialLoadDone.current && pendingCount > prevPendingRef.current && prevPendingRef.current >= 0) {
           playChime();
-          toast({ title: "🔔 New Inquiry", description: "A new inquiry just arrived!" });
+          toast({ title: "🔔 New Medicine Request", description: "A new request just arrived!" });
         }
 
         prevPendingRef.current = pendingCount;
         initialLoadDone.current = true;
-        setInquiries(data);
+        setRequests(data);
         setLoading(false);
         setError(false);
 
@@ -448,55 +408,50 @@ export default function InquiriesPage() {
     return unsub;
   }, []);
 
-  const handleUpdateStatus = useCallback(async (inquiry: Inquiry, status: InquiryStatus) => {
+  const handleUpdateStatus = useCallback(async (req: MedicineRequest, status: RequestStatus) => {
     try {
-      await updateDocument("inquiries", inquiry.id, { status });
+      await updateDocument("medicine-requests", req.id, { status });
     } catch {
       toast({ variant: "destructive", title: "Failed to update status" });
     }
   }, []);
 
-  const handleDelete = useCallback(async (inquiry: Inquiry) => {
+  const handleDelete = useCallback(async (req: MedicineRequest) => {
     try {
-      await deleteDocument("inquiries", inquiry.id);
-      toast({ title: "Inquiry deleted" });
+      await deleteDocument("medicine-requests", req.id);
+      toast({ title: "Request deleted" });
     } catch {
-      toast({ variant: "destructive", title: "Failed to delete inquiry" });
+      toast({ variant: "destructive", title: "Failed to delete request" });
     }
   }, []);
 
-  // ── Stats ────────────────────────────────────────────────────────────────
-  const total       = inquiries.length;
-  const pending     = inquiries.filter((i) => normalizeStatus(i.status) === "pending").length;
-  const resolved    = inquiries.filter((i) => normalizeStatus(i.status) === "resolved").length;
-  const todayCount  = inquiries.filter((i) => isToday(getTimestampSecs(i))).length;
-  const waCnt       = inquiries.filter((i) => getSource(i) === "whatsapp").length;
-  const emailCnt    = inquiries.filter((i) => getSource(i) === "email").length;
-  const webCnt      = inquiries.filter((i) => ["website", "normal"].includes(getSource(i))).length;
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  const total      = requests.length;
+  const pending    = requests.filter((r) => r.status === "pending").length;
+  const ordered    = requests.filter((r) => r.status === "ordered").length;
+  const delivered  = requests.filter((r) => r.status === "delivered").length;
+  const todayCount = requests.filter((r) => isToday(getTimestampSecs(r))).length;
+  const waSrc      = requests.filter((r) => r.source === "whatsapp").length;
+  const emailSrc   = requests.filter((r) => r.source === "email").length;
+  const webSrc     = requests.filter((r) => r.source === "website").length;
 
-  // ── Filtered list ────────────────────────────────────────────────────────
-  const filtered = inquiries.filter((inq) => {
+  // ── Filtered list ─────────────────────────────────────────────────────────
+  const filtered = requests.filter((r) => {
     if (search) {
       const q = search.toLowerCase();
       if (
-        !inq.customerName.toLowerCase().includes(q) &&
-        !inq.mobileNumber.includes(q) &&
-        !(inq.email ?? "").toLowerCase().includes(q) &&
-        !(inq.subject ?? "").toLowerCase().includes(q) &&
-        !(inq.inquiryId ?? "").toLowerCase().includes(q)
+        !r.customerName.toLowerCase().includes(q) &&
+        !r.medicineName.toLowerCase().includes(q) &&
+        !r.mobileNumber.includes(q) &&
+        !(r.requestId ?? "").toLowerCase().includes(q)
       ) return false;
     }
-    const secs = getTimestampSecs(inq);
+    const secs = getTimestampSecs(r);
     if (dateFilter === "today"     && !isToday(secs))     return false;
     if (dateFilter === "yesterday" && !isYesterday(secs)) return false;
     if (dateFilter === "week"      && !isThisWeek(secs))  return false;
-    if (statusFilter !== "all" && normalizeStatus(inq.status) !== statusFilter) return false;
-    if (sourceFilter !== "all") {
-      const src = getSource(inq);
-      // "website" filter matches both website and normal
-      if (sourceFilter === "website" && src !== "website" && src !== "normal") return false;
-      if (sourceFilter !== "website" && src !== sourceFilter) return false;
-    }
+    if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    if (sourceFilter !== "all" && r.source !== sourceFilter) return false;
     return true;
   });
 
@@ -515,7 +470,7 @@ export default function InquiriesPage() {
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            Inquiries
+            Medicine Requests
             {pending > 0 && (
               <span className="inline-flex items-center justify-center min-w-[22px] h-5.5 px-1.5 rounded-full bg-primary text-white text-xs font-bold animate-pulse">
                 {pending}
@@ -528,14 +483,14 @@ export default function InquiriesPage() {
         </div>
       </div>
 
-      {/* Error */}
+      {/* Error state */}
       {error && (
         <div className="mb-4 p-4 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center gap-3">
           <WifiOff size={16} className="text-destructive flex-shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-destructive">Could not load inquiries</p>
+            <p className="text-sm font-semibold text-destructive">Could not load requests</p>
             <p className="text-xs text-destructive/70 mt-0.5">
-              Check your Firestore rules — publish the rules from <code className="bg-destructive/10 px-1 rounded">firestore.rules</code> in Firebase Console.
+              Check your Firestore rules — ensure <code className="bg-destructive/10 px-1 rounded">medicine-requests</code> allows admin read.
             </p>
           </div>
           <button onClick={() => window.location.reload()}
@@ -548,13 +503,13 @@ export default function InquiriesPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-5">
         {[
-          { label: "Total",    value: total,      cls: "text-foreground" },
-          { label: "Pending",  value: pending,    cls: "text-blue-600 dark:text-blue-400" },
-          { label: "Resolved", value: resolved,   cls: "text-emerald-600 dark:text-emerald-400" },
-          { label: "Today",    value: todayCount, cls: "text-amber-600 dark:text-amber-400" },
-          { label: "WhatsApp", value: waCnt,      cls: "text-[#25D366]" },
-          { label: "Email",    value: emailCnt,   cls: "text-primary" },
-          { label: "Website",  value: webCnt,     cls: "text-violet-600 dark:text-violet-400" },
+          { label: "Total",     value: total,     cls: "text-foreground" },
+          { label: "Pending",   value: pending,   cls: "text-blue-600 dark:text-blue-400" },
+          { label: "Ordered",   value: ordered,   cls: "text-violet-600 dark:text-violet-400" },
+          { label: "Delivered", value: delivered, cls: "text-emerald-600 dark:text-emerald-400" },
+          { label: "Today",     value: todayCount,cls: "text-amber-600 dark:text-amber-400" },
+          { label: "WhatsApp",  value: waSrc,     cls: "text-[#25D366]" },
+          { label: "Website",   value: webSrc + emailSrc, cls: "text-primary" },
         ].map((s) => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-3 text-center shadow-sm">
             <p className={`text-xl font-bold ${s.cls}`}>{s.value}</p>
@@ -563,14 +518,14 @@ export default function InquiriesPage() {
         ))}
       </div>
 
-      {/* Search + Filter toggle */}
+      {/* Search + Filter */}
       <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, phone, email, subject, or inquiry ID…"
+            placeholder="Search by name, medicine, phone, or request ID…"
             className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
           />
           {search && (
@@ -602,7 +557,7 @@ export default function InquiriesPage() {
         )}
       </div>
 
-      {/* Filter panel */}
+      {/* Filter Panel */}
       <AnimatePresence>
         {showFilters && (
           <motion.div
@@ -618,7 +573,7 @@ export default function InquiriesPage() {
                 <div className="flex flex-wrap gap-1.5">
                   {(["all", "today", "yesterday", "week"] as DateFilter[]).map((f) => (
                     <button key={f} onClick={() => setDateFilter(f)}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${dateFilter === f ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all capitalize ${dateFilter === f ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
                       {f === "all" ? "All Time" : f === "week" ? "This Week" : f.charAt(0).toUpperCase() + f.slice(1)}
                     </button>
                   ))}
@@ -633,7 +588,7 @@ export default function InquiriesPage() {
                     className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${statusFilter === "all" ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
                     All
                   </button>
-                  {(Object.entries(STATUS_CFG) as [InquiryStatus, (typeof STATUS_CFG)[InquiryStatus]][]).map(([s, cfg]) => (
+                  {(Object.entries(STATUS_CFG) as [RequestStatus, (typeof STATUS_CFG)[RequestStatus]][]).map(([s, cfg]) => (
                     <button key={s} onClick={() => setStatusFilter(s)}
                       className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${statusFilter === s ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
                       {cfg.label}
@@ -646,15 +601,14 @@ export default function InquiriesPage() {
               <div>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Source</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {([
-                    { value: "all",      label: "All Sources" },
-                    { value: "website",  label: `Website (${webCnt})` },
-                    { value: "whatsapp", label: `WhatsApp (${waCnt})` },
-                    { value: "email",    label: `Email (${emailCnt})` },
-                  ] as { value: SourceFilter; label: string }[]).map((f) => (
-                    <button key={f.value} onClick={() => setSourceFilter(f.value)}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${sourceFilter === f.value ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
-                      {f.label}
+                  <button onClick={() => setSourceFilter("all")}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${sourceFilter === "all" ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
+                    All Sources
+                  </button>
+                  {(Object.entries(SOURCE_CFG) as [RequestSource, (typeof SOURCE_CFG)[RequestSource]][]).map(([src, cfg]) => (
+                    <button key={src} onClick={() => setSourceFilter(src)}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${sourceFilter === src ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
+                      {cfg.label} ({src === "website" ? webSrc : src === "whatsapp" ? waSrc : emailSrc})
                     </button>
                   ))}
                 </div>
@@ -667,7 +621,7 @@ export default function InquiriesPage() {
       {/* Results count */}
       {hasActiveFilters && !loading && (
         <p className="text-xs text-muted-foreground mb-2 px-1">
-          Showing {filtered.length} of {total} inquiries
+          Showing {filtered.length} of {total} requests
         </p>
       )}
 
@@ -676,13 +630,13 @@ export default function InquiriesPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-40 gap-3">
             <Loader2 size={22} className="animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Loading inquiries…</p>
+            <p className="text-sm text-muted-foreground">Loading medicine requests…</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
-            <MessageSquare size={26} className="opacity-50" />
+            <PackageX size={26} className="opacity-50" />
             <p className="text-sm font-medium">
-              {hasActiveFilters ? "No inquiries match your filters" : "No inquiries yet"}
+              {hasActiveFilters ? "No requests match your filters" : "No medicine requests yet"}
             </p>
             {hasActiveFilters && (
               <button onClick={resetFilters} className="text-xs text-primary hover:underline">Clear filters</button>
@@ -692,39 +646,38 @@ export default function InquiriesPage() {
           <>
             {/* Table header — desktop */}
             <div className="hidden sm:grid grid-cols-[1.5fr_2fr_2fr_1.5fr_1fr_1fr_1fr_auto] gap-3 px-4 py-2.5 border-b border-border bg-muted/30">
-              {["ID", "Customer", "Subject", "Phone", "Source", "Status", "Date", ""].map((h) => (
+              {["ID", "Customer", "Medicine", "Phone", "Source", "Status", "Date", ""].map((h) => (
                 <p key={h} className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{h}</p>
               ))}
             </div>
 
             <div className="divide-y divide-border">
-              {filtered.map((inq) => {
-                const status = normalizeStatus(inq.status);
-                const Cfg = STATUS_CFG[status];
-                const src = getSource(inq);
-                const SrcCfg = SOURCE_CFG[src] ?? SOURCE_CFG.website;
+              {filtered.map((req) => {
+                const Cfg = STATUS_CFG[req.status] ?? STATUS_CFG.pending;
+                const SrcCfg = SOURCE_CFG[req.source] ?? SOURCE_CFG.website;
                 const StatusIcon = Cfg.icon;
-                const secs = getTimestampSecs(inq);
-                const displayId = inq.inquiryId?.slice(-8) ?? inq.id.slice(0, 8).toUpperCase();
+                const secs = getTimestampSecs(req);
 
                 return (
-                  <div key={inq.id} className="group">
+                  <div key={req.id} className="group">
                     {/* Desktop row */}
                     <div className="hidden sm:grid grid-cols-[1.5fr_2fr_2fr_1.5fr_1fr_1fr_1fr_auto] gap-3 items-center px-4 py-3 hover:bg-muted/20 transition-colors">
                       <div className="flex items-center gap-1 min-w-0">
                         <Hash size={10} className="text-muted-foreground flex-shrink-0" />
-                        <span className="text-xs text-muted-foreground font-mono truncate">{displayId}</span>
+                        <span className="text-xs text-muted-foreground truncate font-mono">
+                          {req.requestId?.slice(-8) ?? req.id.slice(0, 8).toUpperCase()}
+                        </span>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{inq.customerName}</p>
-                        {inq.hasPrescription && (
+                        <p className="text-sm font-semibold text-foreground truncate">{req.customerName}</p>
+                        {req.hasPrescription && (
                           <span className="inline-flex items-center gap-1 text-[10px] text-primary mt-0.5">
                             <Paperclip size={9} /> Rx
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground truncate">{getSubjectDisplay(inq)}</p>
-                      <p className="text-sm text-muted-foreground">{inq.mobileNumber}</p>
+                      <p className="text-sm text-muted-foreground truncate">{req.medicineName}</p>
+                      <p className="text-sm text-muted-foreground">{req.mobileNumber}</p>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${SrcCfg.cls} w-fit`}>
                         {SrcCfg.label}
                       </span>
@@ -733,18 +686,21 @@ export default function InquiriesPage() {
                       </span>
                       <p className="text-xs text-muted-foreground">{secs ? formatShortDate(secs) : "—"}</p>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => setSelected(inq)} title="View"
+                        <button onClick={() => setSelected(req)} title="View"
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all">
                           <Eye size={14} />
                         </button>
-                        <a
-                          href={`https://wa.me/91${inq.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${inq.customerName}, this is Ayush Medico. `)}`}
+                        <a href={`tel:${req.mobileNumber}`} title="Call"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-secondary hover:bg-secondary/10 transition-all">
+                          <Phone size={14} />
+                        </a>
+                        <a href={`https://wa.me/91${req.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${req.customerName}, this is Ayush Medico regarding your request for *${req.medicineName}*. `)}`}
                           target="_blank" rel="noopener noreferrer" title="WhatsApp"
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-[#25D366] hover:bg-[#25D366]/10 transition-all">
                           <MessageCircle size={14} />
                         </a>
-                        {status !== "resolved" && (
-                          <button onClick={() => handleUpdateStatus(inq, "resolved")} title="Mark Resolved"
+                        {req.status !== "delivered" && (
+                          <button onClick={() => handleUpdateStatus(req, "delivered")} title="Mark Delivered"
                             className="p-1.5 rounded-lg text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 transition-all">
                             <CheckCircle2 size={14} />
                           </button>
@@ -754,16 +710,16 @@ export default function InquiriesPage() {
 
                     {/* Mobile card */}
                     <div className="sm:hidden flex items-center gap-3 px-4 py-3.5 hover:bg-muted/20 cursor-pointer transition-colors"
-                      onClick={() => setSelected(inq)}>
+                      onClick={() => setSelected(req)}>
                       <div className={`p-2 rounded-xl flex-shrink-0 ${Cfg.cls}`}>
                         <StatusIcon size={15} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-foreground truncate">{inq.customerName}</p>
-                          {inq.hasPrescription && <Paperclip size={10} className="text-primary flex-shrink-0" />}
+                          <p className="text-sm font-semibold text-foreground truncate">{req.customerName}</p>
+                          {req.hasPrescription && <Paperclip size={10} className="text-primary flex-shrink-0" />}
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">{getSubjectDisplay(inq)} · {inq.mobileNumber}</p>
+                        <p className="text-xs text-muted-foreground truncate">{req.medicineName} · {req.mobileNumber}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
                         <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ${SrcCfg.cls}`}>
@@ -783,8 +739,8 @@ export default function InquiriesPage() {
       {/* Detail Modal */}
       <AnimatePresence>
         {selected && (
-          <InquiryDetailModal
-            inquiry={selected}
+          <RequestDetailModal
+            req={selected}
             onClose={() => setSelected(null)}
             onUpdateStatus={(s) => handleUpdateStatus(selected, s)}
             onDelete={() => handleDelete(selected)}

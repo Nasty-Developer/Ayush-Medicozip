@@ -1,0 +1,263 @@
+🚀 Upgrade the Existing Inquiry System (Do NOT Create a New Section)
+
+You are working on an existing Ayush Medico website that already contains an Inquiry section in the Admin Dashboard.
+
+IMPORTANT
+Do NOT create another inquiry system.
+Do NOT duplicate any sections.
+Reuse the existing Inquiry page and extend its functionality.
+Keep the current design, UI, animations, colors, typography, and architecture.
+🎯 OBJECTIVE
+
+Transform the existing Inquiry section into a central communication hub.
+
+Every inquiry submitted anywhere on the website should automatically appear inside the existing Admin Dashboard → Inquiry page.
+
+Sources of Inquiry
+
+The Inquiry section should collect submissions from:
+
+✅ Contact Form
+
+✅ General Inquiry Form
+
+✅ Medicine Availability Form
+
+✅ Request Medicine Form
+
+✅ WhatsApp Requests
+
+✅ Email Requests
+
+Future ready for:
+
+Appointment Requests
+
+Health Camp Registrations
+
+Feedback Forms
+
+Career Form
+
+Supplier Inquiry
+
+Website Inquiry Form
+
+Create or improve the General Inquiry form.
+
+Fields
+
+Customer Name
+
+Mobile Number
+
+Email Address (Optional)
+
+Subject
+
+Message
+
+Preferred Contact Method
+
+Phone
+
+WhatsApp
+
+Email
+
+Buttons
+
+📨 Submit Inquiry
+
+💬 Send via WhatsApp
+
+📧 Send via Email
+
+Submit Inquiry
+
+When clicked
+
+Save inquiry into Firebase.
+
+Also show success message.
+
+Generate Inquiry ID.
+
+Save
+
+Customer Name
+
+Phone
+
+Email
+
+Subject
+
+Message
+
+Preferred Contact Method
+
+Date
+
+Time
+
+Source
+
+Status
+
+WhatsApp Inquiry
+
+Open WhatsApp with a formatted message.
+
+Also save the inquiry to Firebase before opening WhatsApp.
+
+Source:
+
+WhatsApp
+
+Email Inquiry
+
+Open the email application with a formatted email.
+
+Also save the inquiry into Firebase before opening Email.
+
+Source:
+
+Email
+
+ADMIN DASHBOARD
+
+Use the existing Inquiry page.
+
+Every inquiry should appear automatically.
+
+Display
+
+Inquiry ID
+
+Customer Name
+
+Phone
+
+Email
+
+Subject
+
+Message
+
+Preferred Contact Method
+
+Source
+
+Date
+
+Time
+
+Status
+
+Inquiry Status
+
+Pending
+
+Replied
+
+Follow Up
+
+Resolved
+
+Closed
+
+Admin Actions
+
+Call Customer
+
+Reply on WhatsApp
+
+Reply by Email
+
+Mark Resolved
+
+Mark Follow Up
+
+Delete Inquiry
+
+Search
+
+Search by
+
+Customer Name
+
+Phone
+
+Email
+
+Subject
+
+Inquiry ID
+
+Filters
+
+Website
+
+WhatsApp
+
+Email
+
+Pending
+
+Resolved
+
+Closed
+
+Today's Inquiries
+
+Notifications
+
+Whenever a new inquiry arrives
+
+Increase notification badge
+
+Show newest first
+
+Dashboard counter should update automatically
+
+Analytics
+
+Total Inquiries
+
+Today's Inquiries
+
+Pending
+
+Resolved
+
+WhatsApp Inquiries
+
+Email Inquiries
+
+Website Inquiries
+
+FIREBASE
+
+Store all inquiries in one collection.
+
+Use efficient Firestore queries.
+
+Optimize for Firebase Spark Free Tier.
+
+UI
+
+Do not redesign anything.
+
+Simply upgrade the existing Inquiry page into a complete customer communication center.
+
+Everything should match the current premium design.
+
+FINAL REQUIREMENTS
+No duplicate code.
+No duplicate pages.
+Reuse existing components.
+Mobile responsive.
+Production ready.
+Firebase optimized.
+Test every feature before completion.

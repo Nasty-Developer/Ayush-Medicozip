@@ -47,9 +47,16 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ─── INQUIRIES (contact / request medicine form) ──────────────────────────
+    // ─── INQUIRIES (general contact / inquiry form) ───────────────────────────
     // Public can create (submit form), only admin can read and manage
     match /inquiries/{docId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ─── MEDICINE REQUESTS ────────────────────────────────────────────────────
+    // Public can create (submit request form), only admin can read and manage
+    match /medicine-requests/{docId} {
       allow create: if true;
       allow read, update, delete: if isAdmin();
     }

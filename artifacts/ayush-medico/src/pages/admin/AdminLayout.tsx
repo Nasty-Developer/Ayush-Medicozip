@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Pill, Megaphone, MessageSquare, HelpCircle,
   Star, Settings, LogOut, Menu, X, ChevronRight, ExternalLink,
-  Shield, Tag, Building2, Sparkles, Award, Home
+  Shield, Tag, Building2, Sparkles, Award, Home, ClipboardList,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeToCollection, where } from "@/lib/firestoreHelpers";
@@ -17,6 +17,7 @@ import SpecialMedicinesPage from "./SpecialMedicinesPage";
 import HomepageManagerPage from "./HomepageManagerPage";
 import AnnouncementPage from "./AnnouncementPage";
 import InquiriesPage from "./InquiriesPage";
+import MedicineRequestsPage from "./MedicineRequestsPage";
 import FAQPage from "./FAQPage";
 import TestimonialsPage from "./TestimonialsPage";
 import SettingsPage from "./SettingsPage";
@@ -30,7 +31,7 @@ type NavItemDef = {
   badge?: number;
 };
 
-function buildNavItems(newInquiries: number): NavItemDef[] {
+function buildNavItems(newInquiries: number, pendingRequests: number): NavItemDef[] {
   return [
     { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
     { divider: "Catalog" },
@@ -38,15 +39,17 @@ function buildNavItems(newInquiries: number): NavItemDef[] {
     { icon: Tag,        label: "Categories",  href: "/admin/categories" },
     { icon: Building2,  label: "Brands",      href: "/admin/brands" },
     { divider: "Homepage" },
-    { icon: Home,       label: "Homepage",    href: "/admin/homepage" },
-    { icon: Sparkles,   label: "New Arrivals",    href: "/admin/new-arrivals" },
-    { icon: Award,      label: "Special Medicines",href: "/admin/special-medicines" },
+    { icon: Home,       label: "Homepage",         href: "/admin/homepage" },
+    { icon: Sparkles,   label: "New Arrivals",      href: "/admin/new-arrivals" },
+    { icon: Award,      label: "Special Medicines", href: "/admin/special-medicines" },
+    { divider: "Customer" },
+    { icon: ClipboardList,  label: "Medicine Requests", href: "/admin/medicine-requests", badge: pendingRequests },
+    { icon: MessageSquare,  label: "Inquiries",          href: "/admin/inquiries",          badge: newInquiries },
     { divider: "Content" },
-    { icon: Megaphone,      label: "Announcement", href: "/admin/announcement" },
-    { icon: MessageSquare,  label: "Inquiries",    href: "/admin/inquiries", badge: newInquiries },
-    { icon: HelpCircle,     label: "FAQ",          href: "/admin/faq" },
-    { icon: Star,           label: "Testimonials", href: "/admin/testimonials" },
-    { icon: Settings,       label: "Settings",     href: "/admin/settings" },
+    { icon: Megaphone,   label: "Announcement", href: "/admin/announcement" },
+    { icon: HelpCircle,  label: "FAQ",          href: "/admin/faq" },
+    { icon: Star,        label: "Testimonials", href: "/admin/testimonials" },
+    { icon: Settings,    label: "Settings",     href: "/admin/settings" },
   ];
 }
 
@@ -54,95 +57,92 @@ function Sidebar({
   open,
   onClose,
   newInquiries,
+  pendingRequests,
 }: {
   open: boolean;
   onClose: () => void;
   newInquiries: number;
+  pendingRequests: number;
 }) {
   const [location] = useLocation();
-  const { signOut } = useAuth();
-  const navItems = buildNavItems(newInquiries);
+  const { signOut, user } = useAuth();
+  const navItems = buildNavItems(newInquiries, pendingRequests);
+
+  const isActive = (href: string) =>
+    href === "/admin" ? location === "/admin" : location.startsWith(href);
 
   return (
     <>
-      {open && (
-        <div
-          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-      <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-card border-r border-border z-40 flex flex-col transition-transform duration-300 ${
-          open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 lg:hidden"
+            onClick={onClose}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar panel */}
+      <motion.aside
+        initial={false}
+        animate={{ x: open ? 0 : "-100%" }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="fixed top-0 left-0 h-full w-64 bg-card border-r border-border z-40 flex flex-col lg:translate-x-0 lg:transition-none"
       >
         {/* Logo */}
-        <div className="p-5 border-b border-border flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-md flex-shrink-0">
-            <Shield size={18} className="text-white" />
+        <div className="flex items-center justify-between px-5 h-14 border-b border-border flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+              <Shield size={14} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground leading-none" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Ayush Medico
+              </p>
+              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Admin Panel</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p
-              className="text-sm font-bold text-foreground truncate"
-              style={{ fontFamily: "'Poppins', sans-serif" }}
-            >
-              Ayush Medico
-            </p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-              Admin Panel
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="ml-auto lg:hidden text-muted-foreground hover:text-foreground"
-          >
+          <button onClick={onClose} className="lg:hidden p-1 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
             <X size={16} />
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto py-3 px-2">
           {navItems.map((item, idx) => {
             if (item.divider) {
               return (
-                <div key={idx} className="pt-3 pb-1 px-3">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                    {item.divider}
-                  </p>
-                </div>
+                <p key={idx} className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 pt-4 pb-1.5">
+                  {item.divider}
+                </p>
               );
             }
+
             const Icon = item.icon!;
-            const href = item.href!;
-            const active =
-              location === href ||
-              (href !== "/admin" && location.startsWith(href));
+            const active = isActive(item.href!);
+
             return (
-              <Link key={href} href={href}>
+              <Link key={item.href} href={item.href!}>
                 <a
-                  onClick={onClose}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  onClick={() => onClose()}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-xl mb-0.5 transition-all duration-150 group relative ${
                     active
-                      ? "bg-primary text-white shadow-md shadow-primary/25"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
-                  <Icon size={17} />
-                  <span className="flex-1 truncate">{item.label}</span>
+                  <Icon size={16} className="flex-shrink-0" />
+                  <span className="text-sm flex-1">{item.label}</span>
                   {item.badge != null && item.badge > 0 && (
-                    <span
-                      className={`min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${
-                        active
-                          ? "bg-white text-primary"
-                          : "bg-primary text-white"
-                      }`}
-                    >
-                      {item.badge > 99 ? "99+" : item.badge}
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full bg-primary text-white text-[10px] font-bold animate-pulse">
+                      {item.badge}
                     </span>
                   )}
-                  {active && !item.badge && (
-                    <ChevronRight size={14} className="ml-auto" />
-                  )}
+                  {active && <ChevronRight size={12} className="flex-shrink-0 opacity-50" />}
                 </a>
               </Link>
             );
@@ -150,21 +150,104 @@ function Sidebar({
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-border space-y-1">
+        <div className="flex-shrink-0 border-t border-border p-3 space-y-1">
           <a
             href="/"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200"
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground text-sm transition-all"
           >
-            <ExternalLink size={17} />
-            View Website
+            <ExternalLink size={15} />
+            <span>View Website</span>
           </a>
+          {user && (
+            <div className="px-3 py-2 rounded-xl bg-muted/50">
+              <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+            </div>
+          )}
           <button
-            onClick={signOut}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all duration-200"
+            onClick={() => signOut()}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-destructive hover:bg-destructive/10 text-sm font-medium transition-all"
           >
-            <LogOut size={17} />
+            <LogOut size={15} />
+            Sign Out
+          </button>
+        </div>
+      </motion.aside>
+
+      {/* Desktop static sidebar */}
+      <aside className="hidden lg:flex fixed top-0 left-0 h-full w-64 bg-card border-r border-border z-40 flex-col">
+        {/* Logo */}
+        <div className="flex items-center gap-2 px-5 h-14 border-b border-border flex-shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+            <Shield size={14} className="text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground leading-none" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              Ayush Medico
+            </p>
+            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Admin Panel</p>
+          </div>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2">
+          {navItems.map((item, idx) => {
+            if (item.divider) {
+              return (
+                <p key={idx} className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 pt-4 pb-1.5">
+                  {item.divider}
+                </p>
+              );
+            }
+
+            const Icon = item.icon!;
+            const active = isActive(item.href!);
+
+            return (
+              <Link key={item.href} href={item.href!}>
+                <a
+                  className={`flex items-center gap-3 px-3 py-2 rounded-xl mb-0.5 transition-all duration-150 group relative ${
+                    active
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <Icon size={16} className="flex-shrink-0" />
+                  <span className="text-sm flex-1">{item.label}</span>
+                  {item.badge != null && item.badge > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full bg-primary text-white text-[10px] font-bold animate-pulse">
+                      {item.badge}
+                    </span>
+                  )}
+                  {active && <ChevronRight size={12} className="flex-shrink-0 opacity-50" />}
+                </a>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 border-t border-border p-3 space-y-1">
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground text-sm transition-all"
+          >
+            <ExternalLink size={15} />
+            <span>View Website</span>
+          </a>
+          {user && (
+            <div className="px-3 py-2 rounded-xl bg-muted/50">
+              <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+            </div>
+          )}
+          <button
+            onClick={() => signOut()}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-destructive hover:bg-destructive/10 text-sm font-medium transition-all"
+          >
+            <LogOut size={15} />
             Sign Out
           </button>
         </div>
@@ -177,15 +260,28 @@ export default function AdminLayout() {
   const { user, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newInquiries, setNewInquiries] = useState(0);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
-  // Real-time badge for new inquiries
+  // Real-time badge: pending inquiries
   useEffect(() => {
     if (!user) return;
     const unsub = subscribeToCollection(
       "inquiries",
-      [where("status", "==", "new")],
+      [where("status", "in", ["pending", "new"])],
       (docs) => setNewInquiries(docs.length),
       () => setNewInquiries(0)
+    );
+    return unsub;
+  }, [user]);
+
+  // Real-time badge: pending medicine requests
+  useEffect(() => {
+    if (!user) return;
+    const unsub = subscribeToCollection(
+      "medicine-requests",
+      [where("status", "==", "pending")],
+      (docs) => setPendingRequests(docs.length),
+      () => setPendingRequests(0)
     );
     return unsub;
   }, [user]);
@@ -226,6 +322,7 @@ export default function AdminLayout() {
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         newInquiries={newInquiries}
+        pendingRequests={pendingRequests}
       />
 
       <div className="lg:ml-64">
@@ -237,37 +334,68 @@ export default function AdminLayout() {
             <Menu size={18} />
           </button>
 
-          {/* Mobile: Inquiries badge in header */}
-          {newInquiries > 0 && (
-            <Link href="/admin/inquiries">
-              <a className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
-                <MessageSquare size={13} />
-                {newInquiries} New
-              </a>
-            </Link>
-          )}
+          {/* Mobile badges */}
+          <div className="lg:hidden flex items-center gap-2">
+            {pendingRequests > 0 && (
+              <Link href="/admin/medicine-requests">
+                <a className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
+                  <ClipboardList size={13} />
+                  {pendingRequests} Pending
+                </a>
+              </Link>
+            )}
+            {newInquiries > 0 && (
+              <Link href="/admin/inquiries">
+                <a className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-secondary/10 text-secondary text-xs font-semibold">
+                  <MessageSquare size={13} />
+                  {newInquiries} New
+                </a>
+              </Link>
+            )}
+          </div>
 
           <div className="flex-1" />
-          <div className="text-xs text-muted-foreground truncate max-w-[180px]">{user.email}</div>
+
+          {/* Total badge — desktop */}
+          {(pendingRequests + newInquiries) > 0 && (
+            <div className="hidden lg:flex items-center gap-2">
+              {pendingRequests > 0 && (
+                <Link href="/admin/medicine-requests">
+                  <a className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-all">
+                    <ClipboardList size={13} />
+                    {pendingRequests} pending request{pendingRequests !== 1 ? "s" : ""}
+                  </a>
+                </Link>
+              )}
+              {newInquiries > 0 && (
+                <Link href="/admin/inquiries">
+                  <a className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 text-secondary text-xs font-semibold hover:bg-secondary/20 transition-all">
+                    <MessageSquare size={13} />
+                    {newInquiries} new {newInquiries === 1 ? "inquiry" : "inquiries"}
+                  </a>
+                </Link>
+              )}
+            </div>
+          )}
         </header>
 
         <main className="p-4 sm:p-6 lg:p-8">
-          <AnimatePresence mode="wait">
-            <Switch>
-              <Route path="/admin" component={DashboardPage} />
-              <Route path="/admin/medicines" component={MedicinesPage} />
-              <Route path="/admin/categories" component={CategoriesPage} />
-              <Route path="/admin/brands" component={BrandsPage} />
-              <Route path="/admin/new-arrivals" component={NewArrivalsPage} />
-              <Route path="/admin/special-medicines" component={SpecialMedicinesPage} />
-              <Route path="/admin/homepage" component={HomepageManagerPage} />
-              <Route path="/admin/announcement" component={AnnouncementPage} />
-              <Route path="/admin/inquiries" component={InquiriesPage} />
-              <Route path="/admin/faq" component={FAQPage} />
-              <Route path="/admin/testimonials" component={TestimonialsPage} />
-              <Route path="/admin/settings" component={SettingsPage} />
-            </Switch>
-          </AnimatePresence>
+          <Switch>
+            <Route path="/admin" component={DashboardPage} />
+            <Route path="/admin/medicines" component={MedicinesPage} />
+            <Route path="/admin/categories" component={CategoriesPage} />
+            <Route path="/admin/brands" component={BrandsPage} />
+            <Route path="/admin/homepage" component={HomepageManagerPage} />
+            <Route path="/admin/new-arrivals" component={NewArrivalsPage} />
+            <Route path="/admin/special-medicines" component={SpecialMedicinesPage} />
+            <Route path="/admin/announcement" component={AnnouncementPage} />
+            <Route path="/admin/medicine-requests" component={MedicineRequestsPage} />
+            <Route path="/admin/inquiries" component={InquiriesPage} />
+            <Route path="/admin/faq" component={FAQPage} />
+            <Route path="/admin/testimonials" component={TestimonialsPage} />
+            <Route path="/admin/settings" component={SettingsPage} />
+            <Route path="/admin/login" component={AdminLogin} />
+          </Switch>
         </main>
       </div>
     </div>

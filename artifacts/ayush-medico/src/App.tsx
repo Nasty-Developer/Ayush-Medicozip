@@ -17,6 +17,7 @@ import WhyChooseUs from "@/components/WhyChooseUs";
 import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
 import RequestMedicine from "@/components/RequestMedicine";
+import GeneralInquiry from "@/components/GeneralInquiry";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
@@ -44,6 +45,7 @@ function PublicSite() {
         <Testimonials />
         <FAQ />
         <RequestMedicine />
+        <GeneralInquiry />
         <Contact />
       </main>
       <Footer />
