@@ -4,10 +4,24 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
-  PackageSearch, MessageCircle, Mail, Loader2, CheckCircle2,
-  Paperclip, X, Send, Hash,
+  PackageSearch,
+  MessageCircle,
+  Mail,
+  Loader2,
+  CheckCircle2,
+  Paperclip,
+  X,
+  Send,
+  Hash,
 } from "lucide-react";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +44,8 @@ const requestSchema = z.object({
 type RequestFormValues = z.infer<typeof requestSchema>;
 type Source = "website" | "whatsapp" | "email";
 
-const REQUEST_EMAIL = import.meta.env.VITE_REQUEST_EMAIL || "orders@ayushmedico.com";
+const REQUEST_EMAIL =
+  import.meta.env.VITE_REQUEST_EMAIL || "orders@ayushmedico.com";
 const WA_NUMBER = "919833273838";
 
 function generateRequestId(): string {
@@ -46,7 +61,9 @@ export default function RequestMedicine() {
   const { toast } = useToast();
   const { prefillMedicine, requestToken } = useRequestMedicine();
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState<"send" | "whatsapp" | "email" | null>(null);
+  const [submitting, setSubmitting] = useState<
+    "send" | "whatsapp" | "email" | null
+  >(null);
   const [submitted, setSubmitted] = useState(false);
   const [lastRequestId, setLastRequestId] = useState("");
 
@@ -75,15 +92,17 @@ export default function RequestMedicine() {
   // inquiries. Returns immediately — prescription upload is fire-and-forget.
   const saveToFirestore = async (
     values: RequestFormValues,
-    source: Source
+    source: Source,
   ): Promise<string> => {
     if (!isFirebaseConfigured) {
-      throw new Error("Firebase is not configured. Set VITE_FIREBASE_* environment variables.");
+      throw new Error(
+        "Firebase is not configured. Set VITE_FIREBASE_* environment variables.",
+      );
     }
     const requestId = generateRequestId();
     const fileToUpload = prescriptionFile; // capture before state clears
     const docId = await addDocument("inquiries", {
-      type: "medicine-request",      // differentiates from general inquiries
+      type: "medicine-request", // differentiates from general inquiries
       requestId,
       customerName: values.customerName,
       mobileNumber: values.mobileNumber,
@@ -107,7 +126,10 @@ export default function RequestMedicine() {
             prescriptionUploadStatus: "uploaded",
           });
         } catch (uploadErr) {
-          console.error("[RequestMedicine] Prescription upload failed:", uploadErr);
+          console.error(
+            "[RequestMedicine] Prescription upload failed:",
+            uploadErr,
+          );
           void updateDocument("inquiries", docId, {
             prescriptionUploadStatus: "failed",
           }).catch(() => {});
@@ -130,9 +152,14 @@ export default function RequestMedicine() {
       `Quantity: ${values.quantity}`,
     ];
     if (values.notes) lines.push(`Additional Notes: ${values.notes}`);
-    if (prescriptionFile) lines.push(`Prescription: ${prescriptionFile.name} (please ask me to share)`);
+    if (prescriptionFile)
+      lines.push(
+        `Prescription: ${prescriptionFile.name} (please ask me to share)`,
+      );
     lines.push("", "Please let me know whether this medicine is available.");
-    lines.push("If it is currently unavailable, kindly arrange it and inform me when it arrives.");
+    lines.push(
+      "If it is currently unavailable, kindly arrange it and inform me when it arrives.",
+    );
     lines.push("", "Thank you.");
     return lines.join("\n");
   };
@@ -150,7 +177,9 @@ export default function RequestMedicine() {
     ];
     if (values.notes) lines.push(`Additional Notes: ${values.notes}`);
     lines.push("", "Please let me know whether this medicine is available.");
-    lines.push("If it is currently unavailable, kindly arrange it and inform me once it is available.");
+    lines.push(
+      "If it is currently unavailable, kindly arrange it and inform me once it is available.",
+    );
     lines.push("", "Thank you.");
     return lines.join("\n");
   };
@@ -169,12 +198,12 @@ export default function RequestMedicine() {
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error("[RequestMedicine] Send request failed:", err);
+      alert(errMsg);
+
       toast({
         variant: "destructive",
         title: "Submission failed",
-        description: import.meta.env.DEV
-          ? errMsg
-          : "Could not save your request. Please try WhatsApp or Email.",
+        description: errMsg,
       });
     } finally {
       setSubmitting(null);
@@ -260,7 +289,11 @@ export default function RequestMedicine() {
   };
 
   return (
-    <section id="request-medicine" ref={ref} className="py-20 lg:py-28 bg-muted/30">
+    <section
+      id="request-medicine"
+      ref={ref}
+      className="py-20 lg:py-28 bg-muted/30"
+    >
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -272,14 +305,18 @@ export default function RequestMedicine() {
             <PackageSearch size={14} />
             Request Any Medicine
           </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4" style={{ fontFamily: "'Poppins', sans-serif" }}>
+          <h2
+            className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4"
+            style={{ fontFamily: "'Poppins', sans-serif" }}
+          >
             Can't Find Your{" "}
             <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               Medicine?
             </span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            If the medicine you're looking for isn't currently available, send us a request and we'll contact you as soon as possible.
+            If the medicine you're looking for isn't currently available, send
+            us a request and we'll contact you as soon as possible.
           </p>
         </motion.div>
 
@@ -310,7 +347,10 @@ export default function RequestMedicine() {
                 >
                   <CheckCircle2 size={36} className="text-secondary" />
                 </motion.div>
-                <h3 className="text-xl font-bold text-foreground mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                <h3
+                  className="text-xl font-bold text-foreground mb-2"
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
                   Request Submitted!
                 </h3>
                 {lastRequestId && (
@@ -320,11 +360,17 @@ export default function RequestMedicine() {
                   </div>
                 )}
                 <p className="text-muted-foreground text-sm max-w-sm">
-                  We've received your request and will get back to you shortly on your mobile number.
+                  We've received your request and will get back to you shortly
+                  on your mobile number.
                 </p>
               </motion.div>
             ) : (
-              <motion.div key="form" initial={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative">
+              <motion.div
+                key="form"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="relative"
+              >
                 <Form {...form}>
                   <form className="space-y-5" noValidate>
                     <div className="grid sm:grid-cols-2 gap-5">
@@ -333,9 +379,16 @@ export default function RequestMedicine() {
                         name="customerName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel htmlFor="request-name">Customer Name</FormLabel>
+                            <FormLabel htmlFor="request-name">
+                              Customer Name
+                            </FormLabel>
                             <FormControl>
-                              <Input id="request-name" placeholder="e.g. Ramesh Patil" data-testid="input-customer-name" {...field} />
+                              <Input
+                                id="request-name"
+                                placeholder="e.g. Ramesh Patil"
+                                data-testid="input-customer-name"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -346,9 +399,17 @@ export default function RequestMedicine() {
                         name="mobileNumber"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel htmlFor="request-mobile">Mobile Number</FormLabel>
+                            <FormLabel htmlFor="request-mobile">
+                              Mobile Number
+                            </FormLabel>
                             <FormControl>
-                              <Input id="request-mobile" type="tel" placeholder="e.g. 98332 73838" data-testid="input-mobile-number" {...field} />
+                              <Input
+                                id="request-mobile"
+                                type="tel"
+                                placeholder="e.g. 98332 73838"
+                                data-testid="input-mobile-number"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -362,9 +423,16 @@ export default function RequestMedicine() {
                         name="medicineName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel htmlFor="request-medicine-name">Medicine Name</FormLabel>
+                            <FormLabel htmlFor="request-medicine-name">
+                              Medicine Name
+                            </FormLabel>
                             <FormControl>
-                              <Input id="request-medicine-name" placeholder="e.g. Metformin 500mg" data-testid="input-medicine-name" {...field} />
+                              <Input
+                                id="request-medicine-name"
+                                placeholder="e.g. Metformin 500mg"
+                                data-testid="input-medicine-name"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -375,9 +443,16 @@ export default function RequestMedicine() {
                         name="quantity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel htmlFor="request-quantity">Quantity</FormLabel>
+                            <FormLabel htmlFor="request-quantity">
+                              Quantity
+                            </FormLabel>
                             <FormControl>
-                              <Input id="request-quantity" placeholder="e.g. 2 strips" data-testid="input-quantity" {...field} />
+                              <Input
+                                id="request-quantity"
+                                placeholder="e.g. 2 strips"
+                                data-testid="input-quantity"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -386,14 +461,25 @@ export default function RequestMedicine() {
                     </div>
 
                     <div>
-                      <label htmlFor="request-prescription" className="block text-sm font-medium text-foreground mb-2">
-                        Upload Prescription <span className="text-muted-foreground font-normal">(Optional)</span>
+                      <label
+                        htmlFor="request-prescription"
+                        className="block text-sm font-medium text-foreground mb-2"
+                      >
+                        Upload Prescription{" "}
+                        <span className="text-muted-foreground font-normal">
+                          (Optional)
+                        </span>
                       </label>
                       {prescriptionFile ? (
                         <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-border bg-muted/50">
                           <div className="flex items-center gap-2 min-w-0">
-                            <Paperclip size={16} className="text-primary flex-shrink-0" />
-                            <span className="text-sm text-foreground truncate">{prescriptionFile.name}</span>
+                            <Paperclip
+                              size={16}
+                              className="text-primary flex-shrink-0"
+                            />
+                            <span className="text-sm text-foreground truncate">
+                              {prescriptionFile.name}
+                            </span>
                           </div>
                           <button
                             type="button"
@@ -429,7 +515,9 @@ export default function RequestMedicine() {
                       name="notes"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel htmlFor="request-notes">Additional Notes</FormLabel>
+                          <FormLabel htmlFor="request-notes">
+                            Additional Notes
+                          </FormLabel>
                           <FormControl>
                             <Textarea
                               id="request-notes"
@@ -449,7 +537,10 @@ export default function RequestMedicine() {
                       <button
                         type="button"
                         disabled={submitting !== null}
-                        onClick={form.handleSubmit(handleSendRequest, onInvalid)}
+                        onClick={form.handleSubmit(
+                          handleSendRequest,
+                          onInvalid,
+                        )}
                         data-testid="button-send-request"
                         className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-200"
                       >
