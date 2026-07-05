@@ -5,8 +5,10 @@
   "framework": null,
   "installCommand": "pnpm install",
   "rewrites": [
-    { "source": "/admin/(.*)", "destination": "/index.html" },
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    {
+      "source": "/:path((?!.*\\.).*)",
+      "destination": "/index.html"
+    }
   ],
   "env": {
     "BASE_PATH": "/"

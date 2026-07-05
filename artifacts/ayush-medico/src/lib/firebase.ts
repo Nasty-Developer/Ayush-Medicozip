@@ -13,10 +13,15 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+function isValidEnv(v: string | undefined): boolean {
+  return !!v && v !== "undefined" && v !== "null" && v.length > 0;
+}
+
 export const isFirebaseConfigured =
-  !!firebaseConfig.apiKey &&
-  !!firebaseConfig.projectId &&
-  firebaseConfig.apiKey !== "undefined";
+  isValidEnv(firebaseConfig.apiKey) &&
+  isValidEnv(firebaseConfig.authDomain) &&
+  isValidEnv(firebaseConfig.projectId) &&
+  isValidEnv(firebaseConfig.appId);
 
 let app: FirebaseApp | undefined;
 let db: Firestore | undefined;

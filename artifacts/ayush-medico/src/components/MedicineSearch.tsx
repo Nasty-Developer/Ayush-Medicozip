@@ -20,7 +20,7 @@ export default function MedicineSearch() {
   const showDropdown = focused && query.trim().length > 0;
 
   return (
-    <div className="relative w-full max-w-xl mx-auto" data-testid="medicine-search">
+    <div id="medicine-search" className="relative w-full max-w-xl mx-auto" data-testid="medicine-search">
       <div className="relative">
         <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
         <input

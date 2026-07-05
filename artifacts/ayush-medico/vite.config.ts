@@ -7,9 +7,12 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 // PORT and BASE_PATH are injected by Replit at runtime.
 // For production builds (Vercel, CI) they are not set — use safe defaults.
 const rawPort = process.env.PORT;
-const port = rawPort ? Number(rawPort) : 5173;
+const parsedPort = Number(rawPort);
+const port = Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : 5173;
 
-const basePath = process.env.BASE_PATH ?? "/";
+// Normalize base path: must start and end with "/"
+const rawBase = process.env.BASE_PATH ?? "/";
+const basePath = rawBase.startsWith("/") ? rawBase : `/${rawBase}`;
 
 export default defineConfig({
   base: basePath,

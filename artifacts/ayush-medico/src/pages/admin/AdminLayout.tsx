@@ -202,6 +202,24 @@ export default function AdminLayout() {
     return <AdminLogin />;
   }
 
+  // Optional email allowlist: set VITE_ADMIN_EMAIL to restrict which
+  // Firebase account can access the admin panel. If the env var is not
+  // set, any authenticated user is allowed (signup must be disabled in
+  // Firebase Console → Authentication → Settings → User actions).
+  const allowedEmail = import.meta.env.VITE_ADMIN_EMAIL as string | undefined;
+  if (allowedEmail && user.email !== allowedEmail) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-6 text-center">
+        <Shield size={40} className="text-destructive" />
+        <p className="text-lg font-semibold text-foreground">Access denied</p>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          Your account (<span className="font-mono">{user.email}</span>) is not authorised to access the admin panel.
+        </p>
+        <a href="/" className="text-sm text-primary hover:underline">← Back to website</a>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-muted/30">
       <Sidebar
