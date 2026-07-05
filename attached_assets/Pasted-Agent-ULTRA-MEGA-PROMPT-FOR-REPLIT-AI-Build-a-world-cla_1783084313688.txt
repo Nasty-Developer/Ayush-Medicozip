@@ -1,0 +1,460 @@
+Agent
+🚀 ULTRA MEGA PROMPT FOR REPLIT AI
+
+Build a world-class premium pharmacy website for a medical store called "Ayush Medico". This should NOT look like a template. It should look like a modern ₹5-10 lakh professionally designed healthcare website with stunning UI/UX, premium animations, lightning-fast performance, mobile-first responsive design, SEO optimization, and production-ready code.
+
+BUSINESS DETAILS
+
+Store Name: Ayush Medico
+
+Business Type: Medical Store / Pharmacy
+
+Address: Shop No 67, Halav Pool Rd, Makad Wala Chawl, Kurla West, Mumbai, Maharashtra 400070
+
+Phone: +91 98332 73838
+
+Use these exact business details throughout the website.
+
+DESIGN STYLE
+
+Create a clean healthcare-inspired premium UI.
+
+Color Palette:
+
+White
+
+Medical Blue
+
+Emerald Green
+
+Soft Sky Blue
+
+Light Gray
+
+Premium Glassmorphism
+
+Soft shadows
+
+Rounded corners
+
+Beautiful gradients
+
+Typography: Modern fonts like Inter, Poppins or Manrope.
+
+Website must feel similar in quality to Apollo Pharmacy, Tata 1mg, Practo or premium healthcare brands.
+
+HERO SECTION
+
+Create an amazing hero section.
+
+Large heading:
+
+Your Trusted Medical Store in Kurla West
+
+Subheading:
+
+Fast medicine availability, genuine medicines, healthcare essentials, friendly service and trusted support.
+
+Buttons
+
+✔ Call Now
+
+✔ Get Directions
+
+✔ WhatsApp
+
+Animated medicine illustrations.
+
+Floating pills.
+
+Glass cards.
+
+Soft glowing background.
+
+Smooth entrance animations.
+
+STICKY HEADER
+
+Logo
+
+Navigation
+
+Home
+
+About
+
+Services
+
+Products
+
+Why Choose Us
+
+Testimonials
+
+Contact
+
+Sticky while scrolling.
+
+Smooth animations.
+
+ABOUT SECTION
+
+Tell visitors:
+
+Ayush Medico is a trusted pharmacy serving Kurla West with genuine medicines, healthcare essentials, OTC products, wellness products and quality customer care.
+
+Premium image section.
+
+Animated counters.
+
+Years of trust
+
+Happy customers
+
+Medicines available
+
+Customer satisfaction
+
+SERVICES SECTION
+
+Beautiful animated service cards.
+
+Prescription Medicines
+
+OTC Medicines
+
+Baby Care
+
+Personal Care
+
+Health Supplements
+
+Diabetic Care
+
+First Aid
+
+Medical Devices
+
+Daily Essentials
+
+Wellness Products
+
+Every card should animate beautifully.
+
+FEATURED CATEGORIES
+
+Medicine
+
+Vitamins
+
+Protein
+
+Baby Products
+
+Skin Care
+
+Personal Hygiene
+
+Healthcare Devices
+
+Surgical Products
+
+Each card should have premium hover animation.
+
+WHY CHOOSE US
+
+100% Genuine Medicines
+
+Trusted Pharmacy
+
+Affordable Prices
+
+Friendly Staff
+
+Fast Service
+
+Customer Satisfaction
+
+Premium icons.
+
+TESTIMONIALS
+
+Beautiful glass cards.
+
+Auto sliding carousel.
+
+5-star ratings.
+
+Happy customer reviews.
+
+FAQ
+
+Accordion animation.
+
+Questions like
+
+Do you provide genuine medicines?
+
+Can I call before visiting?
+
+Do you stock daily medicines?
+
+Where are you located?
+
+CONTACT SECTION
+
+Google Maps Embed
+
+Store Address
+
+Phone Number
+
+Call Button
+
+Directions Button
+
+WhatsApp Button
+
+Beautiful contact card.
+
+FOOTER
+
+Business Details
+
+Quick Links
+
+Working Hours
+
+Phone
+
+Address
+
+Social Icons
+
+Copyright
+
+ANIMATIONS
+
+Framer Motion animations.
+
+Fade
+
+Slide
+
+Zoom
+
+Floating elements
+
+Hover effects
+
+Button ripple
+
+Smooth scrolling
+
+Parallax
+
+Micro interactions
+
+Glass effects
+
+Gradient animations
+
+MOBILE RESPONSIVE
+
+Perfect on
+
+Desktop
+
+Laptop
+
+Tablet
+
+Mobile
+
+No layout breaking.
+
+PERFORMANCE
+
+Lazy loading
+
+Image optimization
+
+SEO optimization
+
+Fast loading
+
+Accessibility
+
+Semantic HTML
+
+SEO
+
+Title
+
+Meta Description
+
+Keywords
+
+Open Graph
+
+Twitter Cards
+
+robots.txt
+
+sitemap.xml
+
+Schema.org Local Business
+
+Local SEO optimized for:
+
+Ayush Medico
+
+Kurla West
+
+Mumbai
+
+Medical Store
+
+Pharmacy
+
+Medicine Shop
+
+GOOGLE MAP
+
+Embed the exact location.
+
+CALL BUTTON
+
+Clicking Call should directly dial:
+
++91 9833273838
+
+WHATSAPP BUTTON
+
+Floating WhatsApp button on every page.
+
+BACKEND
+
+Use Express.js backend.
+
+Organize project professionally.
+
+Folders:
+
+/client
+
+/server
+
+/components
+
+/pages
+
+/assets
+
+/public
+
+/hooks
+
+/utils
+
+/api
+
+/config
+
+/routes
+
+/controllers
+
+/services
+
+/models
+
+/styles
+
+/lib
+
+Keep everything clean and scalable.
+
+EXTRA PREMIUM FEATURES
+
+Dark Mode
+
+Light Mode
+
+Loading Screen
+
+Back to Top Button
+
+Animated Cursor (Desktop)
+
+Scroll Progress Bar
+
+Page Transition Animations
+
+Floating Healthcare Icons
+
+Beautiful Hover Effects
+
+Glassmorphism UI
+
+Gradient Backgrounds
+
+Animated Statistics
+
+Modern Cards
+
+Premium Buttons
+
+Interactive FAQ
+
+Smooth Navigation
+
+Professional Footer
+
+Fully Responsive
+
+Accessibility Optimized
+
+SEO Ready
+
+Production Ready
+
+Clean Code
+
+No placeholder content.
+
+No lorem ipsum.
+
+No dummy text.
+
+Everything should be polished like a real premium pharmacy website ready for deployment.
+
+Use React + Vite + Tailwind CSS + Express.js.
+
+Make the code modular, reusable, and maintainable. Ensure all pages are fully functional, professionally designed, and deployment-ready.
+
+Also generate a modern medical-themed logo for Ayush Medico (SVG), favicon, and all required assets, and structure the project so it can be deployed directly on Vercel (frontend) and Render/Railway (backend) with proper environment variable support. Please and Thank you in advance and I love you So much Baby 💎💎💗💗🥹🥹💗💗
+
+20 hours ago
+Gotta aks one more thing that why is like ummmm I can't download the files as an in android I'm getting error help me with that please and tell me if there a new update it in
+
+18 hours ago
+What exactly are you trying to download on your Android device?
+
+The whole project's source code (as a ZIP file)
+18 hours ago
+This is a Replit platform limitation, not something in your project's code — so I can't fix it directly, but here's what's going on and how to work around it on Android:
+
+Why it fails: Downloading a ZIP requires the mobile browser to handle a large binary file download. Android browsers (especially Chrome) often block this if they treat it as a pop-up, run out of memory generating the archive, or lack storage permissions granted to the browser.
+
+Ways to get your files on Android:
+
+Use the Replit mobile app instead of the browser — it handles file downloads more reliably than mobile Chrome.
+Request "Desktop site" in your Android browser (Chrome menu → "Desktop site") before downloading — this sometimes changes how the download is triggered and avoids the pop-up block.
+Check storage permissions — make sure your browser app has storage/file access permission in Android Settings → Apps → Chrome → Permissions.
+Use git clone instead of ZIP download — if you have Termux or a code editor app on Android with git support, you can clone the repo directly using the Replit git remote URL (Tools → Git in the workspace).
+Download from a laptop/desktop if available — this is the most reliable path since ZIP downloads are primarily built for desktop browsers.
+As for "is there a new update" — I don't have visibility into Replit's release notes or upcoming platform fixes for this. If it's a persistent bug rather than a one-off, I'd recommend reaching out to Replit support directly with the specific error message you're seeing (a screenshot helps a lot), since this is a platform-level issue outside what I can change in your project.
+
+Next, I can add a "Share this pharmacy" feature so visitors can share your website link directly via WhatsApp with one tap. Would you like me to do that?
+

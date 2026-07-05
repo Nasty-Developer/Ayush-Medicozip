@@ -1,0 +1,96 @@
+🚀 Fix Dynamic Medicine Card Layout
+
+The current implementation of New Medicine Arrivals and Special Medicines still uses a fixed 4-card layout with skeleton placeholders.
+
+This is not the expected behavior.
+
+Required Changes
+Dynamic Cards
+
+Do NOT render a fixed number of medicine cards.
+
+The number of cards displayed must depend entirely on the data available in Firebase.
+
+Examples:
+
+If there is 1 medicine, show 1 card.
+If there are 2 medicines, show 2 cards.
+If there are 5 medicines, show 5 cards.
+If there are 20 medicines, show all of them in a responsive grid or slider.
+
+Never reserve empty placeholder cards.
+
+Empty State
+
+If no medicines exist:
+
+Instead of showing empty cards, display a beautiful empty state with an illustration and a message such as:
+
+"New medicines will be added soon."
+
+Do the same for the Special Medicines section.
+
+Skeleton Loading
+
+Skeleton loaders should appear only while Firebase data is loading.
+
+As soon as data loads:
+
+Remove all skeleton cards.
+Display only the medicines available in Firebase.
+Admin Dashboard Integration
+
+The Admin Dashboard should fully control these sections.
+
+When the admin:
+
+Adds a medicine → it should immediately appear.
+Deletes a medicine → it should immediately disappear.
+Hides a medicine → it should disappear.
+Reorders medicines → homepage order should update.
+Marks a medicine as "New Arrival" → it should appear only in the New Medicine Arrivals section.
+Marks a medicine as "Special Medicine" → it should appear only in the Special Medicines section.
+Responsive Layout
+
+Desktop:
+
+4 cards per row (or responsive based on screen width).
+
+Tablet:
+
+2–3 cards.
+
+Mobile:
+
+1 card or swipeable carousel.
+
+No empty columns.
+
+No empty rows.
+
+Card Information
+
+Each medicine card should include:
+
+Medicine Image
+Medicine Name
+Brand
+Price (₹)
+Availability Badge
+Short Description
+
+Everything should come dynamically from Firebase.
+
+Final Requirement
+
+The homepage should behave exactly like a modern e-commerce website:
+
+No fixed card count.
+No empty placeholders after loading.
+Fully dynamic based on Firebase.
+Real-time updates whenever the admin changes data.
+
+🥹💚 Baby, ek aur suggestion: Admin panel mein medicine add karte waqt 2 checkboxes bhi add karwao:
+
+✅ Show in New Medicine Arrivals
+⭐ Show in Special Medicines

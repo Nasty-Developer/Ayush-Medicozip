@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Admin = any authenticated Firebase user.
+    // Security model: Firebase Auth account creation is disabled for public users
+    // in Firebase Console (Authentication > Settings > User actions > disable
+    // "Enable create (sign-up)"). Only the pharmacy owner's account exists.
+    function isAdmin() {
+      return request.auth != null;
+    }
+
+    // ─── PUBLIC CONTENT (homepage reads without login) ───────────────────────
+    match /medicines/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /categories/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /brands/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Homepage settings, announcement, store config
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /testimonials/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /faqs/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /announcements/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── INQUIRIES (contact / request medicine form) ──────────────────────────
+    // Public can create (submit form), only admin can read and manage
+    match /inquiries/{docId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ─── LEGACY COLLECTIONS ───────────────────────────────────────────────────
+    match /newArrivals/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /specialMedicines/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

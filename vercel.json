@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm install && pnpm --filter @workspace/ayush-medico run build",
+  "outputDirectory": "artifacts/ayush-medico/dist/public",
+  "framework": null,
+  "installCommand": "pnpm install",
+  "rewrites": [
+    { "source": "/admin/(.*)", "destination": "/index.html" },
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+  ],
+  "env": {
+    "BASE_PATH": "/"
+  },
+  "build": {
+    "env": {
+      "BASE_PATH": "/"
+    }
+  }
+}
