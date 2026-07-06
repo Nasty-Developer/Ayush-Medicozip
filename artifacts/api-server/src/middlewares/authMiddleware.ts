@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import type { DecodedIdToken } from "firebase-admin/auth";
-import { getAuth } from "./firebaseAdmin";
-import { logger } from "./logger";
+import { getAuth } from "../lib/firebaseAdmin";
+import { logger } from "../lib/logger";
 
 export interface AuthenticatedRequest extends Request {
   firebaseUser?: DecodedIdToken;

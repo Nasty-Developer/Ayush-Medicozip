@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { usersTable, adminUsersTable, type InsertUser, type InsertAdminUser } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
 import { logger } from "../lib/logger";
-import { requireAuth, requireAdminEmail } from "../lib/authMiddleware";
+import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware";
 
 const router = Router();
 
