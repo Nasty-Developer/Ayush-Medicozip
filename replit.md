@@ -1,45 +1,84 @@
-# [Project name]
+# Ayush Medico
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A production-ready pharmacy platform built as a TypeScript pnpm monorepo.
 
-## Run & Operate
+## Architecture
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+| Layer | Location | Stack |
+|-------|----------|-------|
+| Frontend | `artifacts/ayush-medico` | React 19, Vite, Tailwind CSS v4, Radix UI, Framer Motion, Wouter |
+| API Server | `artifacts/api-server` | Express 5, Node.js, Pino logging |
+| Database ORM | `lib/db` | Drizzle ORM, PostgreSQL |
+| API Contract | `lib/api-spec` | OpenAPI YAML + Orval codegen |
+| API Client | `lib/api-client-react` | Generated React Query hooks |
+| Shared Schemas | `lib/api-zod` | Zod schemas generated from OpenAPI spec |
 
-## Stack
+## Running the Project
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+Both services are managed as Replit workflows and start automatically:
 
-## Where things live
+- **Frontend** (`artifacts/ayush-medico: web`) → preview path `/`, port 18169
+- **API Server** (`artifacts/api-server: API Server`) → preview path `/api`, port 8080
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+### Manual start
+```bash
+# Install all dependencies
+pnpm install
 
-## Architecture decisions
+# Start frontend dev server
+pnpm --filter @workspace/ayush-medico run dev
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+# Start API server (build + run)
+pnpm --filter @workspace/api-server run dev
+```
 
-## Product
+## Environment Variables
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+### Managed by Replit (do not set manually)
+- `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`
 
-## User preferences
+### Required secrets (set via Replit Secrets)
+- `SESSION_SECRET` — already set
+- `VITE_FIREBASE_API_KEY` — Firebase frontend config
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_MEASUREMENT_ID` (optional — Analytics only)
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+> **Note:** The frontend gracefully degrades when Firebase vars are missing (`isFirebaseConfigured` guard in `src/lib/firebase.ts`). Auth/Firestore features will be unavailable until these are set.
 
-## Gotchas
+## Database
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+The project uses Replit's managed PostgreSQL database. Schema is defined in `lib/db/src/schema/` using Drizzle ORM.
 
-## Pointers
+```bash
+# Push schema changes to the dev database
+pnpm --filter @workspace/db run push
+```
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+Production schema is managed automatically by Replit's Publish flow — never write manual migration scripts.
+
+## API Development
+
+The API contract lives in `lib/api-spec/openapi.yaml`. After editing the spec:
+
+```bash
+# Regenerate React Query hooks and Zod schemas
+pnpm --filter @workspace/api-spec run generate
+```
+
+## Key Pages
+
+| Path | Description |
+|------|-------------|
+| `/` | Public pharmacy landing page |
+| `/admin/login` | Admin login |
+| `/admin` | Admin dashboard |
+| `/track/:requestId` | Order tracker |
+
+## User Preferences
+
+- Keep the project's existing monorepo structure — do not restructure or migrate it.
+- Target: production-ready pharmacy platform, not a demo.
