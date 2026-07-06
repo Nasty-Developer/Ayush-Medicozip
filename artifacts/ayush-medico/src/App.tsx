@@ -18,6 +18,7 @@ import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
 import RequestMedicine from "@/components/RequestMedicine";
 import GeneralInquiry from "@/components/GeneralInquiry";
+import { AnnouncementProvider } from "@/context/AnnouncementContext";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
@@ -30,6 +31,7 @@ const queryClient = new QueryClient();
 
 function PublicSite() {
   return (
+    <AnnouncementProvider>
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <LoadingScreen />
       <ScrollProgress />
@@ -52,6 +54,7 @@ function PublicSite() {
       <FloatingWhatsApp />
       <BackToTop />
     </div>
+    </AnnouncementProvider>
   );
 }
 

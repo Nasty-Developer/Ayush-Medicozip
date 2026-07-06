@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Megaphone, HeartPulse, Syringe, Activity, CalendarCheck, Sparkles } from "lucide-react";
-import { announcementConfig, type AnnouncementColorScheme } from "@/config/announcement";
+import { type AnnouncementColorScheme } from "@/config/announcement";
+import { useAnnouncement } from "@/context/AnnouncementContext";
 
 const iconMap = {
   megaphone: Megaphone,
@@ -39,10 +40,12 @@ const colorSchemeMap: Record<AnnouncementColorScheme, { bg: string; text: string
 };
 
 export default function AnnouncementBanner() {
-  if (!announcementConfig.enabled) return null;
+  const announcement = useAnnouncement();
 
-  const Icon = iconMap[announcementConfig.icon] ?? Megaphone;
-  const colors = colorSchemeMap[announcementConfig.colorScheme] ?? colorSchemeMap.secondary;
+  if (!announcement.enabled) return null;
+
+  const Icon = iconMap[announcement.icon] ?? Megaphone;
+  const colors = colorSchemeMap[announcement.colorScheme] ?? colorSchemeMap.secondary;
 
   return (
     <motion.div
@@ -59,18 +62,18 @@ export default function AnnouncementBanner() {
               <Icon size={13} className={colors.text} aria-hidden="true" />
             </span>
             <p className={`text-xs sm:text-sm font-semibold ${colors.text}`}>
-              {announcementConfig.title}
+              {announcement.title}
             </p>
           </div>
           <p className="text-xs text-muted-foreground hidden sm:block">
-            {announcementConfig.description}
+            {announcement.description}
           </p>
           <a
-            href={announcementConfig.buttonLink}
+            href={announcement.buttonLink}
             data-testid="announcement-banner-btn"
             className={`flex-shrink-0 px-3 py-1 rounded-full text-[11px] font-semibold transition-colors duration-200 ${colors.btn}`}
           >
-            {announcementConfig.buttonText}
+            {announcement.buttonText}
           </a>
         </div>
       </div>

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Moon, Sun, Menu, X, Phone, Sparkles, Award, Pill, Send } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
-import { announcementConfig } from "@/config/announcement";
+import { useAnnouncement } from "@/context/AnnouncementContext";
 
 const navLinks = [
   { label: "Home", href: "#home" },
@@ -44,6 +44,7 @@ function Logo() {
 
 export default function Header() {
   const { theme, setTheme } = useTheme();
+  const { enabled: announcementEnabled } = useAnnouncement();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -127,7 +128,7 @@ export default function Header() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
             className={`fixed ${
-              announcementConfig.enabled ? "top-28" : "top-16"
+              announcementEnabled ? "top-28" : "top-16"
             } left-0 right-0 z-30 bg-background/95 backdrop-blur-xl border-b border-border shadow-lg md:hidden`}
           >
             <div className="px-4 py-4 flex flex-col gap-1">
