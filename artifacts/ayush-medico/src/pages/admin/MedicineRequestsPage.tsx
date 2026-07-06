@@ -13,21 +13,13 @@ import {
   subscribeToCollection, updateDocument, deleteDocument, orderBy, where
 } from "@/lib/firestoreHelpers";
 import { useToast } from "@/hooks/use-toast";
+import type { RequestStatus } from "@/lib/orderStatus";
+import { buildStatusUpdateMessage } from "@/lib/whatsappMessages";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type RequestStatus =
-  | "new"
-  | "pending-verification"
-  | "accepted"
-  | "rejected"
-  | "medicine-unavailable"
-  | "payment-pending"
-  | "payment-received"
-  | "preparing"
-  | "out-for-delivery"
-  | "delivered"
-  | "cancelled";
+// `RequestStatus` is imported from `@/lib/orderStatus` so the admin panel,
+// customer Track Order page, and WhatsApp message builder all agree on the
+// exact same set of status keys and labels.
 
 type RequestSource = "website" | "whatsapp" | "email";
 
@@ -131,6 +123,7 @@ const STATUS_CFG: Record<RequestStatus, { label: string; icon: React.ElementType
   "new":                   { label: "New",               icon: AlertCircle,  cls: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
   "pending-verification":  { label: "Pending Verify",     icon: ShieldCheck,  cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
   "accepted":              { label: "Accepted",           icon: CheckCircle2, cls: "bg-teal-500/10 text-teal-600 dark:text-teal-400" },
+  "medicine-reserved":     { label: "Medicine Reserved",  icon: ShoppingCart, cls: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
   "rejected":              { label: "Rejected",           icon: XCircle,      cls: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
   "medicine-unavailable":  { label: "Unavailable",        icon: PackageX,     cls: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
   "payment-pending":       { label: "Payment Pending",    icon: IndianRupee,  cls: "bg-orange-500/10 text-orange-600 dark:text-orange-400" },
@@ -142,7 +135,7 @@ const STATUS_CFG: Record<RequestStatus, { label: string; icon: React.ElementType
 };
 
 const STATUS_ORDER: RequestStatus[] = [
-  "new", "pending-verification", "accepted", "payment-pending", "payment-received",
+  "new", "pending-verification", "accepted", "medicine-reserved", "payment-pending", "payment-received",
   "preparing", "out-for-delivery", "delivered", "medicine-unavailable", "rejected", "cancelled",
 ];
 
@@ -463,6 +456,22 @@ function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete, onSavePric
 
           {/* Footer */}
           <div className="px-5 pb-5 pt-3 border-t border-border flex-shrink-0 space-y-2">
+            <a
+              href={`https://wa.me/91${(req.whatsappNumber || req.mobileNumber).replace(/\D/g, "")}?text=${encodeURIComponent(buildStatusUpdateMessage({
+                customerName: req.customerName,
+                requestId: req.requestId,
+                medicineName: req.medicineName,
+                status: req.status,
+                grandTotal: req.grandTotal,
+                medicinePrice: req.medicinePrice,
+                deliveryCharge: req.deliveryCharge,
+                fullAddress: req.fullAddress,
+              }))}`}
+              target="_blank" rel="noopener noreferrer"
+              data-testid="button-send-status-whatsapp"
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#25D366] text-white text-xs font-bold shadow-sm hover:bg-[#1ebe57] transition-all">
+              <MessageCircle size={13} /> Send Status Update on WhatsApp
+            </a>
             <div className="grid grid-cols-2 gap-2">
               <a href={`tel:${req.mobileNumber}`}
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-all">

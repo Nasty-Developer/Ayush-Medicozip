@@ -37,6 +37,7 @@ import { addDocument, updateDocument } from "@/lib/firestoreHelpers";
 import { uploadPrescription, uploadRequestMedicinePhoto } from "@/lib/storageHelpers";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { checkDeliveryEligibility, STORE_LOCATION_LABEL } from "@/lib/deliveryZone";
+import { generateOrderId } from "@/lib/orderId";
 
 const requestSchema = z.object({
   customerName: z.string().min(2, "Please enter your full name"),
@@ -68,13 +69,6 @@ type Source = "website" | "whatsapp" | "email";
 const REQUEST_EMAIL =
   import.meta.env.VITE_REQUEST_EMAIL || "orders@ayushmedico.com";
 const WA_NUMBER = "919833273838";
-
-function generateRequestId(): string {
-  const now = new Date();
-  const datePart = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `REQ-${datePart}-${rand}`;
-}
 
 export default function RequestMedicine() {
   const ref = useRef(null);
@@ -135,7 +129,7 @@ export default function RequestMedicine() {
         "Firebase is not configured. Set VITE_FIREBASE_* environment variables.",
       );
     }
-    const requestId = generateRequestId();
+    const requestId = await generateOrderId();
     const fileToUpload = prescriptionFile; // capture before state clears
     const photoToUpload = medicinePhotoFile;
     const fullAddress = [
@@ -487,21 +481,28 @@ export default function RequestMedicine() {
                   className="text-xl font-bold text-foreground mb-2"
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
-                  Request Submitted!
+                  ✅ Request Submitted Successfully
                 </h3>
                 {lastRequestId && (
-                  <div className="flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                    <Hash size={11} />
-                    {lastRequestId}
-                  </div>
+                  <>
+                    <p className="text-xs text-muted-foreground mb-1">Your Order ID</p>
+                    <div className="flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-bold font-mono">
+                      <Hash size={12} />
+                      {lastRequestId}
+                    </div>
+                  </>
                 )}
+                <p className="text-muted-foreground text-sm max-w-sm mb-1">
+                  Please save this Order ID. You can use it along with your
+                  mobile number to track your medicine request anytime.
+                </p>
                 <p className="text-muted-foreground text-sm max-w-sm mb-4">
                   Our pharmacist will verify your prescription and contact you
                   with pricing before delivery.
                 </p>
                 {lastRequestId && (
                   <Link
-                    href={`/track/${lastRequestId}`}
+                    href={`/track?orderId=${encodeURIComponent(lastRequestId)}`}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-all"
                   >
                     Track Your Order
