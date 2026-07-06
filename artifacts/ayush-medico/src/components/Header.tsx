@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Moon, Sun, Menu, X, Phone, Sparkles, Award, Pill, Send } from "lucide-react";
+import { Moon, Sun, Menu, X, Phone, Sparkles, Award, Pill, Send, User, ChevronDown, ClipboardList, LogOut, UserCircle } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
 import { useAnnouncement } from "@/context/AnnouncementContext";
+import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import SignInModal from "@/components/customer/SignInModal";
+import MyOrdersModal from "@/components/customer/MyOrdersModal";
+import MyProfileModal from "@/components/customer/MyProfileModal";
 
 const navLinks = [
   { label: "Home", href: "#home" },
@@ -45,8 +49,13 @@ function Logo() {
 export default function Header() {
   const { theme, setTheme } = useTheme();
   const { enabled: announcementEnabled } = useAnnouncement();
+  const { user, signOut } = useCustomerAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [showMyOrders, setShowMyOrders] = useState(false);
+  const [showMyProfile, setShowMyProfile] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -59,6 +68,8 @@ export default function Header() {
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
+
+  const firstName = (user?.displayName || user?.email || "Account").split(/\s+/)[0];
 
   return (
     <>
@@ -99,6 +110,61 @@ export default function Header() {
                 <Phone size={14} />
                 Call Now
               </a>
+
+              <div className="relative hidden md:block">
+                {user ? (
+                  <>
+                    <button
+                      onClick={() => setAccountMenuOpen((v) => !v)}
+                      data-testid="button-my-account"
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-primary rounded-lg hover:bg-primary/5 transition-all duration-200"
+                    >
+                      <User size={15} /> My Account <ChevronDown size={13} />
+                    </button>
+                    <AnimatePresence>
+                      {accountMenuOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg py-1.5 z-50"
+                        >
+                          <p className="px-3 py-1.5 text-xs text-muted-foreground truncate border-b border-border mb-1">{firstName}</p>
+                          <button
+                            onClick={() => { setShowMyOrders(true); setAccountMenuOpen(false); }}
+                            data-testid="menu-my-orders"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-primary/5 hover:text-primary transition-colors"
+                          >
+                            <ClipboardList size={14} /> My Orders
+                          </button>
+                          <button
+                            onClick={() => { setShowMyProfile(true); setAccountMenuOpen(false); }}
+                            data-testid="menu-my-profile"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-primary/5 hover:text-primary transition-colors"
+                          >
+                            <UserCircle size={14} /> My Profile
+                          </button>
+                          <button
+                            onClick={() => { signOut(); setAccountMenuOpen(false); }}
+                            data-testid="menu-logout"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 transition-colors"
+                          >
+                            <LogOut size={14} /> Logout
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setShowSignIn(true)}
+                    data-testid="button-sign-in"
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-primary rounded-lg hover:bg-primary/5 transition-all duration-200"
+                  >
+                    <User size={15} /> Sign In
+                  </button>
+                )}
+              </div>
 
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -159,6 +225,46 @@ export default function Header() {
                 ))}
               </div>
 
+              {/* Account section */}
+              <div className="mt-3 pt-3 border-t border-border">
+                {user ? (
+                  <>
+                    <p className="px-4 pb-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                      {firstName}
+                    </p>
+                    <button
+                      onClick={() => { setShowMyOrders(true); setMobileOpen(false); }}
+                      data-testid="mobile-menu-my-orders"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all duration-200"
+                    >
+                      <ClipboardList size={15} className="text-primary flex-shrink-0" /> My Orders
+                    </button>
+                    <button
+                      onClick={() => { setShowMyProfile(true); setMobileOpen(false); }}
+                      data-testid="mobile-menu-my-profile"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all duration-200"
+                    >
+                      <UserCircle size={15} className="text-primary flex-shrink-0" /> My Profile
+                    </button>
+                    <button
+                      onClick={() => { signOut(); setMobileOpen(false); }}
+                      data-testid="mobile-menu-logout"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/5 rounded-xl transition-all duration-200"
+                    >
+                      <LogOut size={15} className="flex-shrink-0" /> Logout
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => { setShowSignIn(true); setMobileOpen(false); }}
+                    data-testid="mobile-menu-sign-in"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all duration-200"
+                  >
+                    <User size={15} className="text-primary flex-shrink-0" /> Sign In
+                  </button>
+                )}
+              </div>
+
               <a
                 href="tel:+919833273838"
                 className="mt-3 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-xl transition-all duration-200"
@@ -169,6 +275,10 @@ export default function Header() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showSignIn && <SignInModal onClose={() => setShowSignIn(false)} />}
+      {showMyOrders && <MyOrdersModal onClose={() => setShowMyOrders(false)} />}
+      {showMyProfile && <MyProfileModal onClose={() => setShowMyProfile(false)} />}
     </>
   );
 }

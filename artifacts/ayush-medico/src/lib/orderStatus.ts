@@ -55,7 +55,7 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
   "medicine-reserved": "Medicine Reserved",
   "payment-pending": "Payment Pending",
   "payment-received": "Payment Received",
-  preparing: "Packing Order",
+  preparing: "Packing",
   "out-for-delivery": "Out For Delivery",
   delivered: "Delivered",
   rejected: "Rejected",

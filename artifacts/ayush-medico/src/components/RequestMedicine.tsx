@@ -38,6 +38,7 @@ import { uploadPrescription, uploadRequestMedicinePhoto } from "@/lib/storageHel
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { checkDeliveryEligibility, STORE_LOCATION_LABEL } from "@/lib/deliveryZone";
 import { generateOrderId } from "@/lib/orderId";
+import { useCustomerAuth } from "@/context/CustomerAuthContext";
 
 const requestSchema = z.object({
   customerName: z.string().min(2, "Please enter your full name"),
@@ -75,6 +76,7 @@ export default function RequestMedicine() {
   const inView = useInView(ref, { once: true, margin: "-100px" });
   const { toast } = useToast();
   const { prefillMedicine, requestToken } = useRequestMedicine();
+  const { user: customerUser } = useCustomerAuth();
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
   const [medicinePhotoFile, setMedicinePhotoFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState<
@@ -174,6 +176,13 @@ export default function RequestMedicine() {
       paymentStatus: "not-applicable",
       source,
       status: "new",
+      // Optional customer-account link — only set when the customer is
+      // signed in at submit time. Anonymous submission still works exactly
+      // as before; these fields are simply omitted for guests. This is what
+      // lets "My Orders" find this request later via customerUid.
+      ...(customerUser
+        ? { customerUid: customerUser.uid, customerEmail: customerUser.email || null }
+        : {}),
     });
 
     // Fire-and-forget uploads — never blocks channel launch

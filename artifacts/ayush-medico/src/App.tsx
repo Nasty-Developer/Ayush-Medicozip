@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
+import { CustomerAuthProvider } from "@/context/CustomerAuthContext";
 import { RequestMedicineProvider } from "@/context/RequestMedicineContext";
 import LoadingScreen from "@/components/LoadingScreen";
 import Header from "@/components/Header";
@@ -65,17 +66,19 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
-            <RequestMedicineProvider>
-              <Switch>
-                <Route path="/admin/login" component={AdminLogin} />
-                <Route path="/admin" component={AdminLayout} />
-                <Route path="/admin/:rest*" component={AdminLayout} />
-                <Route path="/track/:requestId" component={OrderTracker} />
-                <Route path="/track" component={OrderTracker} />
-                <Route component={PublicSite} />
-              </Switch>
-              <Toaster />
-            </RequestMedicineProvider>
+            <CustomerAuthProvider>
+              <RequestMedicineProvider>
+                <Switch>
+                  <Route path="/admin/login" component={AdminLogin} />
+                  <Route path="/admin" component={AdminLayout} />
+                  <Route path="/admin/:rest*" component={AdminLayout} />
+                  <Route path="/track/:requestId" component={OrderTracker} />
+                  <Route path="/track" component={OrderTracker} />
+                  <Route component={PublicSite} />
+                </Switch>
+                <Toaster />
+              </RequestMedicineProvider>
+            </CustomerAuthProvider>
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>

@@ -5,31 +5,20 @@ import {
   PackageSearch,
   Search,
   Loader2,
-  CheckCircle2,
   Clock,
-  ShieldCheck,
-  IndianRupee,
-  ChefHat,
-  Truck,
-  PackageCheck,
-  Ban,
   XCircle,
   Phone,
   MessageCircle,
   Hash,
   MapPin,
-  ShoppingCart,
   LockKeyhole,
 } from "lucide-react";
 import { getCollection, where } from "@/lib/firestoreHelpers";
 import { isFirebaseConfigured } from "@/lib/firebase";
-import {
-  STATUS_PIPELINE,
-  STATUS_LABELS,
-  isNegativeStatus,
-  getPipelineIndex,
-  type RequestStatus,
-} from "@/lib/orderStatus";
+import { STATUS_LABELS, isNegativeStatus, getPipelineIndex, type RequestStatus } from "@/lib/orderStatus";
+import OrderStatusTimeline, { NegativeStatusBanner } from "@/components/customer/OrderStatusTimeline";
+import WaitingBanner from "@/components/customer/WaitingBanner";
+import PaymentRequiredPanel from "@/components/customer/PaymentRequiredPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 // This shape mirrors the "inquiries" Firestore document for a medicine
@@ -55,27 +44,6 @@ type TrackedRequest = {
   updatedAt?: { seconds: number };
 };
 
-const STAGE_ICONS: Record<RequestStatus, React.ElementType> = {
-  new: PackageSearch,
-  "pending-verification": ShieldCheck,
-  accepted: CheckCircle2,
-  "medicine-reserved": ShoppingCart,
-  "payment-pending": IndianRupee,
-  "payment-received": IndianRupee,
-  preparing: ChefHat,
-  "out-for-delivery": Truck,
-  delivered: PackageCheck,
-  rejected: XCircle,
-  "medicine-unavailable": XCircle,
-  cancelled: Ban,
-};
-
-const STAGES = STATUS_PIPELINE.map((key) => ({
-  key,
-  label: STATUS_LABELS[key],
-  icon: STAGE_ICONS[key],
-}));
-
 const GENERIC_NOT_FOUND =
   "Order not found. Please verify your Order ID and Mobile Number.";
 
@@ -85,22 +53,6 @@ function formatDate(secs?: number) {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit", hour12: true,
   });
-}
-
-function StatusBanner({ status }: { status: string }) {
-  const cfg: Record<string, { label: string; cls: string; icon: React.ElementType }> = {
-    cancelled: { label: "This order was cancelled.", cls: "bg-destructive/10 text-destructive", icon: Ban },
-    rejected: { label: "This order was not accepted.", cls: "bg-destructive/10 text-destructive", icon: XCircle },
-    "medicine-unavailable": { label: "Sorry, this medicine is currently unavailable.", cls: "bg-amber-500/10 text-amber-600", icon: XCircle },
-  };
-  const c = cfg[status];
-  if (!c) return null;
-  const Icon = c.icon;
-  return (
-    <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold mb-6 ${c.cls}`}>
-      <Icon size={16} /> {c.label}
-    </div>
-  );
 }
 
 // ─── Lookup ───────────────────────────────────────────────────────────────────
@@ -274,7 +226,8 @@ export default function OrderTracker() {
             className="bg-card border border-border rounded-2xl shadow-sm p-6"
             data-testid="order-tracker-result"
           >
-            <StatusBanner status={data.status} />
+            <NegativeStatusBanner status={data.status} />
+            <WaitingBanner order={{ status: data.status, createdAt: data.createdAt }} orderId={data.requestId} />
 
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -289,34 +242,14 @@ export default function OrderTracker() {
 
             {/* Timeline */}
             {!isNegative && (
-              <div className="space-y-0 mb-6">
-                {STAGES.map((stage, i) => {
-                  const Icon = stage.icon;
-                  const done = activeIndex >= 0 && i <= activeIndex;
-                  const isCurrent = i === activeIndex;
-                  return (
-                    <div key={stage.key} className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            done ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-                          } ${isCurrent ? "ring-4 ring-primary/20" : ""}`}
-                        >
-                          <Icon size={14} />
-                        </div>
-                        {i < STAGES.length - 1 && (
-                          <div className={`w-0.5 flex-1 min-h-[24px] ${i < activeIndex ? "bg-primary" : "bg-border"}`} />
-                        )}
-                      </div>
-                      <div className="pb-6">
-                        <p className={`text-sm font-semibold ${done ? "text-foreground" : "text-muted-foreground"}`}>
-                          {done ? "✅" : isCurrent ? "🟡" : "⚪"} {stage.label}
-                        </p>
-                        {isCurrent && <p className="text-xs text-primary mt-0.5">Current status</p>}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="mb-6">
+                <OrderStatusTimeline status={data.status} />
+              </div>
+            )}
+
+            {data.status === "payment-pending" && (
+              <div className="mb-6">
+                <PaymentRequiredPanel amount={grandTotal} />
               </div>
             )}
 
