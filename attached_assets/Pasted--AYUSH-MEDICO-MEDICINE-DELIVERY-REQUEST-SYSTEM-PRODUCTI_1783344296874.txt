@@ -1,0 +1,1015 @@
+# AYUSH MEDICO – MEDICINE DELIVERY REQUEST SYSTEM (PRODUCTION READY)
+
+
+
+## OBJECTIVE
+
+
+
+Build a professional medicine delivery request system for Ayush Medico. This is NOT a normal e-commerce checkout.
+
+
+
+The workflow must be:
+
+
+
+Customer submits a medicine request → Pharmacist/Admin verifies the request → Admin confirms medicine availability and pricing → Customer pays → Order is prepared → Out for Delivery → Delivered.
+
+
+
+The system must look modern, clean, mobile responsive, and suitable for a medical pharmacy.
+
+
+
+---
+
+
+
+# DELIVERY AVAILABILITY
+
+
+
+Delivery is available ONLY within a 4 KM radius of Kurla West.
+
+
+
+The customer must enter a complete delivery address.
+
+
+
+Required fields:
+
+
+
+• Full Name
+
+• Mobile Number
+
+• WhatsApp Number (checkbox: Same as Mobile)
+
+• House / Building Name
+
+• Street / Area
+
+• Landmark
+
+• Pincode
+
+• Full Address
+
+• Delivery Instructions (Optional)
+
+
+
+The system should validate whether the address is within the supported delivery area.
+
+
+
+If outside the service area display:
+
+
+
+❌ Sorry, medicine delivery is currently available only within 4 KM of Kurla West.
+
+
+
+Disable the submit button.
+
+
+
+If inside:
+
+
+
+✅ Delivery Available
+
+
+
+---
+
+
+
+# MEDICINE REQUEST SECTION
+
+
+
+Required:
+
+
+
+Medicine Name
+
+
+
+Quantity
+
+
+
+Medicine Strength (250mg / 500mg etc.)
+
+
+
+Optional:
+
+
+
+Medicine Brand
+
+
+
+Medicine Photo Upload
+
+
+
+The medicine photo should only help identify the medicine.
+
+
+
+---
+
+
+
+# PRESCRIPTION
+
+
+
+Currently, make prescription upload mandatory for ALL medicine requests.
+
+
+
+Required upload types:
+
+
+
+• JPG
+
+• PNG
+
+• PDF
+
+
+
+Maximum file size:
+
+
+
+10 MB
+
+
+
+Display a professional notice:
+
+
+
+"To ensure patient safety and proper verification, please upload a valid prescription before submitting your medicine request."
+
+
+
+---
+
+
+
+# CUSTOMER NOTES
+
+
+
+Optional field
+
+
+
+Examples:
+
+
+
+Need today
+
+
+
+Generic medicine acceptable
+
+
+
+Urgent delivery
+
+
+
+Doctor prescribed alternative allowed
+
+
+
+---
+
+
+
+# SUBMIT BUTTON
+
+
+
+Replace "Order Now"
+
+
+
+with
+
+
+
+"Request Medicine Delivery"
+
+
+
+Button style should be modern with loading animation.
+
+
+
+After successful submission display:
+
+
+
+"Your medicine request has been submitted successfully. Our pharmacist will verify your request shortly."
+
+
+
+---
+
+
+
+# ADMIN PANEL
+
+
+
+Create a complete Medicine Request Management module.
+
+
+
+Dashboard Cards:
+
+
+
+New Requests
+
+
+
+Pending Verification
+
+
+
+Accepted
+
+
+
+Payment Pending
+
+
+
+Payment Completed
+
+
+
+Preparing Orders
+
+
+
+Out For Delivery
+
+
+
+Delivered
+
+
+
+Cancelled
+
+
+
+---
+
+
+
+# REQUEST DETAILS
+
+
+
+Admin should see:
+
+
+
+Customer Name
+
+
+
+Phone Number
+
+
+
+WhatsApp Number
+
+
+
+Address
+
+
+
+Landmark
+
+
+
+Medicine Name
+
+
+
+Strength
+
+
+
+Quantity
+
+
+
+Medicine Photo
+
+
+
+Prescription File
+
+
+
+Notes
+
+
+
+Submission Time
+
+
+
+Distance
+
+
+
+Current Status
+
+
+
+---
+
+
+
+# ADMIN ACTIONS
+
+
+
+Admin can:
+
+
+
+Accept Request
+
+
+
+Reject Request
+
+
+
+Mark Medicine Unavailable
+
+
+
+Edit Medicine Price
+
+
+
+Add Delivery Charge
+
+
+
+Add Discount
+
+
+
+Add Notes
+
+
+
+Update Order Status
+
+
+
+Send WhatsApp
+
+
+
+Call Customer
+
+
+
+---
+
+
+
+# IF MEDICINE IS UNAVAILABLE
+
+
+
+Status:
+
+
+
+Medicine Unavailable
+
+
+
+Customer notification:
+
+
+
+"Sorry, the requested medicine is currently unavailable. Please contact us for possible alternatives."
+
+
+
+---
+
+
+
+# IF MEDICINE IS AVAILABLE
+
+
+
+Admin enters:
+
+
+
+Medicine Price
+
+
+
+Delivery Charge
+
+
+
+Discount (Optional)
+
+
+
+Additional Charges (Optional)
+
+
+
+Total Amount
+
+
+
+System automatically calculates:
+
+
+
+Medicine Price
+
+
+
+*
+
+
+
+Delivery Charge
+
+
+
+*
+
+
+
+Discount
+
+
+
+=
+
+
+
+Grand Total
+
+
+
+Example
+
+
+
+Medicine Price
+
+
+
+₹285
+
+
+
+Delivery
+
+
+
+₹40
+
+
+
+Discount
+
+
+
+₹10
+
+
+
+Total
+
+
+
+₹315
+
+
+
+---
+
+
+
+# PAYMENT REQUEST
+
+
+
+After admin confirms pricing,
+
+
+
+Customer receives:
+
+
+
+Status:
+
+
+
+Payment Pending
+
+
+
+Display:
+
+
+
+Medicine Price
+
+
+
+Delivery Charge
+
+
+
+Discount
+
+
+
+Grand Total
+
+
+
+Large button:
+
+
+
+Pay Now
+
+
+
+Payment should ONLY become available after admin approval.
+
+
+
+Never allow payment before medicine verification.
+
+
+
+---
+
+
+
+# PAYMENT SUCCESS
+
+
+
+After payment:
+
+
+
+Status becomes:
+
+
+
+Payment Received
+
+
+
+Customer sees:
+
+
+
+"Thank you! Your payment has been received successfully."
+
+
+
+---
+
+
+
+# ADMIN AFTER PAYMENT
+
+
+
+Buttons:
+
+
+
+Preparing Order
+
+
+
+Out For Delivery
+
+
+
+Delivered
+
+
+
+Cancelled
+
+
+
+---
+
+
+
+# CUSTOMER ORDER TRACKER
+
+
+
+Display a professional vertical timeline.
+
+
+
+Request Submitted
+
+
+
+↓
+
+
+
+Prescription Verification
+
+
+
+↓
+
+
+
+Medicine Available
+
+
+
+↓
+
+
+
+Payment Pending
+
+
+
+↓
+
+
+
+Payment Successful
+
+
+
+↓
+
+
+
+Preparing Order
+
+
+
+↓
+
+
+
+Out For Delivery
+
+
+
+↓
+
+
+
+Delivered
+
+
+
+Highlight the current step.
+
+
+
+---
+
+
+
+# ORDER HISTORY
+
+
+
+Customer can view all previous medicine requests.
+
+
+
+Each order should show:
+
+
+
+Order ID
+
+
+
+Medicine Name
+
+
+
+Request Date
+
+
+
+Amount
+
+
+
+Current Status
+
+
+
+Download Invoice (Future Ready)
+
+
+
+Repeat Order (Future Ready)
+
+
+
+---
+
+
+
+# DELIVERY CHARGES
+
+
+
+For now, delivery charges should be manually entered by Admin.
+
+
+
+Future system should support automatic distance-based pricing.
+
+
+
+Current suggestion:
+
+
+
+0–2 KM
+
+
+
+₹30
+
+
+
+2–4 KM
+
+
+
+₹50
+
+
+
+Admin may override these values.
+
+
+
+---
+
+
+
+# WHATSAPP INTEGRATION
+
+
+
+Provide one-click WhatsApp communication.
+
+
+
+Buttons:
+
+
+
+Chat with Pharmacy
+
+
+
+Ask About Medicine
+
+
+
+Share Prescription Again
+
+
+
+Contact Delivery Support
+
+
+
+Automatically prefill the order ID in the WhatsApp message.
+
+
+
+---
+
+
+
+# CALL BUTTON
+
+
+
+Allow direct phone calling from the order page.
+
+
+
+---
+
+
+
+# EMAIL & SMS (Future Ready)
+
+
+
+Structure the system so future email and SMS notifications can be added without redesigning the workflow.
+
+
+
+---
+
+
+
+# SECURITY
+
+
+
+Generate a unique Order ID.
+
+
+
+Store uploaded prescriptions securely.
+
+
+
+Prevent duplicate submissions while processing.
+
+
+
+Validate all uploaded files.
+
+
+
+Sanitize all form inputs.
+
+
+
+Require authentication for admin actions.
+
+
+
+Maintain complete order history.
+
+
+
+---
+
+
+
+# UI / UX
+
+
+
+Use a premium pharmacy design.
+
+
+
+Rounded cards
+
+
+
+Soft shadows
+
+
+
+Clean spacing
+
+
+
+Professional medical icons
+
+
+
+Smooth animations
+
+
+
+Responsive layout
+
+
+
+Modern timeline
+
+
+
+Loading skeletons
+
+
+
+Success animations
+
+
+
+Error handling
+
+
+
+Professional toast notifications
+
+
+
+Accessibility support
+
+
+
+---
+
+
+
+# FUTURE READY FEATURES
+
+
+
+Keep the architecture modular so the following can be added later without major redesign:
+
+
+
+• Live medicine inventory
+
+• Medicine search with autocomplete
+
+• Barcode scanning
+
+• AI medicine suggestions
+
+• Nearby delivery partner assignment
+
+• Real-time order tracking
+
+• GPS delivery tracking
+
+• Estimated delivery time
+
+
+
+• UPI, Cards and Wallet payments
+
+• Repeat prescription reminders
+
+• Subscription medicines
+
+• Digital invoices
+
+• Customer loyalty points
+
+• Admin analytics
+
+• Sales reports
+
+• Inventory synchronization
+
+• Prescription verification dashboard
+
+• Medicine expiry tracking
+
+• Delivery partner management
+
+
+
+Build this feature with clean, modular, production-ready code following modern React, Firebase, Tailwind CSS, and best UI/UX practices. The design should match a premium online pharmacy experience while keeping the workflow safe, compliant, scalable, and easy for both customers and pharmacy staff.

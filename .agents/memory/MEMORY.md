@@ -1,0 +1,1 @@
+- [Screenshot tool timing vs splash screens](screenshot-tool-splash-screens.md) — app_preview screenshots can capture before timed splash/loading screens resolve; don't assume a hang from screenshots alone, confirm with runTest (real waits).
