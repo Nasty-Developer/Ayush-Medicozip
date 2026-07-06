@@ -8,21 +8,30 @@ export function AnnouncementProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AnnouncementConfig>(announcementConfig);
 
   useEffect(() => {
-    const unsub = subscribeToDoc("settings", "announcement", (doc) => {
-      if (doc) {
-        setData({
-          enabled: Boolean(doc.enabled),
-          title: String(doc.title ?? announcementConfig.title),
-          description: String(doc.description ?? announcementConfig.description),
-          buttonText: String(doc.buttonText ?? announcementConfig.buttonText),
-          buttonLink: String(doc.buttonLink ?? announcementConfig.buttonLink),
-          icon: (doc.icon ?? announcementConfig.icon) as AnnouncementConfig["icon"],
-          colorScheme: (doc.colorScheme ?? announcementConfig.colorScheme) as AnnouncementConfig["colorScheme"],
-        });
+    const unsub = subscribeToDoc(
+      "settings",
+      "announcement",
+      (doc) => {
+        if (doc) {
+          setData({
+            enabled: Boolean(doc.enabled),
+            title: String(doc.title ?? announcementConfig.title),
+            description: String(doc.description ?? announcementConfig.description),
+            buttonText: String(doc.buttonText ?? announcementConfig.buttonText),
+            buttonLink: String(doc.buttonLink ?? announcementConfig.buttonLink),
+            icon: (doc.icon ?? announcementConfig.icon) as AnnouncementConfig["icon"],
+            colorScheme: (doc.colorScheme ?? announcementConfig.colorScheme) as AnnouncementConfig["colorScheme"],
+          });
+        } else {
+          // Document was deleted or never created — reset to static defaults (enabled: false)
+          setData(announcementConfig);
+        }
+      },
+      (err) => {
+        console.error("[AnnouncementContext] Firestore listener error:", err);
+        // Keep current data on error rather than hiding an active announcement
       }
-      // If doc is null (document not yet created in Firestore), keep static defaults
-      // which have enabled: false — so banner stays hidden until admin creates it.
-    });
+    );
     return unsub;
   }, []);
 

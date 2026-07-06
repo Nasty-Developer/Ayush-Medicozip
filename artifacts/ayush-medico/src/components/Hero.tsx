@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Phone, MapPin, MessageCircle, ShieldCheck, Clock, Star } from "lucide-react";
 import MedicineSearch from "@/components/MedicineSearch";
-import { announcementConfig } from "@/config/announcement";
+import { useAnnouncement } from "@/context/AnnouncementContext";
 
 const floatingPills = [
   { color: "from-primary/20 to-primary/10", size: "w-16 h-6", top: "15%", left: "8%", delay: 0, rotate: -20 },
@@ -18,6 +18,8 @@ const statCards = [
 ];
 
 export default function Hero() {
+  const { enabled: announcementEnabled } = useAnnouncement();
+
   const scrollTo = (href: string) => {
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: "smooth" });
@@ -27,7 +29,7 @@ export default function Hero() {
     <section
       id="home"
       className={`relative min-h-screen flex items-center overflow-hidden ${
-        announcementConfig.enabled ? "pt-36" : "pt-20"
+        announcementEnabled ? "pt-36" : "pt-20"
       }`}
     >
       {/* Background */}
