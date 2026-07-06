@@ -1,0 +1,21 @@
+{
+  "name": "Ayush Medico",
+  "short_name": "Ayush Medico",
+  "description": "Trusted pharmacy & medical store in Kurla West, Mumbai. Genuine medicines, healthcare products & more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e6ca4",
+  "lang": "en-IN",
+  "categories": ["health", "medical", "shopping"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
