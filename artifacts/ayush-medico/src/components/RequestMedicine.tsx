@@ -505,8 +505,7 @@ export default function RequestMedicine() {
                         id="request-prescription"
                         name="prescription"
                         type="file"
-                        accept="image/*"
-                        capture="environment"
+                        accept="image/*,application/pdf"
                         onChange={handleFileChange}
                         data-testid="input-prescription-file"
                         className="sr-only"
