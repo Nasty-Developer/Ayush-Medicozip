@@ -1,1 +1,3 @@
 - [Screenshot tool timing vs splash screens](screenshot-tool-splash-screens.md) — app_preview screenshots can capture before timed splash/loading screens resolve; don't assume a hang from screenshots alone, confirm with runTest (real waits).
+- [Ayush Medico delivery zone](ayush-medico-delivery-zone.md) — no geocoding API configured; delivery eligibility uses a hardcoded pincode allowlist, not radius math.
+- [Testing file uploads limitation](testing-file-upload-limitation.md) — runTest/Playwright subagent has no local filesystem access, so flows requiring a real file input (prescription upload, etc.) can't be fully exercised end-to-end; test surrounding validation instead.

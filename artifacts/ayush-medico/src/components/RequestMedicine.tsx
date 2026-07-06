@@ -13,7 +13,13 @@ import {
   X,
   Send,
   Hash,
+  MapPin,
+  CheckCircle,
+  AlertTriangle,
+  Image as ImageIcon,
+  Link as LinkIcon,
 } from "lucide-react";
+import { Link } from "wouter";
 import {
   Form,
   FormControl,
@@ -24,11 +30,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useRequestMedicine } from "@/context/RequestMedicineContext";
 import { addDocument, updateDocument } from "@/lib/firestoreHelpers";
-import { uploadPrescription } from "@/lib/storageHelpers";
+import { uploadPrescription, uploadRequestMedicinePhoto } from "@/lib/storageHelpers";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { checkDeliveryEligibility, STORE_LOCATION_LABEL } from "@/lib/deliveryZone";
 
 const requestSchema = z.object({
   customerName: z.string().min(2, "Please enter your full name"),
@@ -36,7 +44,20 @@ const requestSchema = z.object({
     .string()
     .min(10, "Enter a valid 10-digit mobile number")
     .regex(/^[0-9+\s-]+$/, "Enter a valid mobile number"),
+  whatsappSameAsMobile: z.boolean().default(true),
+  whatsappNumber: z.string().optional(),
+  houseNumber: z.string().min(1, "Please enter your house/flat number"),
+  street: z.string().min(2, "Please enter your street/area"),
+  landmark: z.string().optional(),
+  pincode: z
+    .string()
+    .min(6, "Enter a valid 6-digit pincode")
+    .max(6, "Enter a valid 6-digit pincode")
+    .regex(/^\d{6}$/, "Pincode must be 6 digits"),
+  deliveryInstructions: z.string().optional(),
   medicineName: z.string().min(2, "Please enter the medicine name"),
+  medicineStrength: z.string().optional(),
+  medicineBrand: z.string().optional(),
   quantity: z.string().min(1, "Please enter a quantity"),
   notes: z.string().optional(),
 });
@@ -61,22 +82,37 @@ export default function RequestMedicine() {
   const { toast } = useToast();
   const { prefillMedicine, requestToken } = useRequestMedicine();
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
+  const [medicinePhotoFile, setMedicinePhotoFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState<
     "send" | "whatsapp" | "email" | null
   >(null);
   const [submitted, setSubmitted] = useState(false);
   const [lastRequestId, setLastRequestId] = useState("");
+  const [prescriptionError, setPrescriptionError] = useState<string | null>(null);
 
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestSchema),
     defaultValues: {
       customerName: "",
       mobileNumber: "",
+      whatsappSameAsMobile: true,
+      whatsappNumber: "",
+      houseNumber: "",
+      street: "",
+      landmark: "",
+      pincode: "",
+      deliveryInstructions: "",
       medicineName: "",
+      medicineStrength: "",
+      medicineBrand: "",
       quantity: "1",
       notes: "",
     },
   });
+
+  const pincode = form.watch("pincode");
+  const whatsappSame = form.watch("whatsappSameAsMobile");
+  const eligibility = checkDeliveryEligibility(pincode || "");
 
   useEffect(() => {
     if (requestToken > 0 && prefillMedicine) {
@@ -101,22 +137,52 @@ export default function RequestMedicine() {
     }
     const requestId = generateRequestId();
     const fileToUpload = prescriptionFile; // capture before state clears
+    const photoToUpload = medicinePhotoFile;
+    const fullAddress = [
+      values.houseNumber,
+      values.street,
+      values.landmark,
+      `Kurla West, Mumbai - ${values.pincode}`,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const eligibleAtSubmit = checkDeliveryEligibility(values.pincode).status === "eligible";
+
     const docId = await addDocument("inquiries", {
       type: "medicine-request", // differentiates from general inquiries
       requestId,
       customerName: values.customerName,
       mobileNumber: values.mobileNumber,
+      whatsappNumber: values.whatsappSameAsMobile
+        ? values.mobileNumber
+        : values.whatsappNumber || values.mobileNumber,
+      houseNumber: values.houseNumber,
+      street: values.street,
+      landmark: values.landmark || "",
+      pincode: values.pincode,
+      fullAddress,
+      deliveryInstructions: values.deliveryInstructions || "",
+      deliveryEligible: eligibleAtSubmit,
       medicineName: values.medicineName,
+      medicineStrength: values.medicineStrength || "",
+      medicineBrand: values.medicineBrand || "",
       quantity: values.quantity,
       notes: values.notes || "",
       hasPrescription: !!fileToUpload,
       prescriptionUrl: null,
       prescriptionUploadStatus: fileToUpload ? "pending" : null,
+      medicinePhotoUrl: null,
+      medicinePhotoUploadStatus: photoToUpload ? "pending" : null,
+      medicinePrice: null,
+      deliveryCharge: null,
+      discount: null,
+      grandTotal: null,
+      paymentStatus: "not-applicable",
       source,
-      status: "pending",
+      status: "new",
     });
 
-    // Fire-and-forget prescription upload — never blocks channel launch
+    // Fire-and-forget uploads — never blocks channel launch
     if (fileToUpload) {
       void (async () => {
         try {
@@ -136,6 +202,22 @@ export default function RequestMedicine() {
         }
       })();
     }
+    if (photoToUpload) {
+      void (async () => {
+        try {
+          const url = await uploadRequestMedicinePhoto(photoToUpload, docId);
+          await updateDocument("inquiries", docId, {
+            medicinePhotoUrl: url,
+            medicinePhotoUploadStatus: "uploaded",
+          });
+        } catch (uploadErr) {
+          console.error("[RequestMedicine] Medicine photo upload failed:", uploadErr);
+          void updateDocument("inquiries", docId, {
+            medicinePhotoUploadStatus: "failed",
+          }).catch(() => {});
+        }
+      })();
+    }
     return requestId;
   };
 
@@ -148,9 +230,12 @@ export default function RequestMedicine() {
       "",
       `Customer Name: ${values.customerName}`,
       `Mobile Number: ${values.mobileNumber}`,
+      `Delivery Address: ${values.houseNumber}, ${values.street}${values.landmark ? `, ${values.landmark}` : ""}, Kurla West, Mumbai - ${values.pincode}`,
       `Medicine Name: ${values.medicineName}`,
-      `Quantity: ${values.quantity}`,
     ];
+    if (values.medicineStrength) lines.push(`Strength: ${values.medicineStrength}`);
+    if (values.medicineBrand) lines.push(`Brand Preference: ${values.medicineBrand}`);
+    lines.push(`Quantity: ${values.quantity}`);
     if (values.notes) lines.push(`Additional Notes: ${values.notes}`);
     if (prescriptionFile)
       lines.push(
@@ -172,9 +257,12 @@ export default function RequestMedicine() {
       "",
       `Customer Name: ${values.customerName}`,
       `Mobile Number: ${values.mobileNumber}`,
+      `Delivery Address: ${values.houseNumber}, ${values.street}${values.landmark ? `, ${values.landmark}` : ""}, Kurla West, Mumbai - ${values.pincode}`,
       `Medicine Name: ${values.medicineName}`,
-      `Quantity: ${values.quantity}`,
     ];
+    if (values.medicineStrength) lines.push(`Strength: ${values.medicineStrength}`);
+    if (values.medicineBrand) lines.push(`Brand Preference: ${values.medicineBrand}`);
+    lines.push(`Quantity: ${values.quantity}`);
     if (values.notes) lines.push(`Additional Notes: ${values.notes}`);
     lines.push("", "Please let me know whether this medicine is available.");
     lines.push(
@@ -185,7 +273,32 @@ export default function RequestMedicine() {
   };
 
   // ── Submit handlers ──────────────────────────────────────────────────────────
+  const requirePrescription = (): boolean => {
+    if (!prescriptionFile) {
+      setPrescriptionError(
+        "A prescription is required to submit a medicine delivery request.",
+      );
+      toast({
+        variant: "destructive",
+        title: "Prescription required",
+        description: "Please upload a photo or PDF of your prescription before submitting.",
+      });
+      return false;
+    }
+    setPrescriptionError(null);
+    return true;
+  };
+
   const handleSendRequest = async (values: RequestFormValues) => {
+    if (!requirePrescription()) return;
+    if (eligibility.status !== "eligible") {
+      toast({
+        variant: "destructive",
+        title: "Outside delivery zone",
+        description: `We currently deliver only within ~4km of ${STORE_LOCATION_LABEL}. Please double-check your pincode.`,
+      });
+      return;
+    }
     setSubmitting("send");
     try {
       const reqId = await saveToFirestore(values, "website");
@@ -211,6 +324,7 @@ export default function RequestMedicine() {
   };
 
   const handleWhatsApp = async (values: RequestFormValues) => {
+    if (!requirePrescription()) return;
     setSubmitting("whatsapp");
     try {
       await saveToFirestore(values, "whatsapp");
@@ -223,9 +337,7 @@ export default function RequestMedicine() {
       window.open(`https://wa.me/${WA_NUMBER}?text=${message}`, "_blank");
       toast({
         title: "WhatsApp opened!",
-        description: prescriptionFile
-          ? "Please attach your prescription photo before sending."
-          : "Your request is pre-filled. Just hit send.",
+        description: "Please attach your prescription photo before sending.",
       });
       finishSubmission();
       setSubmitting(null);
@@ -233,6 +345,7 @@ export default function RequestMedicine() {
   };
 
   const handleEmail = async (values: RequestFormValues) => {
+    if (!requirePrescription()) return;
     setSubmitting("email");
     try {
       await saveToFirestore(values, "email");
@@ -246,9 +359,7 @@ export default function RequestMedicine() {
       window.location.href = `mailto:${REQUEST_EMAIL}?subject=${subject}&body=${body}`;
       toast({
         title: "Email app opened!",
-        description: prescriptionFile
-          ? "Please attach your prescription file before sending."
-          : "Your request is pre-filled. Just hit send.",
+        description: "Please attach your prescription file before sending.",
       });
       finishSubmission();
       setSubmitting(null);
@@ -262,7 +373,9 @@ export default function RequestMedicine() {
       setLastRequestId("");
       form.reset();
       setPrescriptionFile(null);
-    }, 4000);
+      setMedicinePhotoFile(null);
+      setPrescriptionError(null);
+    }, 5000);
   };
 
   const onInvalid = () => {
@@ -276,15 +389,31 @@ export default function RequestMedicine() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 8 * 1024 * 1024) {
+      if (file.size > 10 * 1024 * 1024) {
         toast({
           variant: "destructive",
           title: "File too large",
-          description: "Please choose a prescription image or PDF under 8MB.",
+          description: "Please choose a prescription image or PDF under 10MB.",
         });
         return;
       }
       setPrescriptionFile(file);
+      setPrescriptionError(null);
+    }
+  };
+
+  const handleMedicinePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          variant: "destructive",
+          title: "File too large",
+          description: "Please choose a medicine photo under 5MB.",
+        });
+        return;
+      }
+      setMedicinePhotoFile(file);
     }
   };
 
@@ -303,7 +432,7 @@ export default function RequestMedicine() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold border border-primary/20 mb-4">
             <PackageSearch size={14} />
-            Request Any Medicine
+            Request Medicine Delivery
           </div>
           <h2
             className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4"
@@ -315,9 +444,16 @@ export default function RequestMedicine() {
             </span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            If the medicine you're looking for isn't currently available, send
-            us a request and we'll contact you as soon as possible.
+            We deliver within ~4km of {STORE_LOCATION_LABEL}. Share your
+            prescription and delivery address, and we'll verify, price, and
+            deliver your order.
           </p>
+          <Link
+            href="/track"
+            className="inline-flex items-center gap-1.5 mt-3 text-sm font-semibold text-primary hover:underline"
+          >
+            <LinkIcon size={13} /> Already requested? Track your order
+          </Link>
         </motion.div>
 
         <motion.div
@@ -359,10 +495,18 @@ export default function RequestMedicine() {
                     {lastRequestId}
                   </div>
                 )}
-                <p className="text-muted-foreground text-sm max-w-sm">
-                  We've received your request and will get back to you shortly
-                  on your mobile number.
+                <p className="text-muted-foreground text-sm max-w-sm mb-4">
+                  Our pharmacist will verify your prescription and contact you
+                  with pricing before delivery.
                 </p>
+                {lastRequestId && (
+                  <Link
+                    href={`/track/${lastRequestId}`}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-all"
+                  >
+                    Track Your Order
+                  </Link>
+                )}
               </motion.div>
             ) : (
               <motion.div
@@ -417,6 +561,166 @@ export default function RequestMedicine() {
                       />
                     </div>
 
+                    <FormField
+                      control={form.control}
+                      name="whatsappSameAsMobile"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center gap-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              id="whatsapp-same"
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-whatsapp-same"
+                            />
+                          </FormControl>
+                          <FormLabel htmlFor="whatsapp-same" className="!mt-0 cursor-pointer font-normal text-sm">
+                            My WhatsApp number is the same as my mobile number
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+
+                    {!whatsappSame && (
+                      <FormField
+                        control={form.control}
+                        name="whatsappNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel htmlFor="request-whatsapp">WhatsApp Number</FormLabel>
+                            <FormControl>
+                              <Input
+                                id="request-whatsapp"
+                                type="tel"
+                                placeholder="e.g. 98332 73838"
+                                data-testid="input-whatsapp-number"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {/* ── Delivery Address ───────────────────────────────── */}
+                    <div className="pt-1">
+                      <div className="flex items-center gap-2 mb-3">
+                        <MapPin size={14} className="text-primary" />
+                        <p className="text-sm font-semibold text-foreground">Delivery Address</p>
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-5">
+                        <FormField
+                          control={form.control}
+                          name="houseNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="request-house">House / Flat No.</FormLabel>
+                              <FormControl>
+                                <Input id="request-house" placeholder="e.g. Flat 302, B Wing" data-testid="input-house-number" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="street"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="request-street">Street / Area</FormLabel>
+                              <FormControl>
+                                <Input id="request-street" placeholder="e.g. Nehru Nagar Road" data-testid="input-street" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-5 mt-5">
+                        <FormField
+                          control={form.control}
+                          name="landmark"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="request-landmark">
+                                Landmark <span className="text-muted-foreground font-normal">(Optional)</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input id="request-landmark" placeholder="e.g. Near Kurla Station" data-testid="input-landmark" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="pincode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="request-pincode">Pincode</FormLabel>
+                              <FormControl>
+                                <Input
+                                  id="request-pincode"
+                                  inputMode="numeric"
+                                  maxLength={6}
+                                  placeholder="e.g. 400070"
+                                  data-testid="input-pincode"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      {pincode && pincode.length === 6 && (
+                        <div
+                          data-testid="delivery-eligibility-banner"
+                          className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold ${
+                            eligibility.status === "eligible"
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                              : eligibility.status === "invalid"
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                : "bg-destructive/10 text-destructive"
+                          }`}
+                        >
+                          {eligibility.status === "eligible" ? (
+                            <>
+                              <CheckCircle size={13} /> Great! We deliver to your area.
+                            </>
+                          ) : eligibility.status === "invalid" ? (
+                            <>
+                              <AlertTriangle size={13} /> Please enter a valid 6-digit pincode.
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle size={13} />
+                              Sorry, we currently deliver only within ~4km of {STORE_LOCATION_LABEL}.
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      <FormField
+                        control={form.control}
+                        name="deliveryInstructions"
+                        render={({ field }) => (
+                          <FormItem className="mt-5">
+                            <FormLabel htmlFor="request-instructions">
+                              Delivery Instructions <span className="text-muted-foreground font-normal">(Optional)</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input id="request-instructions" placeholder="e.g. Ring bell twice, leave at door" data-testid="input-delivery-instructions" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* ── Medicine Details ───────────────────────────────── */}
                     <div className="grid sm:grid-cols-[2fr_1fr] gap-5">
                       <FormField
                         control={form.control}
@@ -460,15 +764,46 @@ export default function RequestMedicine() {
                       />
                     </div>
 
+                    <div className="grid sm:grid-cols-2 gap-5">
+                      <FormField
+                        control={form.control}
+                        name="medicineStrength"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel htmlFor="request-strength">
+                              Strength <span className="text-muted-foreground font-normal">(Optional)</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input id="request-strength" placeholder="e.g. 500mg" data-testid="input-medicine-strength" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="medicineBrand"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel htmlFor="request-brand">
+                              Brand Preference <span className="text-muted-foreground font-normal">(Optional)</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input id="request-brand" placeholder="e.g. Cipla" data-testid="input-medicine-brand" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
                     <div>
                       <label
                         htmlFor="request-prescription"
                         className="block text-sm font-medium text-foreground mb-2"
                       >
                         Upload Prescription{" "}
-                        <span className="text-muted-foreground font-normal">
-                          (Optional)
-                        </span>
+                        <span className="text-destructive font-normal">(Required)</span>
                       </label>
                       {prescriptionFile ? (
                         <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-border bg-muted/50">
@@ -494,10 +829,14 @@ export default function RequestMedicine() {
                       ) : (
                         <label
                           htmlFor="request-prescription"
-                          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-border hover:border-primary/40 hover:bg-primary/5 cursor-pointer transition-all duration-200 text-sm text-muted-foreground"
+                          className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed cursor-pointer transition-all duration-200 text-sm ${
+                            prescriptionError
+                              ? "border-destructive/50 bg-destructive/5 text-destructive"
+                              : "border-border hover:border-primary/40 hover:bg-primary/5 text-muted-foreground"
+                          }`}
                         >
                           <Paperclip size={16} />
-                          Choose a photo or PDF of your prescription
+                          Choose a photo or PDF of your prescription (max 10MB)
                         </label>
                       )}
 
@@ -508,6 +847,53 @@ export default function RequestMedicine() {
                         accept="image/*,application/pdf"
                         onChange={handleFileChange}
                         data-testid="input-prescription-file"
+                        className="sr-only"
+                      />
+                      {prescriptionError && (
+                        <p className="text-xs text-destructive mt-1.5">{prescriptionError}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="request-medicine-photo"
+                        className="block text-sm font-medium text-foreground mb-2"
+                      >
+                        Photo of Medicine{" "}
+                        <span className="text-muted-foreground font-normal">(Optional — helps us find the exact brand)</span>
+                      </label>
+                      {medicinePhotoFile ? (
+                        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-border bg-muted/50">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <ImageIcon size={16} className="text-primary flex-shrink-0" />
+                            <span className="text-sm text-foreground truncate">{medicinePhotoFile.name}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setMedicinePhotoFile(null)}
+                            aria-label="Remove medicine photo"
+                            data-testid="button-remove-medicine-photo"
+                            className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor="request-medicine-photo"
+                          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-border hover:border-primary/40 hover:bg-primary/5 cursor-pointer transition-all duration-200 text-sm text-muted-foreground"
+                        >
+                          <ImageIcon size={16} />
+                          Choose a photo of the medicine strip/box
+                        </label>
+                      )}
+                      <input
+                        id="request-medicine-photo"
+                        name="medicinePhoto"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleMedicinePhotoChange}
+                        data-testid="input-medicine-photo"
                         className="sr-only"
                       />
                     </div>
@@ -551,7 +937,7 @@ export default function RequestMedicine() {
                         ) : (
                           <Send size={18} />
                         )}
-                        Send Request
+                        Request Medicine Delivery
                       </button>
 
                       {/* Secondary: WhatsApp + Email */}

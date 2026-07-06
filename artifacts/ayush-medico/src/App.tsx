@@ -26,6 +26,7 @@ import ScrollProgress from "@/components/ScrollProgress";
 import BackToTop from "@/components/BackToTop";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminLayout from "@/pages/admin/AdminLayout";
+import OrderTracker from "@/pages/OrderTracker";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,8 @@ function App() {
                 <Route path="/admin/login" component={AdminLogin} />
                 <Route path="/admin" component={AdminLayout} />
                 <Route path="/admin/:rest*" component={AdminLayout} />
+                <Route path="/track/:requestId" component={OrderTracker} />
+                <Route path="/track" component={OrderTracker} />
                 <Route component={PublicSite} />
               </Switch>
               <Toaster />

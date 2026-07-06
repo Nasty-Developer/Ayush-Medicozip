@@ -148,4 +148,13 @@ export async function uploadStoreLogo(
   return uploadToCloudinary(compressed, UPLOAD_URL_IMAGE, MAX_IMAGE_SIZE, onProgress);
 }
 
+export async function uploadRequestMedicinePhoto(
+  file: File,
+  _inquiryId: string,
+  onProgress?: UploadProgress
+): Promise<string> {
+  const compressed = await compressImage(file);
+  return uploadToCloudinary(compressed, UPLOAD_URL_IMAGE, MAX_IMAGE_SIZE, onProgress);
+}
+
 export const MAX_PRESCRIPTION_BYTES = MAX_PRESCRIPTION_SIZE;

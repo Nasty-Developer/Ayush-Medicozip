@@ -6,7 +6,8 @@ import {
   Download, Search, Trash2, Eye,
   WifiOff, ChevronDown, Filter, RefreshCw,
   PackageCheck, PackageX, Truck, ShoppingCart, Ban, Hash,
-  AlertCircle,
+  AlertCircle, ShieldCheck, IndianRupee, ChefHat, XCircle,
+  MapPin, Image as ImageIcon, Save,
 } from "lucide-react";
 import {
   subscribeToCollection, updateDocument, deleteDocument, orderBy, where
@@ -16,10 +17,15 @@ import { useToast } from "@/hooks/use-toast";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type RequestStatus =
-  | "pending"
-  | "contacted"
-  | "ordered"
-  | "ready"
+  | "new"
+  | "pending-verification"
+  | "accepted"
+  | "rejected"
+  | "medicine-unavailable"
+  | "payment-pending"
+  | "payment-received"
+  | "preparing"
+  | "out-for-delivery"
   | "delivered"
   | "cancelled";
 
@@ -30,13 +36,29 @@ type MedicineRequest = {
   requestId?: string;
   customerName: string;
   mobileNumber: string;
+  whatsappNumber?: string;
+  houseNumber?: string;
+  street?: string;
+  landmark?: string;
+  pincode?: string;
+  fullAddress?: string;
+  deliveryInstructions?: string;
+  deliveryEligible?: boolean;
   medicineName: string;
+  medicineStrength?: string;
+  medicineBrand?: string;
   quantity: string;
   notes?: string;
   source: RequestSource;
   status: RequestStatus;
   prescriptionUrl?: string | null;
   hasPrescription?: boolean;
+  medicinePhotoUrl?: string | null;
+  medicinePrice?: number | null;
+  deliveryCharge?: number | null;
+  discount?: number | null;
+  grandTotal?: number | null;
+  paymentStatus?: string;
   createdAt?: { seconds: number; nanoseconds?: number };
 };
 
@@ -106,13 +128,23 @@ function formatShortDate(secs: number) {
 // ─── Status / Source config ───────────────────────────────────────────────────
 
 const STATUS_CFG: Record<RequestStatus, { label: string; icon: React.ElementType; cls: string }> = {
-  pending:   { label: "Pending",          icon: AlertCircle,  cls: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-  contacted: { label: "Contacted",        icon: Phone,        cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  ordered:   { label: "Medicine Ordered", icon: ShoppingCart, cls: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
-  ready:     { label: "Ready for Pickup", icon: PackageCheck, cls: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" },
-  delivered: { label: "Delivered",        icon: Truck,        cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-  cancelled: { label: "Cancelled",        icon: Ban,          cls: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
+  "new":                   { label: "New",               icon: AlertCircle,  cls: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
+  "pending-verification":  { label: "Pending Verify",     icon: ShieldCheck,  cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  "accepted":              { label: "Accepted",           icon: CheckCircle2, cls: "bg-teal-500/10 text-teal-600 dark:text-teal-400" },
+  "rejected":              { label: "Rejected",           icon: XCircle,      cls: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
+  "medicine-unavailable":  { label: "Unavailable",        icon: PackageX,     cls: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
+  "payment-pending":       { label: "Payment Pending",    icon: IndianRupee,  cls: "bg-orange-500/10 text-orange-600 dark:text-orange-400" },
+  "payment-received":      { label: "Payment Received",   icon: IndianRupee,  cls: "bg-lime-500/10 text-lime-600 dark:text-lime-400" },
+  "preparing":             { label: "Preparing",          icon: ChefHat,      cls: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+  "out-for-delivery":      { label: "Out for Delivery",   icon: Truck,        cls: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" },
+  "delivered":             { label: "Delivered",          icon: PackageCheck, cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  "cancelled":             { label: "Cancelled",          icon: Ban,          cls: "bg-muted text-muted-foreground" },
 };
+
+const STATUS_ORDER: RequestStatus[] = [
+  "new", "pending-verification", "accepted", "payment-pending", "payment-received",
+  "preparing", "out-for-delivery", "delivered", "medicine-unavailable", "rejected", "cancelled",
+];
 
 const SOURCE_CFG: Record<RequestSource, { label: string; cls: string }> = {
   website:  { label: "Website",  cls: "bg-primary/10 text-primary" },
@@ -120,15 +152,15 @@ const SOURCE_CFG: Record<RequestSource, { label: string; cls: string }> = {
   email:    { label: "Email",    cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
 };
 
-// ─── Prescription Viewer ──────────────────────────────────────────────────────
+// ─── Prescription / Photo Viewer ──────────────────────────────────────────────
 
-function PrescriptionViewer({ url }: { url: string }) {
+function ImageOrFileViewer({ url, label }: { url: string; label: string }) {
   const isImage = /\.(jpg|jpeg|png|gif|webp)/i.test(url) || url.includes("image") || url.includes("cloudinary");
   return (
     <div className="space-y-2">
       {isImage && (
         <div className="rounded-xl overflow-hidden border border-border">
-          <img src={url} alt="Prescription" className="w-full max-h-52 object-contain bg-muted/20" />
+          <img src={url} alt={label} className="w-full max-h-52 object-contain bg-muted/20" />
         </div>
       )}
       <div className="flex gap-2">
@@ -179,20 +211,94 @@ function DeleteConfirm({ name, onCancel, onConfirm, loading }: {
   );
 }
 
+// ─── Pricing Panel ────────────────────────────────────────────────────────────
+
+function PricingPanel({ req, onSave }: {
+  req: MedicineRequest;
+  onSave: (fields: { medicinePrice: number; deliveryCharge: number; discount: number; grandTotal: number }) => Promise<void>;
+}) {
+  const [medicinePrice, setMedicinePrice] = useState(String(req.medicinePrice ?? ""));
+  const [deliveryCharge, setDeliveryCharge] = useState(String(req.deliveryCharge ?? ""));
+  const [discount, setDiscount] = useState(String(req.discount ?? "0"));
+  const [saving, setSaving] = useState(false);
+
+  const mp = parseFloat(medicinePrice) || 0;
+  const dc = parseFloat(deliveryCharge) || 0;
+  const disc = parseFloat(discount) || 0;
+  const grandTotal = Math.max(0, mp + dc - disc);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave({ medicinePrice: mp, deliveryCharge: dc, discount: disc, grandTotal });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2.5">
+        <div>
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Medicine Price (₹)</label>
+          <input
+            type="number" min="0" value={medicinePrice}
+            onChange={(e) => setMedicinePrice(e.target.value)}
+            data-testid="input-medicine-price"
+            className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Delivery Charge (₹)</label>
+          <input
+            type="number" min="0" value={deliveryCharge}
+            onChange={(e) => setDeliveryCharge(e.target.value)}
+            data-testid="input-delivery-charge"
+            className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+        <div className="col-span-2">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Discount (₹)</label>
+          <input
+            type="number" min="0" value={discount}
+            onChange={(e) => setDiscount(e.target.value)}
+            data-testid="input-discount"
+            className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
+        <span className="text-xs font-semibold text-foreground">Grand Total</span>
+        <span className="text-base font-bold text-primary">₹{grandTotal.toFixed(2)}</span>
+      </div>
+      <button
+        onClick={handleSave}
+        disabled={saving || mp <= 0}
+        data-testid="button-save-pricing"
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all"
+      >
+        {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+        Save Pricing & Send to Customer
+      </button>
+    </div>
+  );
+}
+
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 
-function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete }: {
+function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete, onSavePricing }: {
   req: MedicineRequest;
   onClose: () => void;
   onUpdateStatus: (s: RequestStatus) => Promise<void>;
   onDelete: () => void;
+  onSavePricing: (fields: { medicinePrice: number; deliveryCharge: number; discount: number; grandTotal: number }) => Promise<void>;
 }) {
   const [updatingStatus, setUpdatingStatus] = useState<RequestStatus | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const secs = getTimestampSecs(req);
-  const Cfg = STATUS_CFG[req.status] ?? STATUS_CFG.pending;
+  const Cfg = STATUS_CFG[req.status] ?? STATUS_CFG.new;
   const SrcCfg = SOURCE_CFG[req.source] ?? SOURCE_CFG.website;
 
   const buildWAReply = () =>
@@ -223,7 +329,9 @@ function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete }: {
     { label: "Request ID",  value: req.requestId || req.id.slice(0, 8).toUpperCase() },
     { label: "Customer",    value: req.customerName },
     { label: "Mobile",      value: req.mobileNumber },
-    { label: "Medicine",    value: req.medicineName },
+    { label: "WhatsApp",    value: req.whatsappNumber || req.mobileNumber },
+    { label: "Medicine",    value: `${req.medicineName}${req.medicineStrength ? ` (${req.medicineStrength})` : ""}` },
+    { label: "Brand Pref.", value: req.medicineBrand || "—" },
     { label: "Quantity",    value: req.quantity },
     { label: "Source",      value: SrcCfg.label },
     { label: "Notes",       value: req.notes || "—" },
@@ -245,13 +353,18 @@ function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete }: {
               <h3 className="text-base font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 Medicine Request
               </h3>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${Cfg.cls}`}>
                   <Cfg.icon size={10} /> {Cfg.label}
                 </span>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${SrcCfg.cls}`}>
                   {SrcCfg.label}
                 </span>
+                {req.deliveryEligible === false && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-destructive/10 text-destructive">
+                    Outside Zone
+                  </span>
+                )}
               </div>
             </div>
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
@@ -268,6 +381,20 @@ function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete }: {
                   <span className="text-foreground break-words min-w-0">{value}</span>
                 </div>
               ))}
+              {req.fullAddress && (
+                <div className="flex gap-3 text-sm">
+                  <span className="text-xs font-semibold text-muted-foreground w-24 flex-shrink-0 pt-0.5 flex items-center gap-1">
+                    <MapPin size={11} /> Address
+                  </span>
+                  <span className="text-foreground break-words min-w-0">{req.fullAddress}</span>
+                </div>
+              )}
+              {req.deliveryInstructions && (
+                <div className="flex gap-3 text-sm">
+                  <span className="text-xs font-semibold text-muted-foreground w-24 flex-shrink-0 pt-0.5">Instructions</span>
+                  <span className="text-foreground break-words min-w-0">{req.deliveryInstructions}</span>
+                </div>
+              )}
             </div>
 
             {/* Prescription */}
@@ -278,7 +405,7 @@ function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete }: {
                   <p className="text-xs font-semibold text-foreground">Prescription</p>
                 </div>
                 {req.prescriptionUrl ? (
-                  <PrescriptionViewer url={req.prescriptionUrl} />
+                  <ImageOrFileViewer url={req.prescriptionUrl} label="Prescription" />
                 ) : (
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border text-muted-foreground text-xs">
                     <Loader2 size={13} className="animate-spin" />
@@ -288,11 +415,31 @@ function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete }: {
               </div>
             )}
 
+            {/* Medicine photo */}
+            {req.medicinePhotoUrl && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <ImageIcon size={13} className="text-primary" />
+                  <p className="text-xs font-semibold text-foreground">Medicine Photo</p>
+                </div>
+                <ImageOrFileViewer url={req.medicinePhotoUrl} label="Medicine" />
+              </div>
+            )}
+
+            {/* Pricing */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                <IndianRupee size={12} /> Pricing
+              </p>
+              <PricingPanel req={req} onSave={onSavePricing} />
+            </div>
+
             {/* Status update */}
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-2">Update Status</p>
               <div className="grid grid-cols-2 gap-2">
-                {(Object.entries(STATUS_CFG) as [RequestStatus, (typeof STATUS_CFG)[RequestStatus]][]).map(([s, cfg]) => {
+                {STATUS_ORDER.map((s) => {
+                  const cfg = STATUS_CFG[s];
                   const Icon = cfg.icon;
                   const isActive = req.status === s;
                   const isLoading = updatingStatus === s;
@@ -322,7 +469,7 @@ function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete }: {
                 <Phone size={13} /> Call Customer
               </a>
               <a
-                href={`https://wa.me/91${req.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(buildWAReply())}`}
+                href={`https://wa.me/91${(req.whatsappNumber || req.mobileNumber).replace(/\D/g, "")}?text=${encodeURIComponent(buildWAReply())}`}
                 target="_blank" rel="noopener noreferrer"
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#25D366]/10 text-[#25D366] text-xs font-semibold hover:bg-[#25D366]/20 transition-all">
                 <MessageCircle size={13} /> Reply on WhatsApp
@@ -392,7 +539,7 @@ export default function MedicineRequestsPage() {
         const data = (docs as MedicineRequest[]).sort(
           (a, b) => getTimestampSecs(b) - getTimestampSecs(a)
         );
-        const pendingCount = data.filter((d) => d.status === "pending").length;
+        const pendingCount = data.filter((d) => d.status === "new").length;
 
         if (initialLoadDone.current && pendingCount > prevPendingRef.current && prevPendingRef.current >= 0) {
           playChime();
@@ -424,6 +571,19 @@ export default function MedicineRequestsPage() {
     }
   }, []);
 
+  const handleSavePricing = useCallback(async (req: MedicineRequest, fields: { medicinePrice: number; deliveryCharge: number; discount: number; grandTotal: number }) => {
+    try {
+      await updateDocument("inquiries", req.id, {
+        ...fields,
+        status: req.status === "new" || req.status === "pending-verification" ? "accepted" : req.status,
+      });
+      toast({ title: "Pricing saved", description: "Customer can now proceed to payment." });
+    } catch (err) {
+      console.error("[MedicineRequestsPage] Pricing save failed:", err);
+      toast({ variant: "destructive", title: "Failed to save pricing" });
+    }
+  }, []);
+
   const handleDelete = useCallback(async (req: MedicineRequest) => {
     try {
       await deleteDocument("inquiries", req.id);
@@ -435,14 +595,17 @@ export default function MedicineRequestsPage() {
   }, []);
 
   // ── Stats ─────────────────────────────────────────────────────────────────
-  const total      = requests.length;
-  const pending    = requests.filter((r) => r.status === "pending").length;
-  const ordered    = requests.filter((r) => r.status === "ordered").length;
-  const delivered  = requests.filter((r) => r.status === "delivered").length;
-  const todayCount = requests.filter((r) => isToday(getTimestampSecs(r))).length;
-  const waSrc      = requests.filter((r) => r.source === "whatsapp").length;
-  const emailSrc   = requests.filter((r) => r.source === "email").length;
-  const webSrc     = requests.filter((r) => r.source === "website").length;
+  const total       = requests.length;
+  const newCount     = requests.filter((r) => r.status === "new").length;
+  const pendingVerify = requests.filter((r) => r.status === "pending-verification").length;
+  const accepted     = requests.filter((r) => r.status === "accepted").length;
+  const paymentPending = requests.filter((r) => r.status === "payment-pending").length;
+  const paymentReceived = requests.filter((r) => r.status === "payment-received").length;
+  const preparing    = requests.filter((r) => r.status === "preparing").length;
+  const outForDelivery = requests.filter((r) => r.status === "out-for-delivery").length;
+  const delivered    = requests.filter((r) => r.status === "delivered").length;
+  const cancelled    = requests.filter((r) => r.status === "cancelled" || r.status === "rejected" || r.status === "medicine-unavailable").length;
+  const todayCount   = requests.filter((r) => isToday(getTimestampSecs(r))).length;
 
   // ── Filtered list ─────────────────────────────────────────────────────────
   const filtered = requests.filter((r) => {
@@ -473,6 +636,20 @@ export default function MedicineRequestsPage() {
     setSearch("");
   };
 
+  const statCards = [
+    { label: "Total",           value: total,          cls: "text-foreground" },
+    { label: "New",             value: newCount,       cls: "text-blue-600 dark:text-blue-400" },
+    { label: "Pending Verify",  value: pendingVerify,  cls: "text-amber-600 dark:text-amber-400" },
+    { label: "Accepted",        value: accepted,       cls: "text-teal-600 dark:text-teal-400" },
+    { label: "Payment Pending", value: paymentPending, cls: "text-orange-600 dark:text-orange-400" },
+    { label: "Payment Done",    value: paymentReceived,cls: "text-lime-600 dark:text-lime-400" },
+    { label: "Preparing",       value: preparing,      cls: "text-violet-600 dark:text-violet-400" },
+    { label: "Out for Delivery",value: outForDelivery, cls: "text-cyan-600 dark:text-cyan-400" },
+    { label: "Delivered",       value: delivered,      cls: "text-emerald-600 dark:text-emerald-400" },
+    { label: "Cancelled",       value: cancelled,      cls: "text-rose-600 dark:text-rose-400" },
+    { label: "Today",           value: todayCount,     cls: "text-primary" },
+  ];
+
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       {/* Header */}
@@ -480,14 +657,14 @@ export default function MedicineRequestsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Medicine Requests
-            {pending > 0 && (
+            {newCount > 0 && (
               <span className="inline-flex items-center justify-center min-w-[22px] h-5.5 px-1.5 rounded-full bg-primary text-white text-xs font-bold animate-pulse">
-                {pending}
+                {newCount}
               </span>
             )}
           </h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            {total} total · {pending} pending · {todayCount} today
+            {total} total · {newCount} new · {todayCount} today
           </p>
         </div>
       </div>
@@ -510,16 +687,8 @@ export default function MedicineRequestsPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-5">
-        {[
-          { label: "Total",     value: total,     cls: "text-foreground" },
-          { label: "Pending",   value: pending,   cls: "text-blue-600 dark:text-blue-400" },
-          { label: "Ordered",   value: ordered,   cls: "text-violet-600 dark:text-violet-400" },
-          { label: "Delivered", value: delivered, cls: "text-emerald-600 dark:text-emerald-400" },
-          { label: "Today",     value: todayCount, cls: "text-amber-600 dark:text-amber-400" },
-          { label: "WhatsApp",  value: waSrc,      cls: "text-[#25D366]" },
-          { label: "Website",   value: webSrc,     cls: "text-primary" },
-        ].map((s) => (
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-5">
+        {statCards.map((s) => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-3 text-center shadow-sm">
             <p className={`text-xl font-bold ${s.cls}`}>{s.value}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
@@ -597,10 +766,10 @@ export default function MedicineRequestsPage() {
                     className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${statusFilter === "all" ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
                     All
                   </button>
-                  {(Object.entries(STATUS_CFG) as [RequestStatus, (typeof STATUS_CFG)[RequestStatus]][]).map(([s, cfg]) => (
+                  {STATUS_ORDER.map((s) => (
                     <button key={s} onClick={() => setStatusFilter(s)}
                       className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${statusFilter === s ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
-                      {cfg.label}
+                      {STATUS_CFG[s].label}
                     </button>
                   ))}
                 </div>
@@ -617,7 +786,7 @@ export default function MedicineRequestsPage() {
                   {(Object.entries(SOURCE_CFG) as [RequestSource, (typeof SOURCE_CFG)[RequestSource]][]).map(([src, cfg]) => (
                     <button key={src} onClick={() => setSourceFilter(src)}
                       className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${sourceFilter === src ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
-                      {cfg.label} ({src === "website" ? webSrc : src === "whatsapp" ? waSrc : emailSrc})
+                      {cfg.label}
                     </button>
                   ))}
                 </div>
@@ -654,7 +823,7 @@ export default function MedicineRequestsPage() {
         ) : (
           <>
             {/* Table header — desktop */}
-            <div className="hidden sm:grid grid-cols-[1.5fr_2fr_2fr_1.5fr_1fr_1fr_1fr_auto] gap-3 px-4 py-2.5 border-b border-border bg-muted/30">
+            <div className="hidden sm:grid grid-cols-[1.5fr_2fr_2fr_1.5fr_1fr_1.3fr_1fr_auto] gap-3 px-4 py-2.5 border-b border-border bg-muted/30">
               {["ID", "Customer", "Medicine", "Phone", "Source", "Status", "Date", ""].map((h) => (
                 <p key={h} className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{h}</p>
               ))}
@@ -662,7 +831,7 @@ export default function MedicineRequestsPage() {
 
             <div className="divide-y divide-border">
               {filtered.map((req) => {
-                const Cfg = STATUS_CFG[req.status] ?? STATUS_CFG.pending;
+                const Cfg = STATUS_CFG[req.status] ?? STATUS_CFG.new;
                 const SrcCfg = SOURCE_CFG[req.source] ?? SOURCE_CFG.website;
                 const StatusIcon = Cfg.icon;
                 const secs = getTimestampSecs(req);
@@ -670,7 +839,7 @@ export default function MedicineRequestsPage() {
                 return (
                   <div key={req.id} className="group">
                     {/* Desktop row */}
-                    <div className="hidden sm:grid grid-cols-[1.5fr_2fr_2fr_1.5fr_1fr_1fr_1fr_auto] gap-3 items-center px-4 py-3 hover:bg-muted/20 transition-colors">
+                    <div className="hidden sm:grid grid-cols-[1.5fr_2fr_2fr_1.5fr_1fr_1.3fr_1fr_auto] gap-3 items-center px-4 py-3 hover:bg-muted/20 transition-colors">
                       <div className="flex items-center gap-1 min-w-0">
                         <Hash size={10} className="text-muted-foreground flex-shrink-0" />
                         <span className="text-xs text-muted-foreground truncate font-mono">
@@ -703,7 +872,7 @@ export default function MedicineRequestsPage() {
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-secondary hover:bg-secondary/10 transition-all">
                           <Phone size={14} />
                         </a>
-                        <a href={`https://wa.me/91${req.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${req.customerName}, this is Ayush Medico regarding your request for *${req.medicineName}*. `)}`}
+                        <a href={`https://wa.me/91${(req.whatsappNumber || req.mobileNumber).replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${req.customerName}, this is Ayush Medico regarding your request for *${req.medicineName}*. `)}`}
                           target="_blank" rel="noopener noreferrer" title="WhatsApp"
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-[#25D366] hover:bg-[#25D366]/10 transition-all">
                           <MessageCircle size={14} />
@@ -753,6 +922,7 @@ export default function MedicineRequestsPage() {
             onClose={() => setSelected(null)}
             onUpdateStatus={(s) => handleUpdateStatus(selected, s)}
             onDelete={() => handleDelete(selected)}
+            onSavePricing={(fields) => handleSavePricing(selected, fields)}
           />
         )}
       </AnimatePresence>
