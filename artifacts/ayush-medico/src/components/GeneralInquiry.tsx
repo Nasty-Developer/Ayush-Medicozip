@@ -270,7 +270,7 @@ export default function GeneralInquiry() {
             ) : (
               <motion.div key="form" initial={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative">
                 <Form {...form}>
-                  <form className="space-y-5" noValidate>
+                  <form className="space-y-5" noValidate onSubmit={(e) => e.preventDefault()}>
                     {/* Name + Mobile */}
                     <div className="grid sm:grid-cols-2 gap-5">
                       <FormField

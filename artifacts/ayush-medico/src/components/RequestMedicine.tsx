@@ -372,7 +372,7 @@ export default function RequestMedicine() {
                 className="relative"
               >
                 <Form {...form}>
-                  <form className="space-y-5" noValidate>
+                  <form className="space-y-5" noValidate onSubmit={(e) => e.preventDefault()}>
                     <div className="grid sm:grid-cols-2 gap-5">
                       <FormField
                         control={form.control}
