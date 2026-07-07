@@ -300,3 +300,23 @@
 /* Safe-area padding is handled per-component (LoadingScreen, OfflinePage,
    FloatingWhatsApp) via inline styles. A blanket rule on .fixed would break
    every other fixed-position element (Header, BackToTop, ScrollProgress). */
+
+/* ── PWA Install button — Material-style contact ripple ────────────────────
+   Expands from the tap point, fades to transparent.
+   Scale goes 0 → 1 only (never exceeds parent bounds).
+   Lives inside a normal-flow button element — no GPU compositor conflict.
+   ─────────────────────────────────────────────────────────────────────── */
+@keyframes pwa-btn-ripple {
+  from {
+    transform: scale(0);
+    opacity: 0.38;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.pwa-btn-ripple {
+  animation: pwa-btn-ripple 0.58s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
