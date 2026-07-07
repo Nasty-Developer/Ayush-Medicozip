@@ -1,56 +1,86 @@
 /**
  * PWAInstallButtons
  * ─────────────────────────────────────────────────────────────────────────────
- * Renders two CTA elements for the Hero section:
+ * Renders two action buttons for the Hero section:
  *
- *   1. "Download Android App"  — always visible. Triggers the install prompt if
- *      the browser supports it, or shows a tooltip with manual instructions.
+ *   1. "Install App"  — appears when the browser has a deferred install prompt
+ *      ready. Triggers the native PWA install dialog. Disappears after install.
  *
- *   2. "Install App" chip      — only visible when the browser has a deferred
- *      prompt ready (isInstallable = true). Disappears after install.
+ *   2. "Download Android App (.apk)"  — always visible (except when already
+ *      installed). Links directly to /ayush-medico.apk.
+ *      • If the APK file exists → browser downloads it.
+ *      • If not yet uploaded → shows a friendly "coming soon" tooltip.
  *
- * Both share the same underlying usePWAInstall() hook so they stay in sync.
+ * To activate the APK download, place the signed APK at:
+ *   artifacts/ayush-medico/public/ayush-medico.apk
+ * The button will start working immediately with no code changes needed.
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Smartphone, X, CheckCircle2 } from "lucide-react";
+import { Download, Smartphone, X, CheckCircle2, Package } from "lucide-react";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
+
+/** Check whether the APK file is actually present on the server. */
+async function checkApkAvailable(): Promise<boolean> {
+  try {
+    const res = await fetch("/ayush-medico.apk", { method: "HEAD" });
+    // If the file is there, content-type should be application/... not text/html (404 page)
+    const ct = res.headers.get("content-type") ?? "";
+    return res.ok && !ct.startsWith("text/html");
+  } catch {
+    return false;
+  }
+}
 
 export default function PWAInstallButtons() {
   const { isInstallable, isInstalled, install } = usePWAInstall();
-  const [showTooltip, setShowTooltip] = useState(false);
+  const [installing, setInstalling]   = useState(false);
   const [justInstalled, setJustInstalled] = useState(false);
+  const [apkAvailable, setApkAvailable]   = useState<boolean | null>(null); // null = checking
+  const [showApkTooltip, setShowApkTooltip] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Close tooltip when clicking outside
+  // Check APK availability once on mount
   useEffect(() => {
-    if (!showTooltip) return;
+    checkApkAvailable().then(setApkAvailable);
+  }, []);
+
+  // Close APK tooltip when clicking outside
+  useEffect(() => {
+    if (!showApkTooltip) return;
     const handleClick = (e: MouseEvent) => {
       if (tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
-        setShowTooltip(false);
+        setShowApkTooltip(false);
       }
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [showTooltip]);
+  }, [showApkTooltip]);
 
-  const handleDownloadClick = async () => {
-    if (isInstalled) return; // Already installed — button shouldn't be clickable
+  const handleInstall = useCallback(async () => {
+    if (installing || justInstalled) return;
+    setInstalling(true);
+    const accepted = await install();
+    setInstalling(false);
+    if (accepted) setJustInstalled(true);
+  }, [install, installing, justInstalled]);
 
-    if (isInstallable) {
-      // Browser supports the install prompt — use it directly
-      const accepted = await install();
-      if (accepted) {
-        setJustInstalled(true);
-      }
+  const handleApkDownload = () => {
+    if (apkAvailable) {
+      // Trigger direct download
+      const a = document.createElement("a");
+      a.href = "/ayush-medico.apk";
+      a.download = "AyushMedico.apk";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } else {
-      // Fallback: show manual instructions tooltip
-      setShowTooltip((v) => !v);
+      setShowApkTooltip((v) => !v);
     }
   };
 
-  // Don't render if already installed (running as standalone PWA)
+  // Already running as installed PWA — show installed badge
   if (isInstalled) {
     return (
       <motion.div
@@ -67,53 +97,77 @@ export default function PWAInstallButtons() {
   return (
     <div className="flex flex-wrap items-center gap-3">
 
-      {/* ── Primary: Download Android App (always visible) ── */}
+      {/* ── "Install App" — only visible when browser has a deferred prompt ── */}
+      <AnimatePresence>
+        {isInstallable && (
+          <motion.button
+            key="install-chip"
+            type="button"
+            onClick={handleInstall}
+            disabled={installing || justInstalled}
+            initial={{ opacity: 0, scale: 0.8, x: -10 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.8, x: -10 }}
+            transition={{ duration: 0.25 }}
+            data-testid="btn-install-app"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-primary to-secondary text-white shadow-md shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 disabled:opacity-70"
+            style={{ WebkitTapHighlightColor: "transparent" }}
+          >
+            {justInstalled ? (
+              <>
+                <CheckCircle2 size={15} strokeWidth={2.2} />
+                Installed!
+              </>
+            ) : (
+              <>
+                <Download size={15} strokeWidth={2.2} className={installing ? "animate-bounce" : ""} />
+                Install App
+              </>
+            )}
+            {/* Live pulse dot */}
+            {!installing && !justInstalled && (
+              <span className="relative flex h-2 w-2 ml-0.5">
+                <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-white opacity-60" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+              </span>
+            )}
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* ── "Download Android App (.apk)" — always visible ── */}
       <div className="relative" ref={tooltipRef}>
         <motion.button
           type="button"
-          onClick={handleDownloadClick}
+          onClick={handleApkDownload}
           whileHover={{ y: -2 }}
           whileTap={{ scale: 0.97 }}
-          data-testid="btn-download-android-app"
+          data-testid="btn-download-apk"
           className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl font-semibold text-sm border-2 border-primary/40 text-primary bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-colors duration-200"
           style={{ WebkitTapHighlightColor: "transparent" }}
+          title="Download Android App (.apk)"
         >
-          {/* Android robot icon (SVG, no external dep) */}
-          <svg
-            width="18" height="18" viewBox="0 0 24 24" fill="currentColor"
-            aria-hidden="true"
-          >
-            {/* Android head */}
+          {/* Android robot icon */}
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M7 18v-8a5 5 0 0 1 10 0v8a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1z" opacity=".85"/>
-            {/* Antenna */}
             <line x1="9.5" y1="3.5" x2="7" y2="1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             <line x1="14.5" y1="3.5" x2="17" y2="1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            {/* Eyes */}
             <circle cx="10" cy="11" r="1" fill="white"/>
             <circle cx="14" cy="11" r="1" fill="white"/>
-            {/* Arms */}
             <rect x="3" y="10" width="2.5" height="5" rx="1.25" fill="currentColor" opacity=".7"/>
             <rect x="18.5" y="10" width="2.5" height="5" rx="1.25" fill="currentColor" opacity=".7"/>
-            {/* Legs */}
             <rect x="8.5" y="18" width="2.5" height="3.5" rx="1.25" fill="currentColor" opacity=".7"/>
             <rect x="13" y="18" width="2.5" height="3.5" rx="1.25" fill="currentColor" opacity=".7"/>
           </svg>
-
-          {justInstalled ? "Installing…" : "Download Android App"}
-
-          {isInstallable && (
-            <span className="ml-0.5 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-primary opacity-60" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-            </span>
-          )}
+          Download Android App
+          <span className="text-[10px] font-normal opacity-60">.apk</span>
         </motion.button>
 
-        {/* Manual install tooltip — shows when browser doesn't support the prompt */}
+        {/* "Coming soon" tooltip — shown when APK is not yet uploaded */}
         <AnimatePresence>
-          {showTooltip && (
+          {showApkTooltip && (
             <motion.div
-              key="install-tooltip"
+              key="apk-tooltip"
               initial={{ opacity: 0, y: 8, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -122,7 +176,7 @@ export default function PWAInstallButtons() {
             >
               <button
                 type="button"
-                onClick={() => setShowTooltip(false)}
+                onClick={() => setShowApkTooltip(false)}
                 className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Close"
               >
@@ -131,10 +185,15 @@ export default function PWAInstallButtons() {
 
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Smartphone size={14} className="text-primary" />
+                  <Package size={14} className="text-primary" />
                 </div>
-                <p className="text-sm font-semibold text-foreground">Install Ayush Medico App</p>
+                <p className="text-sm font-semibold text-foreground">Android App — Coming Soon</p>
               </div>
+
+              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                The Android APK is being prepared. In the meantime, you can install this
+                app directly from your browser:
+              </p>
 
               <ol className="space-y-2 text-xs text-muted-foreground list-none">
                 <li className="flex gap-2">
@@ -158,26 +217,26 @@ export default function PWAInstallButtons() {
         </AnimatePresence>
       </div>
 
-      {/* ── Secondary: Install App chip (only when the prompt is ready) ── */}
-      <AnimatePresence>
-        {isInstallable && (
+      {/* Manual install chip — visible when prompt not available but not installed */}
+      {!isInstallable && (
+        <AnimatePresence>
           <motion.button
-            key="install-chip"
+            key="manual-install"
             type="button"
-            onClick={install}
-            initial={{ opacity: 0, scale: 0.8, x: -10 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.8, x: -10 }}
-            transition={{ duration: 0.25 }}
-            data-testid="btn-install-app"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-primary to-secondary text-white shadow-md shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
+            onClick={() => {
+              // Show install instructions via the APK tooltip for now
+              setShowApkTooltip((v) => !v);
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground border border-border hover:border-primary/30 hover:text-primary transition-colors duration-200"
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
-            <Download size={15} strokeWidth={2.2} />
-            Install App
+            <Smartphone size={12} />
+            How to install
           </motion.button>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>
+      )}
     </div>
   );
 }

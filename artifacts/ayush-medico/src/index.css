@@ -247,3 +247,58 @@
     inset: -1px;
   }
 }
+
+/* ── PWA / Standalone mode — native Android app feel ───────────────────────
+   Applied automatically when the app is installed and running in standalone
+   mode (no browser chrome). Uses env() safe-area variables for notch/home
+   indicator support on all devices.
+   ─────────────────────────────────────────────────────────────────────── */
+
+@media (display-mode: standalone) {
+  /* Prevent rubber-band overscroll — feels more native */
+  html {
+    overscroll-behavior: none;
+  }
+
+  /* Body fills the full safe-area including notch / home indicator */
+  body {
+    /* Push content below the status bar on iOS/Android */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    /* Disable text selection in app-like surfaces */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Re-enable text selection for content-heavy elements */
+  body p,
+  body h1,
+  body h2,
+  body h3,
+  body input,
+  body textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* Disable the grey tap highlight on interactive elements */
+  a,
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Smooth momentum scrolling on iOS WebKit */
+  .overflow-y-auto,
+  .overflow-y-scroll,
+  [style*="overflow-y"] {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Ensure fixed overlays (splash, offline, modals) always respect safe areas */
+.fixed {
+  padding-top:    max(0px, env(safe-area-inset-top));
+  padding-bottom: max(0px, env(safe-area-inset-bottom));
+}

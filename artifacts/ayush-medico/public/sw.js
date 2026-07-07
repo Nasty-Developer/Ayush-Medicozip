@@ -10,7 +10,7 @@
  * Version bump SW_VERSION to force re-install on next deploy.
  */
 
-const SW_VERSION = '1.0.0';
+const SW_VERSION = '1.1.0';
 const STATIC_CACHE  = `ayush-medico-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `ayush-medico-runtime-${SW_VERSION}`;
 
@@ -19,7 +19,11 @@ const PRECACHE = [
   '/offline.html',
   '/icon-192.png',
   '/icon-512.png',
-  '/manifest.json',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
+  '/favicon.svg',
+  '/site.webmanifest',
 ];
 
 // ── Install ──────────────────────────────────────────────────────────────────

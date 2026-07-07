@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Phone, MapPin, MessageCircle, ShieldCheck, Clock, Star } from "lucide-react";
 import MedicineSearch from "@/components/MedicineSearch";
+import PWAInstallButtons from "@/components/PWAInstallButtons";
 import { useAnnouncement } from "@/context/AnnouncementContext";
 
 const floatingPills = [
@@ -125,6 +126,16 @@ export default function Hero() {
                 <MessageCircle size={18} className="text-[#25D366]" />
                 WhatsApp
               </a>
+            </motion.div>
+
+            {/* PWA Install & APK Download Buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.35 }}
+              className="mt-1"
+            >
+              <PWAInstallButtons />
             </motion.div>
 
             {/* Quick Medicine Search */}
