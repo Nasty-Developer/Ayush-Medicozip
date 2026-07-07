@@ -1,0 +1,146 @@
+We are now entering the final development phase of the Ayush Medico project.
+
+Please DO NOT create a new project or duplicate any files.
+
+Inspect the existing codebase and complete ONLY the remaining unfinished features.
+
+==================================================
+PRIORITY 1 - LOGIN REQUIRED FOR MEDICINE REQUEST
+==================================================
+
+This is the highest priority.
+
+A customer MUST NOT be able to request any medicine without authentication.
+
+Required flow:
+
+Customer visits website
+↓
+
+Customer searches medicine
+↓
+
+Customer selects medicine
+↓
+
+Customer clicks "Request Medicine"
+
+IF the customer is NOT logged in:
+
+• Do NOT open the request form.
+• Show a professional dialog:
+
+"Please Sign In or Create an Account to continue."
+
+Buttons:
+
+• Sign In
+• Create Account
+
+After successful Login or Sign Up:
+
+Automatically return the customer to the same medicine they selected.
+
+Do NOT make them search again.
+
+Open the Request Medicine form automatically.
+
+Do NOT lose any entered information.
+
+==================================================
+PRIORITY 2 - REQUEST FORM
+==================================================
+
+Only authenticated users can submit requests.
+
+Automatically attach:
+
+• Firebase UID
+• Customer Name
+• Email
+• Phone Number
+• Timestamp
+
+Save all of these in Firestore.
+
+==================================================
+PRIORITY 3 - CAMERA BUG
+==================================================
+
+This bug still exists.
+
+Uploading an image from Gallery works.
+
+Capturing an image using Camera reloads the entire website.
+
+Find the exact root cause.
+
+Do NOT use temporary workarounds.
+
+Investigate:
+
+• form submission
+• event.preventDefault()
+• button type
+• file input
+• camera component
+• React state
+• routing
+• browser reload
+
+The website must NEVER reload after camera capture.
+
+The captured image should preview instantly.
+
+==================================================
+PRIORITY 4 - ADMIN PANEL
+==================================================
+
+The Admin Panel already exists.
+
+Do NOT create another one.
+
+Fix the existing implementation if necessary.
+
+Verify:
+
+• Admin Login
+• Admin Dashboard
+• Medicine Requests
+• Request Details
+• Status Updates
+
+==================================================
+PRIORITY 5 - MEDICINE SEARCH
+==================================================
+
+Keep the existing medicine search implementation.
+
+If an external API is not suitable, do not remove the existing workflow.
+
+Users should still be able to manually type a medicine name and submit a request.
+
+==================================================
+IMPORTANT
+==================================================
+
+• Reuse existing components.
+• Reuse existing routes.
+• Reuse existing Firebase configuration.
+• Do NOT create duplicate files.
+• Do NOT redesign the project unnecessarily.
+• Only modify existing code where required.
+
+Before each fix:
+
+Explain the root cause.
+
+Mention the file(s) being modified.
+
+After every fix:
+
+Test the feature.
+
+Verify it actually works.
+
+Only mark a task complete after confirming it works correctly.
