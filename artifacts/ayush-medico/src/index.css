@@ -297,8 +297,6 @@
   }
 }
 
-/* Ensure fixed overlays (splash, offline, modals) always respect safe areas */
-.fixed {
-  padding-top:    max(0px, env(safe-area-inset-top));
-  padding-bottom: max(0px, env(safe-area-inset-bottom));
-}
+/* Safe-area padding is handled per-component (LoadingScreen, OfflinePage,
+   FloatingWhatsApp) via inline styles. A blanket rule on .fixed would break
+   every other fixed-position element (Header, BackToTop, ScrollProgress). */

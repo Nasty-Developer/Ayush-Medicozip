@@ -92,6 +92,11 @@ export default function Hero() {
               Fast medicine availability, genuine medicines, healthcare essentials, friendly service and trusted support — right here in your neighborhood.
             </motion.p>
 
+            {/*
+              Mobile: Call Now + Get Directions share one row (flex-1 = equal
+              width), WhatsApp is full-width on its own row.
+              Tablet/desktop (sm+): all three sit in a single natural-width row.
+            */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -101,7 +106,8 @@ export default function Hero() {
               <a
                 href="tel:+919833273838"
                 data-testid="hero-call-btn"
-                className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/30 hover:bg-primary/90 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-200"
+                className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/30 hover:bg-primary/90 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-200 whitespace-nowrap"
+                style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <Phone size={18} />
                 Call Now
@@ -111,17 +117,20 @@ export default function Hero() {
                 target="_blank"
                 rel="noopener noreferrer"
                 data-testid="hero-directions-btn"
-                className="flex items-center gap-2 px-6 py-3 bg-secondary text-white font-semibold rounded-xl shadow-lg shadow-secondary/30 hover:bg-secondary/90 hover:-translate-y-0.5 transition-all duration-200"
+                className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-secondary text-white font-semibold rounded-xl shadow-lg shadow-secondary/30 hover:bg-secondary/90 hover:-translate-y-0.5 transition-all duration-200 whitespace-nowrap"
+                style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <MapPin size={18} />
                 Get Directions
               </a>
+              {/* Full-width on mobile so it fills its own row cleanly */}
               <a
                 href="https://wa.me/919833273838"
                 target="_blank"
                 rel="noopener noreferrer"
                 data-testid="hero-whatsapp-btn"
-                className="flex items-center gap-2 px-6 py-3 bg-card text-foreground font-semibold rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 hover:-translate-y-0.5 transition-all duration-200"
+                className="flex w-full sm:w-auto items-center justify-center gap-2 px-6 py-3 bg-card text-foreground font-semibold rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 hover:-translate-y-0.5 transition-all duration-200"
+                style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <MessageCircle size={18} className="text-[#25D366]" />
                 WhatsApp
@@ -133,7 +142,7 @@ export default function Hero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.35 }}
-              className="mt-1"
+              className="mt-4"
             >
               <PWAInstallButtons />
             </motion.div>

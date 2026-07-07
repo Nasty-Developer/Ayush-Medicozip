@@ -15,29 +15,38 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function LoadingScreen() {
-  const [visible, setVisible] = useState(true);
+  // Only show the branded splash when the app is running as an installed PWA
+  // (standalone mode on Android/iOS). In a normal browser tab, skip it so
+  // Hero animations play immediately — they would otherwise complete hidden
+  // behind the splash and appear unanimated to the user.
+  const [visible, setVisible] = useState(() => {
+    try {
+      const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as any).standalone === true;
+      // Also hide immediately if already offline so OfflinePage can show.
+      return isStandalone && navigator.onLine;
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
-    // If the device is already offline on mount, hide immediately so
-    // OfflinePage (z-[200]) can show through without being blocked.
-    if (!navigator.onLine) {
-      setVisible(false);
-      return;
-    }
+    if (!visible) return;
 
-    // If connectivity drops *while* the splash is still showing, dismiss it
+    // If connectivity drops while the splash is still showing, dismiss it
     // immediately so the offline overlay is never hidden behind the splash.
     const handleOffline = () => setVisible(false);
     window.addEventListener("offline", handleOffline);
 
-    // Normal flow: show for 1.8 s then fade away.
+    // Normal standalone flow: show for 1.8 s then fade away.
     const timer = setTimeout(() => setVisible(false), 1800);
 
     return () => {
       clearTimeout(timer);
       window.removeEventListener("offline", handleOffline);
     };
-  }, []);
+  }, [visible]);
 
   return (
     <AnimatePresence>
