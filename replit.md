@@ -78,6 +78,24 @@ pnpm --filter @workspace/api-spec run generate
 | `/admin` | Admin dashboard |
 | `/track/:requestId` | Order tracker |
 
+## Setup Status (completed on Replit)
+
+The following steps were completed to get the project running on Replit:
+
+1. **Dependencies installed** — `pnpm install` ran successfully across all 9 workspace packages.
+2. **Database schema applied** — `pnpm --filter @workspace/db run push` synced the full Drizzle schema (users, admin_users, categories, products, inventory, addresses, coupons, orders, order_items) to the Replit-managed PostgreSQL database.
+3. **Firebase secrets configured** — the following secrets are set in Replit Secrets and loaded at runtime:
+   - `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`
+   - `FIREBASE_SERVICE_ACCOUNT_JSON` — API server uses this for full Admin SDK (token verification + admin writes)
+4. **Admin email configured** — `VITE_ADMIN_EMAIL` is set in shared env vars; the auth middleware uses it to gate admin routes.
+5. **Both workflows running** — frontend (port 18169) and API server (port 8080) start automatically.
+
+### Known security issues to address (see proposed follow-up tasks)
+- Broken access control on `/users/:id` and `/orders/:id` — ownership checks missing.
+- Admin auth fails open if `VITE_ADMIN_EMAIL` is unset (now mitigated by setting it above).
+- `VITE_FIREBASE_PROJECT_ID` is read by the API server — should be a separate non-`VITE_` secret.
+
 ## User Preferences
 
 - Keep the project's existing monorepo structure — do not restructure or migrate it.
