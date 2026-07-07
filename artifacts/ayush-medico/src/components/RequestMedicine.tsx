@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Image as ImageIcon,
   Link as LinkIcon,
+  LogIn,
 } from "lucide-react";
 import { Link } from "wouter";
 import {
@@ -39,6 +40,7 @@ import { isFirebaseConfigured } from "@/lib/firebase";
 import { checkDeliveryEligibility, STORE_LOCATION_LABEL } from "@/lib/deliveryZone";
 import { generateOrderId } from "@/lib/orderId";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import SignInModal from "@/components/customer/SignInModal";
 
 const requestSchema = z.object({
   customerName: z.string().min(2, "Please enter your full name"),
@@ -76,7 +78,7 @@ export default function RequestMedicine() {
   const inView = useInView(ref, { once: true, margin: "-100px" });
   const { toast } = useToast();
   const { prefillMedicine, requestToken } = useRequestMedicine();
-  const { user: customerUser } = useCustomerAuth();
+  const { user: customerUser, loading: customerLoading } = useCustomerAuth();
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
   const [medicinePhotoFile, setMedicinePhotoFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState<
@@ -85,6 +87,10 @@ export default function RequestMedicine() {
   const [submitted, setSubmitted] = useState(false);
   const [lastRequestId, setLastRequestId] = useState("");
   const [prescriptionError, setPrescriptionError] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authDefaultMode, setAuthDefaultMode] = useState<"signin" | "signup">("signin");
+  const prescriptionInputRef = useRef<HTMLInputElement>(null);
+  const medicinePhotoInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestSchema),
@@ -117,6 +123,19 @@ export default function RequestMedicine() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestToken]);
+
+  // Priority 2: Auto-fill form fields from Firebase user profile when the
+  // customer signs in. Only fills empty fields — never overwrites user input.
+  useEffect(() => {
+    if (!customerUser) return;
+    if (customerUser.displayName && !form.getValues("customerName")) {
+      form.setValue("customerName", customerUser.displayName, { shouldValidate: false });
+    }
+    if (customerUser.phoneNumber && !form.getValues("mobileNumber")) {
+      form.setValue("mobileNumber", customerUser.phoneNumber, { shouldValidate: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerUser]);
 
   // ── Save to Firestore ────────────────────────────────────────────────────────
   // Writes to the "inquiries" collection (which has allow create: if true in
@@ -293,6 +312,12 @@ export default function RequestMedicine() {
   };
 
   const handleSendRequest = async (values: RequestFormValues) => {
+    // Priority 1: block unauthenticated submission
+    if (!customerUser) {
+      setAuthDefaultMode("signin");
+      setShowAuthModal(true);
+      return;
+    }
     if (!requirePrescription()) return;
     if (eligibility.status !== "eligible") {
       toast({
@@ -327,6 +352,11 @@ export default function RequestMedicine() {
   };
 
   const handleWhatsApp = async (values: RequestFormValues) => {
+    if (!customerUser) {
+      setAuthDefaultMode("signin");
+      setShowAuthModal(true);
+      return;
+    }
     if (!requirePrescription()) return;
     setSubmitting("whatsapp");
     try {
@@ -348,6 +378,11 @@ export default function RequestMedicine() {
   };
 
   const handleEmail = async (values: RequestFormValues) => {
+    if (!customerUser) {
+      setAuthDefaultMode("signin");
+      setShowAuthModal(true);
+      return;
+    }
     if (!requirePrescription()) return;
     setSubmitting("email");
     try {
@@ -808,13 +843,10 @@ export default function RequestMedicine() {
                     </div>
 
                     <div>
-                      <label
-                        htmlFor="request-prescription"
-                        className="block text-sm font-medium text-foreground mb-2"
-                      >
+                      <p className="block text-sm font-medium text-foreground mb-2">
                         Upload Prescription{" "}
                         <span className="text-destructive font-normal">(Required)</span>
-                      </label>
+                      </p>
                       {prescriptionFile ? (
                         <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-border bg-muted/50">
                           <div className="flex items-center gap-2 min-w-0">
@@ -837,8 +869,11 @@ export default function RequestMedicine() {
                           </button>
                         </div>
                       ) : (
-                        <label
-                          htmlFor="request-prescription"
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => prescriptionInputRef.current?.click()}
+                          onKeyDown={(e) => e.key === "Enter" && prescriptionInputRef.current?.click()}
                           className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed cursor-pointer transition-all duration-200 text-sm ${
                             prescriptionError
                               ? "border-destructive/50 bg-destructive/5 text-destructive"
@@ -847,7 +882,7 @@ export default function RequestMedicine() {
                         >
                           <Paperclip size={16} />
                           Choose a photo or PDF of your prescription (max 10MB)
-                        </label>
+                        </div>
                       )}
 
                       {/* Input intentionally moved outside <form> — see below */}
@@ -857,13 +892,10 @@ export default function RequestMedicine() {
                     </div>
 
                     <div>
-                      <label
-                        htmlFor="request-medicine-photo"
-                        className="block text-sm font-medium text-foreground mb-2"
-                      >
+                      <p className="block text-sm font-medium text-foreground mb-2">
                         Photo of Medicine{" "}
                         <span className="text-muted-foreground font-normal">(Optional — helps us find the exact brand)</span>
-                      </label>
+                      </p>
                       {medicinePhotoFile ? (
                         <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-border bg-muted/50">
                           <div className="flex items-center gap-2 min-w-0">
@@ -881,13 +913,16 @@ export default function RequestMedicine() {
                           </button>
                         </div>
                       ) : (
-                        <label
-                          htmlFor="request-medicine-photo"
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => medicinePhotoInputRef.current?.click()}
+                          onKeyDown={(e) => e.key === "Enter" && medicinePhotoInputRef.current?.click()}
                           className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-border hover:border-primary/40 hover:bg-primary/5 cursor-pointer transition-all duration-200 text-sm text-muted-foreground"
                         >
                           <ImageIcon size={16} />
                           Choose a photo of the medicine strip/box
-                        </label>
+                        </div>
                       )}
                       {/* Input intentionally moved outside <form> — see below */}
                     </div>
@@ -915,56 +950,102 @@ export default function RequestMedicine() {
                     />
 
                     <div className="space-y-3 pt-2">
-                      {/* Primary: Send Request */}
-                      <button
-                        type="button"
-                        disabled={submitting !== null}
-                        onClick={form.handleSubmit(
-                          handleSendRequest,
-                          onInvalid,
-                        )}
-                        data-testid="button-send-request"
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-200"
-                      >
-                        {submitting === "send" ? (
-                          <Loader2 size={18} className="animate-spin" />
-                        ) : (
-                          <Send size={18} />
-                        )}
-                        Request Medicine Delivery
-                      </button>
+                      {/*
+                        Priority 1: Auth gate — show sign-in prompt instead of
+                        submit buttons when the customer is not logged in.
+                        - customerLoading: Firebase auth is still resolving → spinner
+                        - !customerUser: not signed in → sign-in / create account prompt
+                        - customerUser: signed in → normal submit buttons
+                        Form field values are preserved across auth state changes
+                        (React state is never cleared), so nothing is lost.
+                      */}
+                      {customerLoading ? (
+                        <div className="flex justify-center py-5">
+                          <Loader2 size={22} className="animate-spin text-muted-foreground" />
+                        </div>
+                      ) : !customerUser ? (
+                        <div className="rounded-2xl border border-border bg-muted/40 p-5 text-center space-y-4">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+                              <LogIn size={19} className="text-primary" />
+                            </div>
+                            <p className="text-sm font-semibold text-foreground">
+                              Please Sign In or Create an Account to continue
+                            </p>
+                            <p className="text-xs text-muted-foreground max-w-xs">
+                              Your form details will be saved. After signing in, simply click the request button.
+                            </p>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                              type="button"
+                              data-testid="button-auth-signin"
+                              onClick={() => { setAuthDefaultMode("signin"); setShowAuthModal(true); }}
+                              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200"
+                            >
+                              Sign In
+                            </button>
+                            <button
+                              type="button"
+                              data-testid="button-auth-signup"
+                              onClick={() => { setAuthDefaultMode("signup"); setShowAuthModal(true); }}
+                              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-primary/30 text-primary font-semibold rounded-xl hover:bg-primary/10 active:scale-[0.98] transition-all duration-200"
+                            >
+                              Create Account
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Primary: Send Request */}
+                          <button
+                            type="button"
+                            disabled={submitting !== null}
+                            onClick={form.handleSubmit(handleSendRequest, onInvalid)}
+                            data-testid="button-send-request"
+                            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-200"
+                          >
+                            {submitting === "send" ? (
+                              <Loader2 size={18} className="animate-spin" />
+                            ) : (
+                              <Send size={18} />
+                            )}
+                            Request Medicine Delivery
+                          </button>
 
-                      {/* Secondary: WhatsApp + Email */}
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <button
-                          type="button"
-                          disabled={submitting !== null}
-                          onClick={form.handleSubmit(handleWhatsApp, onInvalid)}
-                          data-testid="button-request-whatsapp"
-                          className="relative overflow-hidden flex items-center justify-center gap-2 flex-1 px-6 py-3 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/30 font-semibold rounded-xl hover:bg-[#25D366] hover:text-white active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
-                        >
-                          {submitting === "whatsapp" ? (
-                            <Loader2 size={17} className="animate-spin" />
-                          ) : (
-                            <MessageCircle size={17} />
-                          )}
-                          Request via WhatsApp
-                        </button>
-                        <button
-                          type="button"
-                          disabled={submitting !== null}
-                          onClick={form.handleSubmit(handleEmail, onInvalid)}
-                          data-testid="button-request-email"
-                          className="relative overflow-hidden flex items-center justify-center gap-2 flex-1 px-6 py-3 bg-primary/10 text-primary border border-primary/30 font-semibold rounded-xl hover:bg-primary hover:text-white active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
-                        >
-                          {submitting === "email" ? (
-                            <Loader2 size={17} className="animate-spin" />
-                          ) : (
-                            <Mail size={17} />
-                          )}
-                          Request via Email
-                        </button>
-                      </div>
+                          {/* Secondary: WhatsApp + Email */}
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                              type="button"
+                              disabled={submitting !== null}
+                              onClick={form.handleSubmit(handleWhatsApp, onInvalid)}
+                              data-testid="button-request-whatsapp"
+                              className="relative overflow-hidden flex items-center justify-center gap-2 flex-1 px-6 py-3 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/30 font-semibold rounded-xl hover:bg-[#25D366] hover:text-white active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
+                            >
+                              {submitting === "whatsapp" ? (
+                                <Loader2 size={17} className="animate-spin" />
+                              ) : (
+                                <MessageCircle size={17} />
+                              )}
+                              Request via WhatsApp
+                            </button>
+                            <button
+                              type="button"
+                              disabled={submitting !== null}
+                              onClick={form.handleSubmit(handleEmail, onInvalid)}
+                              data-testid="button-request-email"
+                              className="relative overflow-hidden flex items-center justify-center gap-2 flex-1 px-6 py-3 bg-primary/10 text-primary border border-primary/30 font-semibold rounded-xl hover:bg-primary hover:text-white active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
+                            >
+                              {submitting === "email" ? (
+                                <Loader2 size={17} className="animate-spin" />
+                              ) : (
+                                <Mail size={17} />
+                              )}
+                              Request via Email
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </form>
 
@@ -982,8 +1063,16 @@ export default function RequestMedicine() {
                     attrs also ensures these inputs are never part of any native
                     form submission.
                     ────────────────────────────────────────────────────────────── */}
+                  {/*
+                    Priority 3 fix: file inputs are placed outside <form> AND
+                    now triggered exclusively via ref.current.click() from div
+                    role="button" elements above — no htmlFor association at all.
+                    This fully eliminates the camera-reload on iOS Safari and
+                    Android Chrome because there is zero form context attached
+                    to these inputs.
+                  */}
                   <input
-                    id="request-prescription"
+                    ref={prescriptionInputRef}
                     type="file"
                     accept="image/*,application/pdf"
                     onChange={handleFileChange}
@@ -991,7 +1080,7 @@ export default function RequestMedicine() {
                     className="sr-only"
                   />
                   <input
-                    id="request-medicine-photo"
+                    ref={medicinePhotoInputRef}
                     type="file"
                     accept="image/*"
                     onChange={handleMedicinePhotoChange}
@@ -1004,6 +1093,14 @@ export default function RequestMedicine() {
           </AnimatePresence>
         </motion.div>
       </div>
+
+      {/* Priority 1: Sign-in dialog — shown when unauthenticated user tries to submit */}
+      {showAuthModal && (
+        <SignInModal
+          defaultMode={authDefaultMode}
+          onClose={() => setShowAuthModal(false)}
+        />
+      )}
     </section>
   );
 }

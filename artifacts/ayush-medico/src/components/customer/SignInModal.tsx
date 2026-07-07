@@ -15,10 +15,16 @@ function GoogleIcon() {
   );
 }
 
-export default function SignInModal({ onClose }: { onClose: () => void }) {
+export default function SignInModal({
+  onClose,
+  defaultMode = "signin",
+}: {
+  onClose: () => void;
+  defaultMode?: "signin" | "signup";
+}) {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useCustomerAuth();
   const { toast } = useToast();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup">(defaultMode);
   const [loading, setLoading] = useState<"google" | "email" | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
