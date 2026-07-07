@@ -54,6 +54,14 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    // Proxy /api/* requests to the Express API server so the OpenFDA API key
+    // is never exposed to the browser. The api-server artifact runs on port 8080.
+    proxy: {
+      "/api": {
+        target: `http://localhost:${process.env.API_SERVER_PORT ?? 8080}`,
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     port,

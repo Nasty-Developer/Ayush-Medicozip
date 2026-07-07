@@ -1,0 +1,118 @@
+We are NOT using eVitalRx anymore.
+
+Remove any planned eVitalRx integration.
+
+We will use the OpenFDA API for medicine search instead.
+
+I will provide my OpenFDA API key.
+
+API Key:
+e1k4NhUwtqf6g3Ks3aX6cehmYHG7rusaCyaHfDEg
+
+Please configure it securely using Replit Secrets.
+
+Requirements:
+
+1. Store the API key only in Replit Secrets.
+2. Do NOT hardcode the API key in the source code.
+3. Read the key from environment variables.
+4. Create a backend service that communicates with the OpenFDA API.
+5. Never expose the API key to the frontend.
+
+==================================================
+
+MEDICINE SEARCH
+
+Create a professional medicine search experience.
+
+User types:
+
+Para
+
+↓
+
+Show live search suggestions.
+
+When a medicine is selected, display:
+
+• Medicine Name
+• Generic Name
+• Dosage Form
+• Manufacturer (if available)
+• Active Ingredients (if available)
+
+Each medicine card should contain:
+
+Request Medicine
+
+NOT Add to Cart.
+
+==================================================
+
+LOGIN REQUIREMENT
+
+Users must be logged in before requesting medicines.
+
+If not logged in:
+
+Show:
+
+"Please sign in to request medicines."
+
+Redirect to Login.
+
+After login:
+
+Return the user to the selected medicine.
+
+==================================================
+
+MEDICINE REQUEST
+
+When the user clicks Request Medicine:
+
+Open the existing request form.
+
+Keep the current request workflow.
+
+Do NOT replace it.
+
+==================================================
+
+IMPORTANT
+
+OpenFDA does NOT provide my pharmacy inventory.
+
+Therefore:
+
+Medicine Search = OpenFDA API
+
+Medicine Availability = Admin Panel
+
+Admin still decides:
+
+• Available
+• Out of Stock
+• Alternative Available
+
+==================================================
+
+Do NOT remove any existing features.
+
+Reuse the existing request form.
+
+Reuse the existing Admin Panel.
+
+Only integrate OpenFDA medicine search into the current project.
+
+After implementation:
+
+Test medicine search.
+
+Verify search suggestions work.
+
+Verify medicine selection works.
+
+Verify request submission still works.
+
+Explain every file you modified.
