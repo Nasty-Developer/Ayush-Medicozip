@@ -1,0 +1,45 @@
+{
+  "$schema": "https://capacitorjs.com/schema/config/1.0.0.json",
+  "appId": "com.ayushmedico.app",
+  "appName": "Ayush Medico",
+  "webDir": "artifacts/ayush-medico/dist/public",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#1e6ca4",
+    "webContentsDebuggingEnabled": false,
+    "minWebViewVersion": 60,
+    "useLegacyBridge": false
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "backgroundColor": "#1e6ca4"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#1e6ca4",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "iosSpinnerStyle": "small",
+      "spinnerColor": "#ffffff"
+    },
+    "StatusBar": {
+      "style": "Light",
+      "backgroundColor": "#1e6ca4",
+      "overlaysWebView": false
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}
