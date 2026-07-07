@@ -137,15 +137,12 @@ export default function Hero() {
               </a>
             </motion.div>
 
-            {/* PWA Install & APK Download Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.35 }}
-              className="mt-4"
-            >
-              <PWAInstallButtons />
-            </motion.div>
+            {/*
+              PWA Install button — animates itself in when the browser fires
+              a BeforeInstallPrompt; returns null otherwise so no empty gap
+              appears in the Hero layout.
+            */}
+            <PWAInstallButtons />
 
             {/* Quick Medicine Search */}
             <motion.div
