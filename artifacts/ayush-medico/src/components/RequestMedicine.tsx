@@ -850,15 +850,7 @@ export default function RequestMedicine() {
                         </label>
                       )}
 
-                      <input
-                        id="request-prescription"
-                        name="prescription"
-                        type="file"
-                        accept="image/*,application/pdf"
-                        onChange={handleFileChange}
-                        data-testid="input-prescription-file"
-                        className="sr-only"
-                      />
+                      {/* Input intentionally moved outside <form> — see below */}
                       {prescriptionError && (
                         <p className="text-xs text-destructive mt-1.5">{prescriptionError}</p>
                       )}

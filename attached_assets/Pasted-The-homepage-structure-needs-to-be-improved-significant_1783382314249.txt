@@ -1,0 +1,212 @@
+The homepage structure needs to be improved significantly.
+
+Right now the website looks like a normal pharmacy website.
+
+I want it to feel like a modern Medicine Delivery Platform similar to Blinkit, Apollo 24/7 or PharmEasy, while still keeping Ayush Medico branding.
+
+IMPORTANT:
+Do NOT remove existing sections.
+Do NOT redesign everything from scratch.
+Improve the existing layout and reuse existing components wherever possible.
+
+=====================================================
+HOMEPAGE FLOW
+=====================================================
+
+I want the homepage order to be:
+
+1. Hero Section
+- Search Medicines
+- Request Medicine
+- Call
+- WhatsApp
+- Directions
+
+2. Fast Medicine Search
+Connected with the eVitalRx API.
+
+User types:
+
+"Dol"
+
+Dropdown suggestions appear.
+
+Example:
+
+Dolo 650
+Dolo 500
+Dolo Cold
+
+Selecting a medicine should immediately show a Request Medicine button.
+
+=====================================================
+
+3. DELIVERY SECTION (Move this near the top)
+
+The Delivery section should appear BEFORE "New Arrivals".
+
+Currently the delivery request form is too far down the page.
+
+Customers should immediately know:
+
+✓ Home Delivery Available
+✓ Prescription Upload
+✓ Fast Verification
+✓ Secure Payment
+✓ Quick Delivery
+
+Add beautiful delivery cards.
+
+Example:
+
+🚚 Same Day Delivery
+
+📍 Delivering in Kurla West & Nearby
+
+💊 Genuine Medicines
+
+🛡 Verified Pharmacy
+
+⏱ Fast Verification
+
+=====================================================
+
+4. HOW IT WORKS
+
+Create a beautiful timeline.
+
+Step 1
+
+Search Medicine
+
+↓
+
+Step 2
+
+Login
+
+↓
+
+Step 3
+
+Upload Prescription
+
+↓
+
+Step 4
+
+Submit Request
+
+↓
+
+Step 5
+
+Admin Verifies Medicine
+
+↓
+
+Step 6
+
+Receive Payment Link
+
+↓
+
+Step 7
+
+Payment Success
+
+↓
+
+Step 8
+
+Medicine Delivered
+
+=====================================================
+
+5. NEW ARRIVALS
+
+Keep existing.
+
+=====================================================
+
+6. EXCLUSIVE MEDICINES
+
+Keep existing.
+
+=====================================================
+
+7. ABOUT US
+
+Keep existing.
+
+=====================================================
+
+8. SERVICES
+
+Keep existing.
+
+=====================================================
+
+9. PRODUCT CATEGORIES
+
+Keep existing.
+
+=====================================================
+
+10. WHY CHOOSE US
+
+Keep existing.
+
+=====================================================
+
+11. TESTIMONIALS
+
+Keep existing.
+
+=====================================================
+
+12. FAQ
+
+Keep existing.
+
+=====================================================
+
+13. REQUEST MEDICINE
+
+Keep the existing request form.
+
+Improve the design.
+
+Do NOT remove it.
+
+=====================================================
+
+14. CONTACT
+
+Keep existing.
+
+=====================================================
+
+GENERAL IMPROVEMENTS
+
+Improve spacing.
+
+Improve typography.
+
+Improve section transitions.
+
+Use professional pharmacy illustrations/icons.
+
+Add subtle animations.
+
+Improve mobile responsiveness.
+
+Keep everything clean and premium.
+
+Do NOT create duplicate pages.
+
+Do NOT remove existing functionality.
+
+Reuse existing components wherever possible.
+
+The website should feel like a professional medicine delivery platform instead of a simple medical store website.

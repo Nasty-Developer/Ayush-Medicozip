@@ -1,0 +1,341 @@
+You are working on my existing production project "Ayush Medico".
+
+DO NOT create a new application.
+DO NOT replace existing functionality.
+DO NOT redesign pages unnecessarily.
+
+First inspect the entire project and preserve all existing working features.
+
+==================================================================
+PART 1 - MEDICINE SEARCH (eVitalRx API)
+==================================================================
+
+I have provided my eVitalRx API credentials.
+
+Configure the API correctly using Replit Secrets.
+
+Do NOT hardcode the API key.
+
+Create a professional Medicine Search section.
+
+Workflow:
+
+Customer starts typing:
+
+"Dol"
+
+↓
+
+Show live dropdown suggestions from the API.
+
+Example:
+
+• Dolo 650
+• Dolo 500
+• Dolo Cold
+• Dolo Plus
+
+When the customer selects a medicine, display:
+
+• Medicine Name
+• Generic Name (if available)
+• Manufacturer
+• Strength
+• Dosage Form
+
+Each medicine card should contain:
+
+Request Medicine
+
+There should NOT be an Add to Cart.
+
+This is NOT an ecommerce website.
+
+It is a Medicine Request platform.
+
+==================================================================
+PART 2 - LOGIN REQUIRED
+==================================================================
+
+The customer MUST be signed in before submitting any medicine request.
+
+If a guest clicks Request Medicine:
+
+Show:
+
+"Please sign in to continue."
+
+Redirect to Login.
+
+After successful login:
+
+Return the customer to the same medicine page.
+
+Do NOT lose the selected medicine.
+
+Do NOT reset the form.
+
+==================================================================
+PART 3 - REQUEST FLOW
+==================================================================
+
+After login:
+
+Customer clicks:
+
+Request Medicine
+
+Then open the existing request form.
+
+The customer must enter:
+
+• Delivery Address
+• Name
+• Phone Number
+• Pincode
+• City
+• State
+• Landmark (optional)
+• Notes (optional)
+
+Image Upload:
+
+Customer can
+
+• Upload Prescription
+OR
+• Capture using Camera
+
+CRITICAL BUG:
+
+Uploading from Gallery works.
+
+Capturing from Camera reloads the entire website.
+
+Find the exact root cause.
+
+Do NOT apply temporary fixes.
+
+Check:
+
+• form submission
+• event.preventDefault()
+• button type
+• camera component
+• file input
+• React state
+• browser reload
+
+The website must NEVER reload after camera capture.
+
+The selected image should preview immediately.
+
+==================================================================
+PART 4 - FIRESTORE
+==================================================================
+
+When the request is submitted save:
+
+medicineName
+
+medicineId
+
+customer UID
+
+customer email
+
+customer name
+
+phone
+
+address
+
+prescription image
+
+status = Pending Verification
+
+timestamp
+
+==================================================================
+PART 5 - ADMIN PANEL
+==================================================================
+
+The Admin Panel already exists.
+
+DO NOT create another Admin Panel.
+
+The problem is that the current Admin Panel is not working correctly.
+
+Fix the existing implementation.
+
+Check:
+
+React Router
+
+Protected Routes
+
+Firebase Auth
+
+Admin Role
+
+Firestore Queries
+
+Routing
+
+Broken imports
+
+Verify:
+
+/admin
+
+/admin/login
+
+/admin/dashboard
+
+must work.
+
+Admin should see all medicine requests.
+
+==================================================================
+PART 6 - ADMIN VERIFICATION
+==================================================================
+
+Admin opens request.
+
+Admin checks medicine availability.
+
+Buttons:
+
+Available
+
+Out Of Stock
+
+Alternative Available
+
+If Available:
+
+Admin enters:
+
+Price
+
+Quantity
+
+Delivery Notes
+
+Clicks:
+
+Send Payment Request
+
+==================================================================
+PART 7 - RAZORPAY
+==================================================================
+
+Do NOT implement payments yet.
+
+Prepare the project so Razorpay can be integrated later.
+
+Payment flow should be:
+
+Admin
+
+↓
+
+Payment Request
+
+↓
+
+Customer receives notification
+
+↓
+
+Customer pays
+
+↓
+
+Payment Success
+
+↓
+
+Order Confirmed
+
+Leave proper placeholders for Razorpay integration.
+
+==================================================================
+PART 8 - WHATSAPP
+==================================================================
+
+Existing WhatsApp functionality already exists.
+
+Reuse it.
+
+Do NOT recreate it.
+
+Send notifications for:
+
+Payment Request
+
+Order Confirmed
+
+Order Cancelled
+
+==================================================================
+PART 9 - DELIVERY STATUS
+==================================================================
+
+Do NOT build delivery partner integration yet.
+
+Leave placeholders for:
+
+Porter
+
+Rapido
+
+Shiprocket
+
+Future statuses:
+
+Preparing
+
+Packed
+
+Out For Delivery
+
+Delivered
+
+==================================================================
+PART 10 - IMPORTANT
+==================================================================
+
+DO NOT create duplicate files.
+
+DO NOT create duplicate routes.
+
+DO NOT create duplicate Firebase files.
+
+Reuse the existing architecture.
+
+Modify existing files only.
+
+Only create a new file if absolutely necessary.
+
+Before every modification:
+
+Explain
+
+Root Cause
+
+Files Modified
+
+Reason
+
+After every fix:
+
+Test it.
+
+Verify it.
+
+Then continue.
+
+Do NOT tell me something is working unless you have actually verified it.
+
+My goal is a professional production-ready medicine request platform, not a demo project.
