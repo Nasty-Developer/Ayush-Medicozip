@@ -889,15 +889,7 @@ export default function RequestMedicine() {
                           Choose a photo of the medicine strip/box
                         </label>
                       )}
-                      <input
-                        id="request-medicine-photo"
-                        name="medicinePhoto"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleMedicinePhotoChange}
-                        data-testid="input-medicine-photo"
-                        className="sr-only"
-                      />
+                      {/* Input intentionally moved outside <form> — see below */}
                     </div>
 
                     <FormField
@@ -975,6 +967,37 @@ export default function RequestMedicine() {
                       </div>
                     </div>
                   </form>
+
+                  {/*
+                    ── Root cause of camera-reload bug ────────────────────────────
+                    On iOS Safari, <input type="file"> that lives inside a <form>
+                    causes a full page reload when the user returns from the native
+                    camera or photo-library picker. iOS suspends the browser tab
+                    while the camera app is in the foreground; on resume it treats
+                    the tab as a "form navigation" and reloads to the current URL.
+
+                    Fix: move both file inputs OUTSIDE the <form> element. The
+                    <label htmlFor> links still work — browsers match labels to
+                    inputs by id, not by form membership. Removing the name=""
+                    attrs also ensures these inputs are never part of any native
+                    form submission.
+                    ────────────────────────────────────────────────────────────── */}
+                  <input
+                    id="request-prescription"
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleFileChange}
+                    data-testid="input-prescription-file"
+                    className="sr-only"
+                  />
+                  <input
+                    id="request-medicine-photo"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleMedicinePhotoChange}
+                    data-testid="input-medicine-photo"
+                    className="sr-only"
+                  />
                 </Form>
               </motion.div>
             )}

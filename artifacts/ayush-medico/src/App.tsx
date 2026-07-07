@@ -19,6 +19,8 @@ import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
 import RequestMedicine from "@/components/RequestMedicine";
 import GeneralInquiry from "@/components/GeneralInquiry";
+import DeliveryFeatures from "@/components/DeliveryFeatures";
+import HowItWorks from "@/components/HowItWorks";
 import { AnnouncementProvider } from "@/context/AnnouncementContext";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
