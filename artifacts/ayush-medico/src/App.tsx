@@ -42,6 +42,8 @@ function PublicSite() {
       <Header />
       <main>
         <Hero />
+        <DeliveryFeatures />
+        <HowItWorks />
         <NewArrivals />
         <SpecialMedicines />
         <About />
