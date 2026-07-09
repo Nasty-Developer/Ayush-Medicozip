@@ -1,6 +1,6 @@
 ---
-name: Ayush Medico PostgreSQL schema
-description: Complete Drizzle schema for the pharmacy platform; key design decisions and known compat issues.
+name: Ayush Medico PostgreSQL schema + Firestore medicine fields
+description: Complete Drizzle schema for the pharmacy platform; Firestore medicine document shape; key design decisions and known compat issues.
 ---
 
 ## Tables (lib/db/src/schema/)
@@ -24,3 +24,45 @@ description: Complete Drizzle schema for the pharmacy platform; key design decis
 - Public (no auth): GET /categories, GET /products, GET /products/:id, GET /categories/:id
 - requireAuth only: POST /orders, GET /orders/:id, GET /orders/by-order-id/:orderId, GET/POST /users/*
 - requireAuth + requireAdminEmail: all write endpoints for categories/products/inventory/coupons, GET /orders (list), PUT/PATCH /orders
+
+## Firestore `medicines` collection document shape
+All fields are optional except `name`. Designed for future MediVision Gold sync without schema changes.
+
+```
+name:                  string   (required)
+category:              string   (legacy plain name — kept for backwards-compat)
+categoryId:            string   (Firestore category doc ID)
+categoryName:          string   (denormalized for display speed)
+brand:                 string   (legacy plain name)
+brandId:               string   (Firestore brand doc ID)
+brandName:             string   (denormalized)
+manufacturer:          string
+saltComposition:       string
+prescriptionRequired:  boolean  (Rx flag)
+sku:                   string   (unique per pharmacy — MediVision Gold key)
+barcode:               string   (EAN/UPC for scanning)
+packSize:              string   (e.g. "10 tablets", "100ml")
+batchNumber:           string
+expiryDate:            string   (ISO date "YYYY-MM-DD")
+stockQty:              number
+lowStockAlert:         number   (threshold for alert)
+hsnCode:               string   (for GST filing)
+gst:                   number   (GST %)
+sellingPrice:          number
+mrp:                   number
+discount:              number   (%)
+offerPrice:            number   (optional promo price, overrides sellingPrice)
+stockStatus:           "in_stock" | "out_of_stock" | "coming_soon"
+status:                "active" | "inactive"
+featured:              boolean  (shows Featured badge)
+showInNewArrivals:     boolean
+showInSpecialMedicines:boolean
+description:           string
+imageUrl:              string
+metaTitle:             string   (SEO, max 70 chars)
+metaDescription:       string   (SEO, max 160 chars)
+order:                 number   (for sorting)
+createdAt, updatedAt:  Timestamp
+```
+
+**Why both `category`/`categoryId`/`categoryName`**: Old documents may only have `category`. Init logic now checks `categoryId` first, then falls back to `categoryName`/`category` name-matching, then falls back to first available category — preserving all existing records.

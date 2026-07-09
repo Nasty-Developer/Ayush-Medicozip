@@ -137,7 +137,11 @@ export function subscribeToDoc(
   onData: (doc: FireDoc | null) => void,
   onError?: (err: Error) => void
 ): Unsubscribe {
-  if (!db) return () => {};
+  if (!db) {
+    // Firebase not configured — resolve immediately with null
+    setTimeout(() => onData(null), 0);
+    return () => {};
+  }
   return onSnapshot(
     doc(db, collectionName, docId),
     (snap) => onData(snap.exists() ? { id: snap.id, ...snap.data() } : null),
@@ -151,7 +155,12 @@ export function subscribeToCollection(
   onData: (docs: FireDoc[]) => void,
   onError?: (err: Error) => void
 ): Unsubscribe {
-  if (!db) return () => {};
+  if (!db) {
+    // Firebase not configured — resolve immediately with empty array so
+    // consumers don't get stuck in a permanent loading state.
+    setTimeout(() => onData([]), 0);
+    return () => {};
+  }
   const q = constraints.length
     ? query(collection(db, collectionName), ...constraints)
     : collection(db, collectionName);

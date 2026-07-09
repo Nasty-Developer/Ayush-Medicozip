@@ -50,14 +50,11 @@ async function fetchMedicines(q: string): Promise<MedicineResult[]> {
   }
 }
 
+/** Offline fallback — searches only by medicine name (no hardcoded categories) */
 function staticFallback(q: string): MedicineResult[] {
   const lower = q.toLowerCase();
   return medicineCatalog
-    .filter(
-      (m) =>
-        m.name.toLowerCase().includes(lower) ||
-        m.category.toLowerCase().includes(lower),
-    )
+    .filter((m) => m.name.toLowerCase().includes(lower))
     .slice(0, 8)
     .map((m) => ({
       id: m.name,
