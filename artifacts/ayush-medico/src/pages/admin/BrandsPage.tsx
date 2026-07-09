@@ -1,34 +1,47 @@
-import { useEffect, useRef, useState } from "react";
+/**
+ * BrandsPage — Admin
+ *
+ * Changes from original:
+ *   • Real-time listener via useBrands hook (live updates everywhere).
+ *   • Duplicate name validation (case-insensitive, trimmed).
+ */
+
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Pencil, Trash2, X, Loader2, Building2, Upload } from "lucide-react";
-import { getCollection, addDocument, updateDocument, deleteDocument, orderBy } from "@/lib/firestoreHelpers";
+import { Plus, Pencil, Trash2, X, Loader2, Building2, Upload, AlertCircle } from "lucide-react";
+import { addDocument, updateDocument, deleteDocument } from "@/lib/firestoreHelpers";
 import { uploadBrandLogo } from "@/lib/storageHelpers";
+import { useBrands, type Brand } from "@/hooks/useBrands";
 import { useToast } from "@/hooks/use-toast";
 
-type Brand = {
-  id: string;
-  name: string;
-  logoUrl: string;
-  description: string;
-  website: string;
-  order: number;
-  enabled: boolean;
-};
-
-function BrandDialog({ brand, onClose, onSave }: {
+/* ── Dialog ───────────────────────────────────────────────────────────────── */
+function BrandDialog({ brand, allBrands, onClose, onSave }: {
   brand: Brand | null;
+  allBrands: Brand[];
   onClose: () => void;
   onSave: (data: Omit<Brand, "id">) => Promise<void>;
 }) {
-  const [name, setName] = useState(brand?.name ?? "");
-  const [logoUrl, setLogoUrl] = useState(brand?.logoUrl ?? "");
+  const [name,        setName]        = useState(brand?.name        ?? "");
+  const [logoUrl,     setLogoUrl]     = useState(brand?.logoUrl     ?? "");
   const [description, setDescription] = useState(brand?.description ?? "");
-  const [website, setWebsite] = useState(brand?.website ?? "");
-  const [enabled, setEnabled] = useState(brand?.enabled ?? true);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadPct, setUploadPct] = useState(0);
+  const [website,     setWebsite]     = useState(brand?.website     ?? "");
+  const [enabled,     setEnabled]     = useState(brand?.enabled     ?? true);
+  const [saving,      setSaving]      = useState(false);
+  const [uploading,   setUploading]   = useState(false);
+  const [uploadPct,   setUploadPct]   = useState(0);
+  const [nameError,   setNameError]   = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const validateName = (val: string) => {
+    const trimmed = val.trim();
+    const dup = allBrands.some(
+      (b) => b.id !== brand?.id && b.name.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    setNameError(dup ? "A brand with this name already exists." : "");
+    return !dup && trimmed.length > 0;
+  };
+
+  const handleNameChange = (val: string) => { setName(val); validateName(val); };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -36,33 +49,22 @@ function BrandDialog({ brand, onClose, onSave }: {
     setUploading(true);
     setUploadPct(0);
     try {
-      const tempId = brand?.id ?? `new_${Date.now()}`;
-      const url = await uploadBrandLogo(file, tempId, setUploadPct);
+      const url = await uploadBrandLogo(file, brand?.id ?? `new_${Date.now()}`, setUploadPct);
       setLogoUrl(url);
-    } catch {
-      // keep existing
-    } finally {
-      setUploading(false);
-    }
+    } catch { } finally { setUploading(false); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!validateName(name)) return;
     setSaving(true);
     try {
       await onSave({
-        name: name.trim(),
-        logoUrl,
-        description: description.trim(),
-        website: website.trim(),
-        enabled,
-        order: brand?.order ?? Date.now(),
+        name: name.trim(), logoUrl, description: description.trim(),
+        website: website.trim(), enabled, order: brand?.order ?? Date.now(),
       });
       onClose();
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   return (
@@ -79,15 +81,24 @@ function BrandDialog({ brand, onClose, onSave }: {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Brand Name *</label>
             <input
-              value={name} onChange={(e) => setName(e.target.value)} required
+              value={name} onChange={(e) => handleNameChange(e.target.value)} required
               placeholder="e.g. Sun Pharma, Cipla, Abbott"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+              className={`w-full px-3.5 py-2.5 rounded-xl border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-all ${
+                nameError ? "border-destructive focus:ring-destructive/30" : "border-border focus:ring-primary/40"
+              }`}
             />
+            {nameError && (
+              <p className="flex items-center gap-1.5 mt-1.5 text-xs text-destructive">
+                <AlertCircle size={11} /> {nameError}
+              </p>
+            )}
           </div>
 
+          {/* Logo */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Brand Logo</label>
             <div className="flex gap-3 items-start">
@@ -97,40 +108,35 @@ function BrandDialog({ brand, onClose, onSave }: {
                 </div>
               )}
               <div className="flex-1 space-y-2">
-                <input
-                  value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)}
+                <input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)}
                   placeholder="https://... (paste logo URL)"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-                />
-                <button type="button" onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
                   className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-border text-xs font-medium text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all w-full justify-center disabled:opacity-60">
-                  {uploading ? <><Loader2 size={12} className="animate-spin" /> Uploading {uploadPct}%</> : <><Upload size={12} /> Upload logo image</>}
+                  {uploading ? <><Loader2 size={12} className="animate-spin" /> Uploading {uploadPct}%</> : <><Upload size={12} /> Upload logo</>}
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoUpload} className="sr-only" />
               </div>
             </div>
           </div>
 
+          {/* Description */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Description</label>
-            <input
-              value={description} onChange={(e) => setDescription(e.target.value)}
+            <input value={description} onChange={(e) => setDescription(e.target.value)}
               placeholder="Short description of the brand"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-            />
+              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
           </div>
 
+          {/* Website */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Website (optional)</label>
-            <input
-              value={website} onChange={(e) => setWebsite(e.target.value)}
+            <input value={website} onChange={(e) => setWebsite(e.target.value)} type="url"
               placeholder="https://www.brand.com"
-              type="url"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-            />
+              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
           </div>
 
+          {/* Published toggle */}
           <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border">
             <div>
               <p className="text-sm font-medium text-foreground">Published</p>
@@ -143,8 +149,11 @@ function BrandDialog({ brand, onClose, onSave }: {
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all">Cancel</button>
-            <button type="submit" disabled={saving || uploading}
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving || uploading || !!nameError}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-70 transition-all">
               {saving && <Loader2 size={14} className="animate-spin" />}
               {brand ? "Save Changes" : "Add Brand"}
@@ -156,36 +165,22 @@ function BrandDialog({ brand, onClose, onSave }: {
   );
 }
 
+/* ── Page ─────────────────────────────────────────────────────────────────── */
 export default function BrandsPage() {
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dialog, setDialog] = useState<{ open: boolean; brand: Brand | null }>({ open: false, brand: null });
+  const { brands, loading } = useBrands();   // real-time, all (not just enabled)
+  const [dialog, setDialog]   = useState<{ open: boolean; brand: Brand | null }>({ open: false, brand: null });
   const [deleting, setDeleting] = useState<string | null>(null);
   const { toast } = useToast();
-
-  const load = async () => {
-    try {
-      const docs = await getCollection("brands", [orderBy("order")], "brands");
-      setBrands(docs as Brand[]);
-    } catch {
-      toast({ variant: "destructive", title: "Failed to load brands" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
 
   const handleSave = async (data: Omit<Brand, "id">) => {
     try {
       if (dialog.brand) {
-        await updateDocument("brands", dialog.brand.id, data, "brands");
-        toast({ title: "Brand updated" });
+        await updateDocument("brands", dialog.brand.id, data);
+        toast({ title: "Brand updated ✓" });
       } else {
-        await addDocument("brands", data, "brands");
-        toast({ title: "Brand added" });
+        await addDocument("brands", data);
+        toast({ title: "Brand added ✓" });
       }
-      await load();
     } catch {
       toast({ variant: "destructive", title: "Failed to save brand" });
       throw new Error("save failed");
@@ -195,19 +190,19 @@ export default function BrandsPage() {
   const handleDelete = async (id: string) => {
     setDeleting(id);
     try {
-      await deleteDocument("brands", id, "brands");
+      await deleteDocument("brands", id);
       toast({ title: "Brand removed" });
-      setBrands((p) => p.filter((b) => b.id !== id));
     } catch {
-      toast({ variant: "destructive", title: "Failed to delete" });
-    } finally {
-      setDeleting(null);
-    }
+      toast({ variant: "destructive", title: "Failed to delete brand" });
+    } finally { setDeleting(null); }
   };
 
   const handleToggle = async (brand: Brand) => {
-    await updateDocument("brands", brand.id, { enabled: !brand.enabled }, "brands");
-    setBrands((p) => p.map((b) => b.id === brand.id ? { ...b, enabled: !b.enabled } : b));
+    try {
+      await updateDocument("brands", brand.id, { enabled: !brand.enabled });
+    } catch {
+      toast({ variant: "destructive", title: "Failed to update" });
+    }
   };
 
   return (
@@ -215,12 +210,12 @@ export default function BrandsPage() {
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>Brands</h1>
-          <p className="text-muted-foreground text-sm mt-1">{brands.length} featured brands</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            {brands.length} brands · <span className="text-primary font-medium">live sync</span>
+          </p>
         </div>
-        <button
-          onClick={() => setDialog({ open: true, brand: null })}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 hover:bg-primary/90 transition-all flex-shrink-0"
-        >
+        <button onClick={() => setDialog({ open: true, brand: null })}
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 hover:bg-primary/90 transition-all flex-shrink-0">
           <Plus size={16} /> Add Brand
         </button>
       </div>
@@ -277,7 +272,12 @@ export default function BrandsPage() {
 
       <AnimatePresence>
         {dialog.open && (
-          <BrandDialog brand={dialog.brand} onClose={() => setDialog({ open: false, brand: null })} onSave={handleSave} />
+          <BrandDialog
+            brand={dialog.brand}
+            allBrands={brands}
+            onClose={() => setDialog({ open: false, brand: null })}
+            onSave={handleSave}
+          />
         )}
       </AnimatePresence>
     </motion.div>
