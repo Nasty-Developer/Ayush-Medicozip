@@ -1,102 +1,31 @@
 # Ayush Medico
 
-A production-ready pharmacy platform built as a TypeScript pnpm monorepo.
+A medicine delivery and request management web app for Ayush Medico pharmacy (Kurla West, Mumbai).
 
-## Architecture
+## Stack
 
-| Layer | Location | Stack |
-|-------|----------|-------|
-| Frontend | `artifacts/ayush-medico` | React 19, Vite, Tailwind CSS v4, Radix UI, Framer Motion, Wouter |
-| API Server | `artifacts/api-server` | Express 5, Node.js, Pino logging |
-| Database ORM | `lib/db` | Drizzle ORM, PostgreSQL |
-| API Contract | `lib/api-spec` | OpenAPI YAML + Orval codegen |
-| API Client | `lib/api-client-react` | Generated React Query hooks |
-| Shared Schemas | `lib/api-zod` | Zod schemas generated from OpenAPI spec |
+- **Frontend**: React 19 + Vite, Tailwind CSS v4, TanStack Query, wouter, Radix UI
+- **Backend**: Express (Node.js/TypeScript), built with esbuild
+- **Database**: PostgreSQL via Drizzle ORM
+- **Auth**: Firebase Authentication + Firebase Admin SDK
+- **Monorepo**: pnpm workspaces
 
-## Running the Project
+## Running the project
 
-Both services are managed as Replit workflows and start automatically:
+Both services start automatically via the **Project** run button:
 
-- **Frontend** (`artifacts/ayush-medico: web`) → preview path `/`, port 18169
-- **API Server** (`artifacts/api-server: API Server`) → preview path `/api`, port 8080
+| Service | Command | Port |
+|---------|---------|------|
+| Frontend (Vite dev) | `pnpm --filter @workspace/ayush-medico run dev` | 18169 |
+| API server | `pnpm --filter @workspace/api-server run dev` | 8080 |
 
-### Manual start
-```bash
-# Install all dependencies
-pnpm install
+To push DB schema changes: `pnpm --filter @workspace/db run push`
 
-# Start frontend dev server
-pnpm --filter @workspace/ayush-medico run dev
+## Environment
 
-# Start API server (build + run)
-pnpm --filter @workspace/api-server run dev
-```
+All Firebase config keys (`VITE_FIREBASE_*`) are stored as shared env vars.  
+`DATABASE_URL` is runtime-managed by Replit PostgreSQL.  
+`SESSION_SECRET` is stored as a Replit Secret.  
+`OPENFDA_API_KEY` is stored as a shared env var (should be rotated and moved to a Secret — see Task #3).
 
-## Environment Variables
-
-### Managed by Replit (do not set manually)
-- `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`
-
-### Required secrets (set via Replit Secrets)
-- `SESSION_SECRET` — already set
-- `VITE_FIREBASE_API_KEY` — Firebase frontend config
-- `VITE_FIREBASE_AUTH_DOMAIN`
-- `VITE_FIREBASE_PROJECT_ID`
-- `VITE_FIREBASE_STORAGE_BUCKET`
-- `VITE_FIREBASE_MESSAGING_SENDER_ID`
-- `VITE_FIREBASE_APP_ID`
-- `VITE_FIREBASE_MEASUREMENT_ID` (optional — Analytics only)
-
-> **Note:** The frontend gracefully degrades when Firebase vars are missing (`isFirebaseConfigured` guard in `src/lib/firebase.ts`). Auth/Firestore features will be unavailable until these are set.
-
-## Database
-
-The project uses Replit's managed PostgreSQL database. Schema is defined in `lib/db/src/schema/` using Drizzle ORM.
-
-```bash
-# Push schema changes to the dev database
-pnpm --filter @workspace/db run push
-```
-
-Production schema is managed automatically by Replit's Publish flow — never write manual migration scripts.
-
-## API Development
-
-The API contract lives in `lib/api-spec/openapi.yaml`. After editing the spec:
-
-```bash
-# Regenerate React Query hooks and Zod schemas
-pnpm --filter @workspace/api-spec run generate
-```
-
-## Key Pages
-
-| Path | Description |
-|------|-------------|
-| `/` | Public pharmacy landing page |
-| `/admin/login` | Admin login |
-| `/admin` | Admin dashboard |
-| `/track/:requestId` | Order tracker |
-
-## Setup Status (completed on Replit)
-
-The following steps were completed to get the project running on Replit:
-
-1. **Dependencies installed** — `pnpm install` ran successfully across all 9 workspace packages.
-2. **Database schema applied** — `pnpm --filter @workspace/db run push` synced the full Drizzle schema (users, admin_users, categories, products, inventory, addresses, coupons, orders, order_items) to the Replit-managed PostgreSQL database.
-3. **Firebase secrets configured** — the following secrets are set in Replit Secrets and loaded at runtime:
-   - `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`
-   - `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`
-   - `FIREBASE_SERVICE_ACCOUNT_JSON` — API server uses this for full Admin SDK (token verification + admin writes)
-4. **Admin email configured** — `VITE_ADMIN_EMAIL` is set in shared env vars; the auth middleware uses it to gate admin routes.
-5. **Both workflows running** — frontend (port 18169) and API server (port 8080) start automatically.
-
-### Known security issues to address (see proposed follow-up tasks)
-- Broken access control on `/users/:id` and `/orders/:id` — ownership checks missing.
-- Admin auth fails open if `VITE_ADMIN_EMAIL` is unset (now mitigated by setting it above).
-- `VITE_FIREBASE_PROJECT_ID` is read by the API server — should be a separate non-`VITE_` secret.
-
-## User Preferences
-
-- Keep the project's existing monorepo structure — do not restructure or migrate it.
-- Target: production-ready pharmacy platform, not a demo.
+## User preferences
