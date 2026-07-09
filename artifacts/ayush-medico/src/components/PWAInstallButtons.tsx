@@ -1,16 +1,20 @@
 /**
- * PWAInstallButtons — premium mobile-first CTA
+ * PWAInstallButtons
  * ─────────────────────────────────────────────────────────────────────────────
- * Shown only when the browser fires a deferred BeforeInstallPrompt.
- * Returns null when neither installable nor installed → no empty gap in Hero.
+ * Shown only when the browser fires a deferred BeforeInstallPrompt event.
+ * Returns null (no DOM, no spacing) when neither installable nor installed.
  *
- * Design:
- *   • Blue → teal → emerald gradient button  (Blinkit / Zepto / Material 3)
- *   • Inset top-edge highlight for depth
- *   • Material-style ripple on tap (scale 0→1, opacity 0.35→0)
- *   • "FREE ⚡ FAST" glassmorphism badge with attention pulse every ~5 s
- *   • Hover lifts + brightens; tap scales down slightly
- *   • All animations are safe: no CSS scale>1 inside fixed/transformed layers
+ * Button spec — matches the WhatsApp CTA in Hero exactly:
+ *   • w-full sm:w-auto   same width behaviour
+ *   • px-6 py-3          same padding
+ *   • rounded-xl         same border radius
+ *   • gap-2 + mt-3       same internal/external spacing as gap-3 above
+ *
+ * Animations (all GPU-safe — no CSS scale>1 inside fixed/transformed layers):
+ *   • Material contact ripple   scale 0→1 inside overflow-hidden button
+ *   • Hover: lift 2 px + brightness +7 %  (CSS transition, no JS loop)
+ *   • Tap:   scale 0.97 + brightness -5 %
+ *   • Glow pulse every ~7 s     opacity-only white overlay on the button face
  */
 
 import { useState, useCallback, useRef } from "react";
@@ -40,7 +44,6 @@ export default function PWAInstallButtons() {
     if (accepted) setJustInstalled(true);
   }, [install, installing, justInstalled]);
 
-  /** Spawn a Material-style ripple from the pointer contact point. */
   const spawnRipple = useCallback((clientX: number, clientY: number) => {
     const btn = btnRef.current;
     if (!btn) return;
@@ -51,7 +54,7 @@ export default function PWAInstallButtons() {
     setTimeout(() => setRipples((p) => p.filter((r) => r.id !== id)), 600);
   }, []);
 
-  const onMouseDown  = useCallback((e: React.MouseEvent<HTMLButtonElement>)  => spawnRipple(e.clientX, e.clientY),             [spawnRipple]);
+  const onMouseDown  = useCallback((e: React.MouseEvent<HTMLButtonElement>)  => spawnRipple(e.clientX, e.clientY),            [spawnRipple]);
   const onTouchStart = useCallback((e: React.TouchEvent<HTMLButtonElement>)  => { if (e.touches[0]) spawnRipple(e.touches[0].clientX, e.touches[0].clientY); }, [spawnRipple]);
 
   /* ── Already running as installed PWA ─────────────────────────────────── */
@@ -61,7 +64,7 @@ export default function PWAInstallButtons() {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.25 }}
-        className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full
+        className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full
                    bg-green-500/10 text-green-600 dark:text-green-400
                    text-sm font-medium border border-green-500/20"
       >
@@ -71,25 +74,29 @@ export default function PWAInstallButtons() {
     );
   }
 
-  /* ── Not installable — zero DOM ───────────────────────────────────────── */
+  /* ── Not installable — no DOM, no gap ─────────────────────────────────── */
   if (!isInstallable) return null;
 
-  /* ── Install prompt is ready ──────────────────────────────────────────── */
+  /* ── Install prompt ready ─────────────────────────────────────────────── */
   return (
     <AnimatePresence>
       <motion.div
-        key="install-row"
-        initial={{ opacity: 0, y: 10 }}
+        key="install-cta"
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 10 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className="mt-4"
+        exit={{ opacity: 0, y: 8 }}
+        transition={{ duration: 0.28, ease: "easeOut" }}
+        /*
+         * mt-3 = 12 px — same as the gap-3 separating Call Now / Get
+         * Directions / WhatsApp, so Install App sits with consistent rhythm.
+         */
+        className="mt-3"
       >
         {/*
-         * The button is intentionally NOT a motion.button so that Framer
-         * Motion JS animations never compete with the ripple CSS animation
-         * on the same element. Hover / active states are pure CSS (fast,
-         * GPU-composited on their own — no JS loop needed).
+         * Plain <button> (not motion.button) so Framer Motion JS animations
+         * inside never compete with the ripple CSS animation on the same
+         * compositor layer. Hover + active states are pure CSS (one rAF per
+         * transition, no JS overhead).
          */}
         <button
           ref={btnRef}
@@ -101,32 +108,47 @@ export default function PWAInstallButtons() {
           data-testid="btn-install-app"
           style={{
             WebkitTapHighlightColor: "transparent",
-            /* Blue → teal → emerald — matches brand palette */
+            /* Blue → teal → emerald — exact brand gradient */
             background: "linear-gradient(135deg, #1b6ca8 0%, #0b8a7c 52%, #059c5a 100%)",
           }}
           className="
-            group
             relative overflow-hidden
-            inline-flex items-center justify-between gap-3
-            pl-5 pr-2.5 py-[11px]
-            rounded-[18px]
-            font-semibold text-[13.5px] text-white select-none
-            /* Resting shadow: blue glow + emerald glow + inset top highlight */
-            shadow-[0_4px_20px_rgba(5,156,90,0.36),_0_2px_8px_rgba(27,108,168,0.22),_inset_0_1px_0_rgba(255,255,255,0.18)]
-            /* Hover: lifts, brighter shadow */
-            hover:-translate-y-[3px] hover:brightness-[1.08]
-            hover:shadow-[0_8px_28px_rgba(5,156,90,0.48),_0_4px_14px_rgba(27,108,168,0.28),_inset_0_1px_0_rgba(255,255,255,0.22)]
-            /* Tap: presses down */
-            active:scale-[0.965] active:brightness-95 active:translate-y-0
-            /* Smooth all transitions */
+            w-full sm:w-auto
+            flex items-center justify-center gap-2
+            px-6 py-3
+            rounded-xl
+            text-white select-none
+            shadow-[0_4px_18px_rgba(5,156,90,0.34),_0_2px_8px_rgba(27,108,168,0.20),_inset_0_1px_0_rgba(255,255,255,0.16)]
+            hover:-translate-y-[2px] hover:brightness-[1.07]
+            hover:shadow-[0_7px_24px_rgba(5,156,90,0.44),_0_3px_10px_rgba(27,108,168,0.26),_inset_0_1px_0_rgba(255,255,255,0.20)]
+            active:scale-[0.97] active:brightness-95 active:translate-y-0
             transition-all duration-[260ms] ease-out
-            disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100
+            disabled:opacity-60 disabled:cursor-not-allowed
+            disabled:hover:translate-y-0 disabled:hover:brightness-100
           "
         >
-          {/* ── Ripple container ────────────────────────────────────────── */}
+          {/* ── Glow pulse ────────────────────────────────────────────────
+               Opacity-only animation on a white overlay — no transform,
+               no scale, no GPU compositor conflict.
+               Fires once every ~7 s to draw attention without distracting.
+          ──────────────────────────────────────────────────────────────── */}
+          <motion.span
+            aria-hidden="true"
+            className="absolute inset-0 rounded-xl pointer-events-none bg-white"
+            animate={{ opacity: [0, 0.13, 0] }}
+            transition={{
+              duration: 1.1,
+              ease: "easeInOut",
+              repeat: Infinity,
+              repeatDelay: 6.2,
+              delay: 3,           // wait for entrance animation to finish
+            }}
+          />
+
+          {/* ── Material contact ripple ───────────────────────────────── */}
           <span
             aria-hidden="true"
-            className="absolute inset-0 rounded-[18px] overflow-hidden pointer-events-none"
+            className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none"
           >
             {ripples.map((r) => (
               <span
@@ -142,72 +164,49 @@ export default function PWAInstallButtons() {
             ))}
           </span>
 
-          {/* ── Left: download icon + label ─────────────────────────────── */}
-          <span className="relative z-10 flex items-center gap-[7px] whitespace-nowrap">
+          {/* ── Label ─────────────────────────────────────────────────── */}
+          <span className="relative z-10 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0 leading-snug">
             {justInstalled ? (
               <>
                 <CheckCircle2 size={17} strokeWidth={2.3} />
-                <span style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: "0.01em" }}>
+                <span
+                  className="font-bold text-[13.5px]"
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
                   Installed!
                 </span>
               </>
             ) : (
               <>
-                {/* Emoji down-arrow as specified — renders consistently on Android */}
+                {/* Phone emoji — renders natively on Android without icon font */}
                 <span
-                  className={`text-[16px] leading-none transition-transform duration-200 ${installing ? "animate-bounce" : ""}`}
+                  className="text-[15px] leading-none"
                   role="img"
-                  aria-label="Download"
+                  aria-label="mobile phone"
                 >
-                  ⬇️
+                  📱
                 </span>
-                <span style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: "0.01em" }}>
+
+                {/* "Install App" — primary weight, full brightness */}
+                <span
+                  className={`font-bold text-[13.5px] ${installing ? "opacity-80" : ""}`}
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
                   {installing ? "Installing…" : "Install App"}
                 </span>
+
+                {/* "in 5 Seconds" — secondary weight, reduced opacity for hierarchy */}
+                {!installing && (
+                  <span
+                    className="font-medium text-[11.5px] opacity-[0.78]"
+                    style={{ fontFamily: "'Poppins', sans-serif" }}
+                  >
+                    in 5 Seconds
+                  </span>
+                )}
               </>
             )}
           </span>
-
-          {/* ── Right: FREE ⚡ FAST badge ───────────────────────────────── */}
-          {!justInstalled && !installing && (
-            <motion.span
-              aria-label="Free and fast"
-              className="
-                relative z-10 flex-shrink-0
-                inline-flex items-center justify-center
-                gap-0.5 px-[9px] py-[4.5px]
-                rounded-full
-                border border-white/30
-                text-[9px] font-extrabold uppercase tracking-[0.07em] text-white
-                shadow-[0_1px_8px_rgba(0,0,0,0.20),_0_0_0_1px_rgba(255,255,255,0.06)]
-              "
-              style={{
-                /*
-                 * Gradient: green → emerald creates visual depth against the
-                 * blue→teal button gradient — badge reads as a distinct chip.
-                 * bg-white/18 base makes it look like frosted glass.
-                 */
-                background: "linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.10) 100%)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                textShadow: "0 1px 3px rgba(0,0,0,0.25)",
-              }}
-              /*
-               * Subtle attention pulse every ~5 s.
-               * Opacity + mild scale (≤1.08) on a tiny non-fixed element:
-               * safe — no GPU compositor layer conflict risk.
-               */
-              animate={{ opacity: [1, 0.62, 1], scale: [1, 1.08, 1] }}
-              transition={{
-                duration: 0.7,
-                ease: "easeInOut",
-                repeat: Infinity,
-                repeatDelay: 4.6,
-              }}
-            >
-              FREE&nbsp;⚡&nbsp;FAST
-            </motion.span>
-          )}
         </button>
       </motion.div>
     </AnimatePresence>
