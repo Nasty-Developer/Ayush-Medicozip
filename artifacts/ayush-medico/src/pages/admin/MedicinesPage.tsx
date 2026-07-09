@@ -590,7 +590,7 @@ function MedicineDialog({ medicine, onClose, onSave }: {
             <div className="space-y-2">
               {toggleRow(featured, () => setFeatured(!featured),
                 <Star size={13} className="text-amber-500" />,
-                "Featured Medicine", "Highlighted with a Featured badge", "amber-500"
+                "Featured Medicine", "Highlighted with a Featured badge", "amber"
               )}
               {toggleRow(showInNewArrivals, () => setShowInNewArrivals(!showInNewArrivals),
                 <Sparkles size={13} className="text-primary" />,

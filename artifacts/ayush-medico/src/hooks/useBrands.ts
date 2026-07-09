@@ -2,10 +2,14 @@
  * useBrands
  * Real-time Firestore listener for the `brands` collection.
  * Mirrors the same pattern as useCategories — live updates everywhere.
+ *
+ * NOTE: We do NOT use Firestore's orderBy() constraint — see useCategories.ts
+ * for the full explanation. Documents missing the `order` field would be
+ * silently excluded by Firestore; we sort client-side instead.
  */
 
 import { useEffect, useState } from "react";
-import { subscribeToCollection, orderBy } from "@/lib/firestoreHelpers";
+import { subscribeToCollection } from "@/lib/firestoreHelpers";
 
 export type Brand = {
   id: string;
@@ -13,7 +17,7 @@ export type Brand = {
   logoUrl: string;
   description: string;
   website: string;
-  order: number;
+  order?: number;   // optional — docs without this field are sorted to the front
   enabled: boolean;
 };
 
@@ -27,9 +31,10 @@ export function useBrands(onlyEnabled = false) {
   useEffect(() => {
     const unsub = subscribeToCollection(
       "brands",
-      [orderBy("order")],
+      [], // No Firestore-side ordering — sort client-side to include all docs
       (docs) => {
-        const all = docs as unknown as Brand[];
+        const all = (docs as unknown as Brand[])
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         setBrands(onlyEnabled ? all.filter((b) => b.enabled) : all);
         setLoading(false);
       },

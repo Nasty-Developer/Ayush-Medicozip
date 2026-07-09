@@ -1,6 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Moon, Sun, Menu, X, Phone, Sparkles, Award, Pill, Send, User, ChevronDown, ClipboardList, LogOut, UserCircle } from "lucide-react";
+import {
+  Moon, Sun, Menu, X, Phone, Sparkles, Award, Pill, Send, User,
+  ChevronDown, ChevronRight, ClipboardList, LogOut, UserCircle, Tag,
+} from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
 import { useAnnouncement } from "@/context/AnnouncementContext";
@@ -8,25 +11,28 @@ import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import SignInModal from "@/components/customer/SignInModal";
 import MyOrdersModal from "@/components/customer/MyOrdersModal";
 import MyProfileModal from "@/components/customer/MyProfileModal";
+import { useCategories } from "@/hooks/useCategories";
 
+/* ── Static nav links ─────────────────────────────────────────────────────── */
 const navLinks = [
-  { label: "Home", href: "#home" },
-  { label: "About", href: "#about" },
-  { label: "Services", href: "#services" },
-  { label: "Products", href: "#categories" },
-  { label: "Why Us", href: "#why-us" },
+  { label: "Home",         href: "#home" },
+  { label: "About",        href: "#about" },
+  { label: "Services",     href: "#services" },
+  { label: "Products",     href: "#categories" }, // enhanced to dropdown
+  { label: "Why Us",       href: "#why-us" },
   { label: "Testimonials", href: "#testimonials" },
-  { label: "Contact", href: "#contact" },
+  { label: "Contact",      href: "#contact" },
 ];
 
 // Extra quick-access items shown only in the mobile hamburger menu
 const mobileQuickLinks = [
-  { icon: Sparkles, label: "New Medicine Arrivals", href: "#new-arrivals" },
-  { icon: Award, label: "Special Medicines", href: "#special-medicines" },
-  { icon: Pill, label: "Check Medicine Availability", href: "#medicine-search" },
-  { icon: Send, label: "Request a Medicine", href: "#request-medicine" },
+  { icon: Sparkles, label: "New Medicine Arrivals",      href: "#new-arrivals" },
+  { icon: Award,    label: "Special Medicines",           href: "#special-medicines" },
+  { icon: Pill,     label: "Check Medicine Availability", href: "#medicine-search" },
+  { icon: Send,     label: "Request a Medicine",          href: "#request-medicine" },
 ];
 
+/* ── Logo ─────────────────────────────────────────────────────────────────── */
 function Logo() {
   return (
     <a href="#home" className="flex items-center gap-2.5 group">
@@ -46,25 +52,53 @@ function Logo() {
   );
 }
 
+/* ── Main component ───────────────────────────────────────────────────────── */
 export default function Header() {
   const { theme, setTheme } = useTheme();
   const { enabled: announcementEnabled } = useAnnouncement();
   const { user, signOut } = useCustomerAuth();
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [showSignIn, setShowSignIn] = useState(false);
-  const [showMyOrders, setShowMyOrders] = useState(false);
-  const [showMyProfile, setShowMyProfile] = useState(false);
 
+  // Live categories from Firestore — only published, real-time updates
+  const { categories } = useCategories(true);
+
+  const [scrolled,          setScrolled]          = useState(false);
+  const [mobileOpen,        setMobileOpen]         = useState(false);
+  const [accountMenuOpen,   setAccountMenuOpen]    = useState(false);
+  const [productsOpen,      setProductsOpen]       = useState(false);
+  const [productsExpanded,  setProductsExpanded]   = useState(false); // mobile accordion
+  const [showSignIn,        setShowSignIn]         = useState(false);
+  const [showMyOrders,      setShowMyOrders]       = useState(false);
+  const [showMyProfile,     setShowMyProfile]      = useState(false);
+
+  const productsRef = useRef<HTMLDivElement>(null);
+  const accountRef  = useRef<HTMLDivElement>(null);
+
+  /* ── Scroll detection ── */
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  /* ── Click-outside to close dropdowns ── */
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (productsRef.current && !productsRef.current.contains(e.target as Node)) {
+        setProductsOpen(false);
+      }
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  /* ── Helpers ── */
   const scrollTo = (href: string) => {
     setMobileOpen(false);
+    setProductsOpen(false);
+    setProductsExpanded(false);
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
@@ -88,19 +122,98 @@ export default function Header() {
           <div className="flex items-center justify-between h-16 md:h-20">
             <Logo />
 
+            {/* ── Desktop nav ─────────────────────────────────────────────── */}
             <nav className="hidden md:flex items-center gap-1">
-              {navLinks.map((link) => (
-                <button
-                  key={link.label}
-                  onClick={() => scrollTo(link.href)}
-                  data-testid={`nav-link-${link.label.toLowerCase()}`}
-                  className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-primary rounded-lg hover:bg-primary/5 transition-all duration-200"
-                >
-                  {link.label}
-                </button>
-              ))}
+              {navLinks.map((link) => {
+                if (link.label === "Products") {
+                  /* Products — dropdown showing live Firestore categories */
+                  return (
+                    <div key="Products" className="relative" ref={productsRef}>
+                      <button
+                        onClick={() => setProductsOpen((v) => !v)}
+                        data-testid="nav-link-products"
+                        aria-haspopup="true"
+                        aria-expanded={productsOpen}
+                        className={`flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                          productsOpen
+                            ? "text-primary bg-primary/10"
+                            : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                        }`}
+                      >
+                        Products
+                        <ChevronDown
+                          size={13}
+                          className={`transition-transform duration-200 ${productsOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+
+                      <AnimatePresence>
+                        {productsOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute left-0 top-full mt-2 w-64 bg-card border border-border rounded-2xl shadow-xl shadow-black/10 py-2 z-50 overflow-hidden"
+                          >
+                            {/* View all categories link */}
+                            <button
+                              onClick={() => scrollTo("#categories")}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors"
+                            >
+                              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <Tag size={13} className="text-primary" />
+                              </div>
+                              All Categories
+                              <ChevronRight size={12} className="ml-auto text-muted-foreground" />
+                            </button>
+
+                            {categories.length > 0 && (
+                              <>
+                                <div className="mx-4 my-1 h-px bg-border" />
+                                <div className="max-h-72 overflow-y-auto">
+                                  {categories.map((cat) => (
+                                    <button
+                                      key={cat.id}
+                                      onClick={() => scrollTo("#categories")}
+                                      data-testid={`nav-category-${cat.slug ?? cat.id}`}
+                                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:text-primary hover:bg-primary/5 transition-colors"
+                                    >
+                                      <span
+                                        className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-base flex-shrink-0 leading-none"
+                                        role="img"
+                                        aria-label={cat.name}
+                                      >
+                                        {cat.icon || "💊"}
+                                      </span>
+                                      <span className="truncate">{cat.name}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                }
+
+                /* All other nav links — plain scroll buttons */
+                return (
+                  <button
+                    key={link.label}
+                    onClick={() => scrollTo(link.href)}
+                    data-testid={`nav-link-${link.label.toLowerCase()}`}
+                    className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-primary rounded-lg hover:bg-primary/5 transition-all duration-200"
+                  >
+                    {link.label}
+                  </button>
+                );
+              })}
             </nav>
 
+            {/* ── Right-side actions ──────────────────────────────────────── */}
             <div className="flex items-center gap-2">
               <a
                 href="tel:+919833273838"
@@ -111,7 +224,8 @@ export default function Header() {
                 Call Now
               </a>
 
-              <div className="relative hidden md:block">
+              {/* Account menu (desktop) */}
+              <div className="relative hidden md:block" ref={accountRef}>
                 {user ? (
                   <>
                     <button
@@ -166,6 +280,7 @@ export default function Header() {
                 )}
               </div>
 
+              {/* Theme toggle */}
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 data-testid="theme-toggle"
@@ -174,6 +289,7 @@ export default function Header() {
                 {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
               </button>
 
+              {/* Hamburger (mobile) */}
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
                 data-testid="mobile-menu-toggle"
@@ -186,6 +302,7 @@ export default function Header() {
         </div>
       </motion.header>
 
+      {/* ── Mobile menu ───────────────────────────────────────────────────── */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -198,15 +315,74 @@ export default function Header() {
             } left-0 right-0 z-30 bg-background/95 backdrop-blur-xl border-b border-border shadow-lg md:hidden`}
           >
             <div className="px-4 py-4 flex flex-col gap-1">
-              {navLinks.map((link) => (
-                <button
-                  key={link.label}
-                  onClick={() => scrollTo(link.href)}
-                  className="w-full text-left px-4 py-3 text-sm font-medium text-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all duration-200"
-                >
-                  {link.label}
-                </button>
-              ))}
+              {navLinks.map((link) => {
+                if (link.label === "Products") {
+                  /* Products accordion — expands to show live categories */
+                  return (
+                    <div key="Products">
+                      <button
+                        onClick={() => setProductsExpanded((v) => !v)}
+                        aria-expanded={productsExpanded}
+                        aria-controls="mobile-products-menu"
+                        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all duration-200"
+                      >
+                        <span>Products</span>
+                        <ChevronDown
+                          size={14}
+                          className={`text-muted-foreground transition-transform duration-200 ${productsExpanded ? "rotate-180" : ""}`}
+                        />
+                      </button>
+
+                      <AnimatePresence>
+                        {productsExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="pl-4 pb-1 space-y-0.5">
+                              {/* View all */}
+                              <button
+                                onClick={() => scrollTo("#categories")}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-xl transition-all duration-200"
+                              >
+                                <Tag size={14} className="flex-shrink-0" />
+                                All Categories
+                              </button>
+
+                              {/* Live categories from Firestore */}
+                              {categories.map((cat) => (
+                                <button
+                                  key={cat.id}
+                                  onClick={() => scrollTo("#categories")}
+                                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all duration-200"
+                                >
+                                  <span className="text-base leading-none w-5 text-center flex-shrink-0" role="img" aria-label={cat.name}>
+                                    {cat.icon || "💊"}
+                                  </span>
+                                  {cat.name}
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                }
+
+                return (
+                  <button
+                    key={link.label}
+                    onClick={() => scrollTo(link.href)}
+                    className="w-full text-left px-4 py-3 text-sm font-medium text-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all duration-200"
+                  >
+                    {link.label}
+                  </button>
+                );
+              })}
 
               {/* Quick-access section */}
               <div className="mt-3 pt-3 border-t border-border">
@@ -276,8 +452,8 @@ export default function Header() {
         )}
       </AnimatePresence>
 
-      {showSignIn && <SignInModal onClose={() => setShowSignIn(false)} />}
-      {showMyOrders && <MyOrdersModal onClose={() => setShowMyOrders(false)} />}
+      {showSignIn    && <SignInModal    onClose={() => setShowSignIn(false)} />}
+      {showMyOrders  && <MyOrdersModal  onClose={() => setShowMyOrders(false)} />}
       {showMyProfile && <MyProfileModal onClose={() => setShowMyProfile(false)} />}
     </>
   );
