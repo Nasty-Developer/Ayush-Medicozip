@@ -74,3 +74,73 @@ export function getPipelineIndex(status: string): number {
 export function getStatusLabel(status: string): string {
   return STATUS_LABELS[status as RequestStatus] ?? status;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2: OrderStatus — for the cart-based checkout order flow.
+// Separate from RequestStatus (prescription-based inquiries) so the two flows
+// never share a status key and existing code stays completely unchanged.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type OrderStatus =
+  | "pending"             // Order placed, awaiting confirmation
+  | "payment-pending"     // Waiting for payment
+  | "payment-verified"    // Payment confirmed
+  | "preparing"           // Being packed at pharmacy
+  | "packed"              // Packing complete
+  | "ready-for-pickup"    // Awaiting delivery partner pickup
+  | "delivery-assigned"   // Delivery partner assigned
+  | "out-for-delivery"    // On the way
+  | "delivered"           // Successfully delivered
+  | "cancelled"           // Cancelled before dispatch
+  | "returned"            // Returned after delivery attempt
+  | "refunded";           // Refund issued
+
+export const ORDER_STATUS_PIPELINE: OrderStatus[] = [
+  "pending",
+  "payment-pending",
+  "payment-verified",
+  "preparing",
+  "packed",
+  "ready-for-pickup",
+  "delivery-assigned",
+  "out-for-delivery",
+  "delivered",
+];
+
+export const ORDER_NEGATIVE_STATUSES: OrderStatus[] = [
+  "cancelled",
+  "returned",
+  "refunded",
+];
+
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  pending:              "Order Placed",
+  "payment-pending":    "Payment Pending",
+  "payment-verified":   "Payment Verified",
+  preparing:            "Preparing Order",
+  packed:               "Order Packed",
+  "ready-for-pickup":   "Ready for Pickup",
+  "delivery-assigned":  "Delivery Assigned",
+  "out-for-delivery":   "Out for Delivery",
+  delivered:            "Delivered",
+  cancelled:            "Cancelled",
+  returned:             "Returned",
+  refunded:             "Refunded",
+};
+
+export function getOrderStatusLabel(status: string): string {
+  return ORDER_STATUS_LABELS[status as OrderStatus] ?? status;
+}
+
+export function isNegativeOrderStatus(status: string): boolean {
+  return (ORDER_NEGATIVE_STATUSES as string[]).includes(status);
+}
+
+export function getOrderPipelineIndex(status: string): number {
+  return ORDER_STATUS_PIPELINE.indexOf(status as OrderStatus);
+}
+
+/** True when the customer can still cancel (before preparation starts). */
+export function canCustomerCancel(status: OrderStatus): boolean {
+  return ["pending", "payment-pending"].includes(status);
+}

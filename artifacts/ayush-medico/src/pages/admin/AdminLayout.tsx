@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Pill, Megaphone, MessageSquare, HelpCircle,
   Star, Settings, LogOut, Menu, X, ChevronRight, ExternalLink,
-  Shield, Tag, Building2, Sparkles, Award, Home, ClipboardList,
+  Shield, Tag, Building2, Sparkles, Award, Home, ClipboardList, ShoppingCart,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeToCollection, where } from "@/lib/firestoreHelpers";
@@ -18,6 +18,7 @@ import HomepageManagerPage from "./HomepageManagerPage";
 import AnnouncementPage from "./AnnouncementPage";
 import InquiriesPage from "./InquiriesPage";
 import MedicineRequestsPage from "./MedicineRequestsPage";
+import OrdersPage from "./OrdersPage";
 import FAQPage from "./FAQPage";
 import TestimonialsPage from "./TestimonialsPage";
 import SettingsPage from "./SettingsPage";
@@ -43,6 +44,7 @@ function buildNavItems(newInquiries: number, pendingRequests: number): NavItemDe
     { icon: Sparkles,   label: "New Arrivals",      href: "/admin/new-arrivals" },
     { icon: Award,      label: "Special Medicines", href: "/admin/special-medicines" },
     { divider: "Customer" },
+    { icon: ShoppingCart,   label: "Orders",             href: "/admin/orders" },
     { icon: ClipboardList,  label: "Medicine Requests", href: "/admin/medicine-requests", badge: pendingRequests },
     { icon: MessageSquare,  label: "Inquiries",          href: "/admin/inquiries",          badge: newInquiries },
     { divider: "Content" },
@@ -389,6 +391,7 @@ export default function AdminLayout() {
             <Route path="/admin/new-arrivals" component={NewArrivalsPage} />
             <Route path="/admin/special-medicines" component={SpecialMedicinesPage} />
             <Route path="/admin/announcement" component={AnnouncementPage} />
+            <Route path="/admin/orders" component={OrdersPage} />
             <Route path="/admin/medicine-requests" component={MedicineRequestsPage} />
             <Route path="/admin/inquiries" component={InquiriesPage} />
             <Route path="/admin/faq" component={FAQPage} />

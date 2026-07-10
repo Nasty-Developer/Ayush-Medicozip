@@ -1,0 +1,462 @@
+Ayush Medico – Phase 2: Professional Order Management & Delivery Architecture
+
+This project has now reached the next development phase.
+
+Before writing any code, inspect the entire project thoroughly.
+
+Understand:
+
+Existing project architecture
+Folder structure
+Firestore collections
+Existing Admin Panel
+Authentication
+Medicine management
+Categories
+Brands
+Customer flow
+Current UI design system
+
+Do NOT immediately start coding.
+
+Create a plan first and then continue from the existing architecture.
+
+Do NOT redesign existing features.
+
+Do NOT create duplicate components, duplicate pages, duplicate Firestore collections, duplicate hooks, duplicate services, duplicate utilities or duplicate routes.
+
+Everything must follow the current project architecture.
+
+Objective
+
+Build a production-ready Order Management System that will later support:
+
+Porter
+Razorpay
+MediVision Gold
+WhatsApp Notifications
+SMS
+Email
+Invoice Generation
+Inventory Sync
+
+without needing another redesign.
+
+Firestore Architecture
+
+Design proper scalable collections.
+
+Examples:
+
+orders
+orderItems
+addresses
+payments
+delivery
+prescriptions
+notifications
+
+Each collection should be normalized.
+
+Avoid storing unnecessary duplicate data.
+
+Design for future scalability.
+
+Checkout Flow
+
+Customer Journey:
+
+Home
+
+↓
+
+Medicine Details
+
+↓
+
+Add to Cart
+
+↓
+
+Cart
+
+↓
+
+Checkout
+
+↓
+
+Address Selection
+
+↓
+
+Payment Selection
+
+↓
+
+Order Review
+
+↓
+
+Order Confirmation
+
+↓
+
+Order Tracking
+
+Address System
+
+Every customer can save multiple addresses.
+
+Fields:
+
+Full Name
+Mobile Number
+Alternate Number
+House / Flat Number
+Building Name
+Street
+Area
+Landmark
+City
+State
+Pincode
+GPS Coordinates (future ready)
+Address Type
+
+Examples:
+
+Home
+Work
+Other
+
+One address should be selectable as default.
+
+Cart
+
+Professional cart system.
+
+Support:
+
+Quantity update
+Remove medicine
+Out of stock validation
+Stock checking
+Price calculation
+Discount calculation
+GST
+Delivery charge
+Coupon support (future)
+Prescription warning
+Checkout
+
+Professional checkout page.
+
+Sections:
+
+Customer Details
+
+↓
+
+Delivery Address
+
+↓
+
+Order Summary
+
+↓
+
+Prescription Upload (if required)
+
+↓
+
+Payment Method
+
+↓
+
+Terms & Conditions
+
+↓
+
+Place Order
+
+Prescription Medicines
+
+Some medicines require prescriptions.
+
+If:
+
+Prescription Required = TRUE
+
+then:
+
+show Upload Prescription
+do not allow order without upload
+admin verification required
+
+Otherwise:
+
+Normal checkout.
+
+Payment Architecture
+
+Do NOT integrate Razorpay yet.
+
+Create reusable payment architecture.
+
+Supported methods:
+
+UPI
+Cash on Delivery
+Razorpay (future)
+Wallet (future)
+
+Payment Status:
+
+Pending
+
+↓
+
+Verified
+
+↓
+
+Failed
+
+↓
+
+Refunded
+
+↓
+
+Completed
+
+Order Status Flow
+
+Professional order lifecycle.
+
+Pending
+
+↓
+
+Payment Pending
+
+↓
+
+Payment Verified
+
+↓
+
+Preparing
+
+↓
+
+Packed
+
+↓
+
+Ready for Pickup
+
+↓
+
+Delivery Assigned
+
+↓
+
+Out for Delivery
+
+↓
+
+Delivered
+
+↓
+
+Cancelled
+
+↓
+
+Returned
+
+↓
+
+Refunded
+
+Admin should be able to change statuses easily.
+
+Every change should update Firestore.
+
+Delivery Architecture
+
+Do NOT integrate Porter API yet.
+
+Instead create a reusable Delivery Service.
+
+Functions:
+
+createDelivery()
+
+cancelDelivery()
+
+getTracking()
+
+estimateDelivery()
+
+assignDeliveryPartner()
+
+These methods should currently be placeholders.
+
+Later they will connect to Porter.
+
+Do NOT hardcode Porter.
+
+Design using abstraction.
+
+Admin Panel
+
+Create professional Order Management.
+
+Admin should see:
+
+Order Number
+Customer
+Medicines
+Payment
+Prescription
+Delivery Address
+Status
+Delivery Partner
+Created Date
+
+Actions:
+
+Accept
+
+Reject
+
+Verify Payment
+
+Verify Prescription
+
+Prepare Order
+
+Pack Order
+
+Assign Delivery
+
+Cancel Order
+
+Generate Invoice (future)
+
+Customer Dashboard
+
+Customer should have:
+
+My Orders
+
+Order Details
+
+Track Order
+
+Download Invoice (future)
+
+Repeat Order (future)
+
+Cancel Order (if eligible)
+
+Notifications
+
+Design architecture for future support.
+
+Events:
+
+Order Placed
+
+Payment Received
+
+Order Packed
+
+Out for Delivery
+
+Delivered
+
+Cancelled
+
+Notification channels:
+
+WhatsApp
+
+Email
+
+SMS
+
+Push Notifications
+
+Do NOT integrate them yet.
+
+Firestore
+
+Use realtime listeners.
+
+Do not use hardcoded arrays.
+
+Do not duplicate data.
+
+Optimize reads and writes.
+
+UI/UX
+
+Maintain existing Ayush Medico design.
+
+Professional.
+
+Responsive.
+
+Clean.
+
+Modern.
+
+Accessible.
+
+Code Quality
+
+Reuse existing components.
+
+Reuse hooks.
+
+Reuse services.
+
+No duplicate files.
+
+No duplicate logic.
+
+No unnecessary code.
+
+Keep everything modular.
+
+Keep everything production-ready.
+
+Testing
+
+After implementation:
+
+Build successfully.
+Fix all TypeScript errors.
+Fix all React warnings.
+Generate a new Replit Preview.
+Test Checkout.
+Test Cart.
+Test Orders.
+Test Admin.
+Test Firestore.
+Ensure nothing else breaks.
+Final Report
+
+Before marking complete, provide:
+
+Files modified
+New Firestore collections
+New components
+New services
+Database design
+Future integration points for Porter, Razorpay and MediVision Gold
+Confirmation that Preview has been manually tested

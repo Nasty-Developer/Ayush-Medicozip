@@ -7,10 +7,12 @@ import { AuthProvider } from "@/context/AuthContext";
 import { CustomerAuthProvider } from "@/context/CustomerAuthContext";
 import { RequestMedicineProvider } from "@/context/RequestMedicineContext";
 import { AnnouncementProvider } from "@/context/AnnouncementContext";
+import { CartProvider } from "@/context/CartContext";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import LoadingScreen from "@/components/LoadingScreen";
 import OfflinePage from "@/components/OfflinePage";
 import Header from "@/components/Header";
+import CartDrawer from "@/components/customer/CartDrawer";
 import Hero from "@/components/Hero";
 import NewArrivals from "@/components/NewArrivals";
 import SpecialMedicines from "@/components/SpecialMedicines";
@@ -33,6 +35,10 @@ import AdminLayout from "@/pages/admin/AdminLayout";
 import OrderTracker from "@/pages/OrderTracker";
 import CategoriesPage from "@/pages/CategoriesPage";
 import CategoryDetailPage from "@/pages/CategoryDetailPage";
+import CartPage from "@/pages/CartPage";
+import CheckoutPage from "@/pages/CheckoutPage";
+import OrderConfirmationPage from "@/pages/OrderConfirmationPage";
+import OrderDetailPage from "@/pages/OrderDetailPage";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +53,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
         <ScrollProgress />
         <Header />
+        <CartDrawer />
         <main>{children}</main>
         <Footer />
         <FloatingWhatsApp />
@@ -101,51 +108,89 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <CustomerAuthProvider>
-              <RequestMedicineProvider>
-                <LoadingScreen />
+              <CartProvider>
+                <RequestMedicineProvider>
+                  <LoadingScreen />
 
-                <OfflineGuard>
-                  <Switch>
-                    {/* ── Admin ── */}
-                    <Route path="/admin/login" component={AdminLogin} />
-                    <Route path="/admin"       component={AdminLayout} />
-                    <Route path="/admin/:rest*" component={AdminLayout} />
+                  <OfflineGuard>
+                    <Switch>
+                      {/* ── Admin ── */}
+                      <Route path="/admin/login" component={AdminLogin} />
+                      <Route path="/admin"       component={AdminLayout} />
+                      <Route path="/admin/:rest*" component={AdminLayout} />
 
-                    {/* ── Order tracking ── */}
-                    <Route path="/track/:requestId" component={OrderTracker} />
-                    <Route path="/track"            component={OrderTracker} />
+                      {/* ── Order tracking (legacy prescription-based) ── */}
+                      <Route path="/track/:requestId" component={OrderTracker} />
+                      <Route path="/track"            component={OrderTracker} />
 
-                    {/* ── Public: categories listing ── */}
-                    <Route path="/categories">
-                      {() => (
-                        <PublicLayout>
-                          <CategoriesPage />
-                        </PublicLayout>
-                      )}
-                    </Route>
+                      {/* ── Phase 2: Cart ── */}
+                      <Route path="/cart">
+                        {() => (
+                          <PublicLayout>
+                            <CartPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
 
-                    {/* ── Public: individual category ── */}
-                    <Route path="/category/:slug">
-                      {() => (
-                        <PublicLayout>
-                          <CategoryDetailPage />
-                        </PublicLayout>
-                      )}
-                    </Route>
+                      {/* ── Phase 2: Checkout ── */}
+                      <Route path="/checkout">
+                        {() => (
+                          <PublicLayout>
+                            <CheckoutPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
 
-                    {/* ── Homepage (catch-all) ── */}
-                    <Route>
-                      {() => (
-                        <PublicLayout>
-                          <HomeSections />
-                        </PublicLayout>
-                      )}
-                    </Route>
-                  </Switch>
-                </OfflineGuard>
+                      {/* ── Phase 2: Order confirmation ── */}
+                      <Route path="/order-confirmation/:docId">
+                        {() => (
+                          <PublicLayout>
+                            <OrderConfirmationPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
 
-                <Toaster />
-              </RequestMedicineProvider>
+                      {/* ── Phase 2: Order detail / tracking ── */}
+                      <Route path="/order/:docId">
+                        {() => (
+                          <PublicLayout>
+                            <OrderDetailPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
+
+                      {/* ── Public: categories listing ── */}
+                      <Route path="/categories">
+                        {() => (
+                          <PublicLayout>
+                            <CategoriesPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
+
+                      {/* ── Public: individual category ── */}
+                      <Route path="/category/:slug">
+                        {() => (
+                          <PublicLayout>
+                            <CategoryDetailPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
+
+                      {/* ── Homepage (catch-all) ── */}
+                      <Route>
+                        {() => (
+                          <PublicLayout>
+                            <HomeSections />
+                          </PublicLayout>
+                        )}
+                      </Route>
+                    </Switch>
+                  </OfflineGuard>
+
+                  <Toaster />
+                </RequestMedicineProvider>
+              </CartProvider>
             </CustomerAuthProvider>
           </AuthProvider>
         </TooltipProvider>

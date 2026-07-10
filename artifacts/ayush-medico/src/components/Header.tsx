@@ -3,12 +3,13 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Moon, Sun, Menu, X, Phone, Sparkles, Award, Pill, Send, User,
-  ChevronDown, ClipboardList, LogOut, UserCircle, Tag,
+  ChevronDown, ClipboardList, LogOut, UserCircle, Tag, ShoppingCart,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
 import { useAnnouncement } from "@/context/AnnouncementContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import { useCart } from "@/context/CartContext";
 import SignInModal from "@/components/customer/SignInModal";
 import MyOrdersModal from "@/components/customer/MyOrdersModal";
 import MyProfileModal from "@/components/customer/MyProfileModal";
@@ -62,6 +63,7 @@ export default function Header() {
   const { theme, setTheme }              = useTheme();
   const { enabled: announcementEnabled } = useAnnouncement();
   const { user, signOut }                = useCustomerAuth();
+  const { summary, openCart }            = useCart();
   const [location, navigate]             = useLocation();
 
   const [scrolled,        setScrolled]        = useState(false);
@@ -176,6 +178,25 @@ export default function Header() {
 
             {/* ── Right actions ─────────────────────────────────────────── */}
             <div className="flex items-center gap-2 flex-shrink-0">
+
+              {/* Cart icon */}
+              <button
+                onClick={openCart}
+                data-testid="header-cart-btn"
+                aria-label="Open cart"
+                className="relative flex items-center justify-center w-9 h-9 rounded-xl border border-border
+                           text-muted-foreground hover:text-primary hover:border-primary/30
+                           hover:bg-primary/5 transition-all duration-200"
+              >
+                <ShoppingCart size={16} />
+                {summary.itemCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1
+                                   flex items-center justify-center rounded-full
+                                   bg-primary text-white text-[10px] font-bold leading-none">
+                    {summary.itemCount > 99 ? "99+" : summary.itemCount}
+                  </span>
+                )}
+              </button>
 
               {/* Call Now */}
               <a
