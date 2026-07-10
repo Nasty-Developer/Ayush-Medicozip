@@ -16,7 +16,6 @@ import NewArrivals from "@/components/NewArrivals";
 import SpecialMedicines from "@/components/SpecialMedicines";
 import About from "@/components/About";
 import Services from "@/components/Services";
-import Categories from "@/components/Categories";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
@@ -70,7 +69,6 @@ function HomeSections() {
       <SpecialMedicines />
       <About />
       <Services />
-      <Categories />
       <WhyChooseUs />
       <Testimonials />
       <FAQ />
