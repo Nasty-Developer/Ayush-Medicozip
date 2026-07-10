@@ -32,36 +32,52 @@ import BackToTop from "@/components/BackToTop";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminLayout from "@/pages/admin/AdminLayout";
 import OrderTracker from "@/pages/OrderTracker";
+import CategoriesPage from "@/pages/CategoriesPage";
+import CategoryDetailPage from "@/pages/CategoryDetailPage";
 
 const queryClient = new QueryClient();
 
-function PublicSite() {
+/**
+ * PublicLayout — shared shell for every public-facing page.
+ * Provides the announcement banner context, header, footer, and overlays
+ * so each public page only needs to supply its <main> content.
+ */
+function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <AnnouncementProvider>
       <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
         <ScrollProgress />
         <Header />
-        <main>
-          <Hero />
-          <DeliveryFeatures />
-          <HowItWorks />
-          <NewArrivals />
-          <SpecialMedicines />
-          <About />
-          <Services />
-          <Categories />
-          <WhyChooseUs />
-          <Testimonials />
-          <FAQ />
-          <RequestMedicine />
-          <GeneralInquiry />
-          <Contact />
-        </main>
+        <main>{children}</main>
         <Footer />
         <FloatingWhatsApp />
         <BackToTop />
       </div>
     </AnnouncementProvider>
+  );
+}
+
+/**
+ * Homepage — all sections in one long scroll.
+ */
+function HomeSections() {
+  return (
+    <>
+      <Hero />
+      <DeliveryFeatures />
+      <HowItWorks />
+      <NewArrivals />
+      <SpecialMedicines />
+      <About />
+      <Services />
+      <Categories />
+      <WhyChooseUs />
+      <Testimonials />
+      <FAQ />
+      <RequestMedicine />
+      <GeneralInquiry />
+      <Contact />
+    </>
   );
 }
 
@@ -88,18 +104,45 @@ function App() {
           <AuthProvider>
             <CustomerAuthProvider>
               <RequestMedicineProvider>
-                {/* Splash / loading screen — hides immediately if offline */}
                 <LoadingScreen />
 
-                {/* Offline overlay — appears over any route when connection is lost */}
                 <OfflineGuard>
                   <Switch>
+                    {/* ── Admin ── */}
                     <Route path="/admin/login" component={AdminLogin} />
-                    <Route path="/admin" component={AdminLayout} />
+                    <Route path="/admin"       component={AdminLayout} />
                     <Route path="/admin/:rest*" component={AdminLayout} />
+
+                    {/* ── Order tracking ── */}
                     <Route path="/track/:requestId" component={OrderTracker} />
-                    <Route path="/track" component={OrderTracker} />
-                    <Route component={PublicSite} />
+                    <Route path="/track"            component={OrderTracker} />
+
+                    {/* ── Public: categories listing ── */}
+                    <Route path="/categories">
+                      {() => (
+                        <PublicLayout>
+                          <CategoriesPage />
+                        </PublicLayout>
+                      )}
+                    </Route>
+
+                    {/* ── Public: individual category ── */}
+                    <Route path="/category/:slug">
+                      {() => (
+                        <PublicLayout>
+                          <CategoryDetailPage />
+                        </PublicLayout>
+                      )}
+                    </Route>
+
+                    {/* ── Homepage (catch-all) ── */}
+                    <Route>
+                      {() => (
+                        <PublicLayout>
+                          <HomeSections />
+                        </PublicLayout>
+                      )}
+                    </Route>
                   </Switch>
                 </OfflineGuard>
 
