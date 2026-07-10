@@ -36,7 +36,7 @@ export default function FloatingWhatsApp() {
       // Interaction
       whileHover={{ scale: 1.06 }}
       whileTap={{ scale: 0.94 }}
-      className="fixed z-50 right-4 sm:right-6"
+      className="fixed z-40 right-4 sm:right-6"
       style={{
         // Sit above Android nav bar / iOS home indicator
         bottom: "calc(1.25rem + env(safe-area-inset-bottom))",

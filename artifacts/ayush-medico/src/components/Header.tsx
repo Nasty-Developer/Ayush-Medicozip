@@ -10,6 +10,7 @@ import AnnouncementBanner from "@/components/AnnouncementBanner";
 import { useAnnouncement } from "@/context/AnnouncementContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { useCart } from "@/context/CartContext";
+import { useToast } from "@/hooks/use-toast";
 import SignInModal from "@/components/customer/SignInModal";
 import MyOrdersModal from "@/components/customer/MyOrdersModal";
 import MyProfileModal from "@/components/customer/MyProfileModal";
@@ -60,11 +61,12 @@ function Logo() {
    Header
 ───────────────────────────────────────────────────────────────────────────── */
 export default function Header() {
-  const { theme, setTheme }              = useTheme();
-  const { enabled: announcementEnabled } = useAnnouncement();
-  const { user, signOut }                = useCustomerAuth();
-  const { summary, openCart }            = useCart();
-  const [location, navigate]             = useLocation();
+  const { theme, setTheme }                                   = useTheme();
+  const { enabled: announcementEnabled }                      = useAnnouncement();
+  const { user, signOut, redirectError, clearRedirectError }  = useCustomerAuth();
+  const { summary, openCart }                                 = useCart();
+  const [location, navigate]                                  = useLocation();
+  const { toast }                                             = useToast();
 
   const [scrolled,        setScrolled]        = useState(false);
   const [mobileOpen,      setMobileOpen]       = useState(false);
@@ -74,6 +76,13 @@ export default function Header() {
   const [showMyProfile,   setShowMyProfile]    = useState(false);
 
   const accountRef = useRef<HTMLDivElement>(null);
+
+  /* ── Surface redirect-based sign-in errors as a toast ── */
+  useEffect(() => {
+    if (!redirectError) return;
+    toast({ variant: "destructive", title: "Sign in failed", description: redirectError });
+    clearRedirectError();
+  }, [redirectError, toast, clearRedirectError]);
 
   /* ── Scroll shadow ── */
   useEffect(() => {
