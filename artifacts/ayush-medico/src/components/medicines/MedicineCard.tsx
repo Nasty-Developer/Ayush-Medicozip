@@ -2,7 +2,7 @@
  * MedicineCard — shared presentational components for medicine grids.
  *
  * Exported:
- *   MedicineCard       — animated card for a single medicine
+ *   MedicineCard       — animated card for a single medicine (with Add to Cart)
  *   MedicineSkeleton   — placeholder used while medicines are loading
  *   StockBadge         — coloured pill showing in_stock / out_of_stock / coming_soon
  *   getStockStatus     — normalises a medicine document into a StockStatus value
@@ -16,9 +16,10 @@
  */
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { PackageCheck, PackageX, Clock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { PackageCheck, PackageX, Clock, ShoppingCart, Plus, Minus } from "lucide-react";
 import type { CategoryMedicine, StockStatus } from "@/hooks/useMedicinesByCategory";
+import { useCart } from "@/context/CartContext";
 
 export type { CategoryMedicine, StockStatus };
 
@@ -59,6 +60,7 @@ export function MedicineSkeleton() {
         <div className="h-4 bg-muted rounded w-2/3" />
         <div className="h-3 bg-muted rounded w-full" />
         <div className="h-5 bg-muted rounded w-1/3 mt-2" />
+        <div className="h-9 bg-muted rounded-xl mt-3" />
       </div>
     </div>
   );
@@ -74,7 +76,45 @@ interface MedicineCardProps {
 
 export function MedicineCard({ item, index }: MedicineCardProps) {
   const [imgErr, setImgErr] = useState(false);
+  const { addItem, items, updateQuantity, removeItem } = useCart();
   const status = getStockStatus(item);
+
+  const cartItem = items.find((i) => i.medicineId === item.id);
+  const inCart = !!cartItem;
+  const canAdd = status === "in_stock" && !!item.sellingPrice;
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!canAdd) return;
+    addItem({
+      medicineId: item.id,
+      medicineName: item.name,
+      categoryName: item.categoryName,
+      brandName: item.brand,
+      unitPrice: item.sellingPrice!,
+      prescriptionRequired: item.prescriptionRequired ?? false,
+      imageUrl: item.imageUrl,
+      maxStock: item.stockQuantity,
+    });
+  };
+
+  const handleDecrement = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!cartItem) return;
+    if (cartItem.quantity <= 1) {
+      removeItem(item.id);
+    } else {
+      updateQuantity(item.id, cartItem.quantity - 1);
+    }
+  };
+
+  const handleIncrement = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!cartItem) return;
+    const max = item.stockQuantity;
+    if (max && cartItem.quantity >= max) return;
+    updateQuantity(item.id, cartItem.quantity + 1);
+  };
 
   return (
     <motion.div
@@ -84,10 +124,10 @@ export function MedicineCard({ item, index }: MedicineCardProps) {
       whileHover={{ y: -6, scale: 1.02 }}
       className="group bg-card border border-border rounded-2xl overflow-hidden shadow-sm
                  hover:shadow-xl hover:shadow-primary/10 hover:border-primary/25
-                 transition-all duration-300"
+                 transition-all duration-300 flex flex-col"
     >
       {/* Image / placeholder */}
-      <div className="relative h-40 bg-gradient-to-br from-primary/5 to-secondary/5 overflow-hidden">
+      <div className="relative h-40 bg-gradient-to-br from-primary/5 to-secondary/5 overflow-hidden flex-shrink-0">
         {item.imageUrl && !imgErr ? (
           <img
             src={item.imageUrl}
@@ -107,10 +147,18 @@ export function MedicineCard({ item, index }: MedicineCardProps) {
         <div className="absolute top-2.5 right-2.5">
           <StockBadge status={status} />
         </div>
+        {item.prescriptionRequired && (
+          <div className="absolute top-2.5 left-2.5">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full
+                             text-[9px] font-bold bg-amber-500/90 text-white backdrop-blur-sm">
+              Rx
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Details */}
-      <div className="p-4">
+      <div className="p-4 flex flex-col flex-1">
         {item.brand && (
           <p className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-1">
             {item.brand}
@@ -132,6 +180,8 @@ export function MedicineCard({ item, index }: MedicineCardProps) {
             {item.categoryName}
           </p>
         )}
+
+        {/* Price row */}
         {item.sellingPrice ? (
           <div className="flex items-center gap-2 mt-2.5 flex-wrap">
             <span className="text-base font-bold text-foreground">₹{item.sellingPrice}</span>
@@ -145,6 +195,73 @@ export function MedicineCard({ item, index }: MedicineCardProps) {
             ) : null}
           </div>
         ) : null}
+
+        {/* ── Add to Cart / Quantity controls ── */}
+        <div className="mt-3 mt-auto pt-3">
+          <AnimatePresence mode="wait" initial={false}>
+            {inCart ? (
+              /* Inline quantity stepper */
+              <motion.div
+                key="qty"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center justify-between rounded-xl border border-primary/40
+                           bg-primary/5 overflow-hidden"
+              >
+                <button
+                  onClick={handleDecrement}
+                  className="flex-1 flex items-center justify-center h-9
+                             hover:bg-primary/10 transition-colors text-primary"
+                  aria-label="Decrease quantity"
+                >
+                  <Minus size={14} />
+                </button>
+                <span className="text-sm font-bold text-primary min-w-[32px] text-center">
+                  {cartItem.quantity}
+                </span>
+                <button
+                  onClick={handleIncrement}
+                  disabled={!!(item.stockQuantity && cartItem.quantity >= item.stockQuantity)}
+                  className="flex-1 flex items-center justify-center h-9
+                             hover:bg-primary/10 transition-colors text-primary
+                             disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Increase quantity"
+                >
+                  <Plus size={14} />
+                </button>
+              </motion.div>
+            ) : canAdd ? (
+              /* Add to Cart button */
+              <motion.button
+                key="add"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                onClick={handleAddToCart}
+                className="w-full flex items-center justify-center gap-2 h-9 rounded-xl
+                           text-sm font-semibold bg-primary text-white
+                           hover:bg-primary/90 active:scale-[0.98] transition-all duration-200
+                           shadow-sm shadow-primary/20"
+              >
+                <ShoppingCart size={14} /> Add to Cart
+              </motion.button>
+            ) : (
+              /* Unavailable */
+              <motion.div
+                key="unavail"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="w-full flex items-center justify-center h-9 rounded-xl
+                           bg-muted/50 text-muted-foreground text-sm font-medium cursor-not-allowed"
+              >
+                {status === "out_of_stock" ? "Out of Stock" : "Unavailable"}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </motion.div>
   );

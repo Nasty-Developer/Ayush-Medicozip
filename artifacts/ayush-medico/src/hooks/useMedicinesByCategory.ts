@@ -27,6 +27,9 @@ export type CategoryMedicine = {
   discount?: number;
   categoryName?: string;
   order?: number;
+  prescriptionRequired?: boolean;
+  /** Max units available; 0 or absent = unlimited */
+  stockQuantity?: number;
 };
 
 /**

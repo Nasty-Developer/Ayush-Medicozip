@@ -6,3 +6,4 @@
 - [Drizzle ORM dual-instance conflict](drizzle-orm-dual-instance.md) — adding firebase-admin causes pnpm to create a second drizzle-orm instance via @opentelemetry/api optional peer; fix via pnpm.peerDependencyRules.ignoreMissing.
 - [Firebase Admin v14 modular API](firebase-admin-v14-modular.md) — firebase-admin v14+ uses modular imports (firebase-admin/app, firebase-admin/auth); the old admin.auth() namespace no longer exists on the default export.
 - [Ayush Medico DB schema](ayush-medico-db-schema.md) — PostgreSQL schema (users, admin_users, categories, products, inventory, addresses, coupons, orders, order_items) lives in lib/db/src/schema/; uses Drizzle $inferInsert/$inferSelect (not drizzle-zod, which has Zod v3.25 compat issues).
+- [MedicineCard cart wiring](medicine-card-cart-wiring.md) — MedicineCard was missing Add to Cart entirely; fixed by adding useCart() inline with qty stepper; prescriptionRequired and stockQuantity added to CategoryMedicine type.
