@@ -1,157 +1,558 @@
 /**
  * CategoriesPage — Public route at /categories
  *
- * Displays every published category as a clickable card.
- * Reads from Firestore in real-time via useCategories(true), so any category
- * created or published in the Admin Panel appears here immediately —
- * no code changes, no page refresh.
+ * This is the unified "Browse Medicines" page.
  *
- * Clicking a card navigates to /category/:slug.
+ * Architecture:
+ *   • "All Medicines" pill is always first — fetches the full `medicines`
+ *     collection via cursor-based pagination (useAllMedicines, 24 per page).
+ *   • Every other pill comes directly from the Firestore `categories` collection
+ *     via useCategories(true) — sorted by the admin-set `order` field.
+ *     Adding a new category in the Admin Panel makes it appear here instantly;
+ *     no code change is required.
+ *   • Selecting a category pill filters in real time via useMedicinesByCategory,
+ *     the same Firestore hook used by the /category/:slug route.
+ *   • Search and sort are applied client-side on whatever medicines are loaded.
+ *
+ * Performance for 5 000 – 10 000 medicines:
+ *   • "All Medicines" uses getDocs pagination (24/page + Load More).
+ *     No real-time listener over the whole collection.
+ *   • Category views use onSnapshot — each category has a manageable subset.
  */
 
-import { useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { motion, useInView } from "framer-motion";
-import { Tag, Loader2, AlertCircle } from "lucide-react";
-import { useCategories } from "@/hooks/useCategories";
-import { useMedicineCounts } from "@/hooks/useMedicineCounts";
-import { getCategoryColors } from "@/lib/categoryColors";
+import { motion, AnimatePresence, useInView } from "framer-motion";
+import {
+  Tag, Loader2, Search, X, SlidersHorizontal,
+  Package, PackageSearch, Layers, ChevronDown,
+} from "lucide-react";
+import { useCategories }          from "@/hooks/useCategories";
+import { useMedicinesByCategory } from "@/hooks/useMedicinesByCategory";
+import { useAllMedicines }        from "@/hooks/useAllMedicines";
+import { getCategoryColors }      from "@/lib/categoryColors";
+import { MedicineCard, MedicineSkeleton } from "@/components/medicines/MedicineCard";
+import type { CategoryMedicine }  from "@/hooks/useMedicinesByCategory";
+
+type SortOption = "default" | "name" | "price-low" | "price-high";
+
+// ─── Category pill ────────────────────────────────────────────────────────────
+
+interface PillProps {
+  selected: boolean;
+  onClick: () => void;
+  gradient?: string;       // Tailwind gradient classes for selected state
+  children: React.ReactNode;
+}
+
+function CategoryPill({ selected, onClick, gradient, children }: PillProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-full
+        text-sm font-semibold whitespace-nowrap transition-all duration-200
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50
+        ${selected
+          ? gradient
+            ? `bg-gradient-to-r ${gradient} text-white shadow-md`
+            : "bg-primary text-white shadow-md"
+          : "bg-card border border-border text-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5"
+        }
+      `}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ─── Sort dropdown ────────────────────────────────────────────────────────────
+
+const SORT_LABELS: Record<SortOption, string> = {
+  default:    "Recommended",
+  name:       "Name (A–Z)",
+  "price-low":  "Price: Low → High",
+  "price-high": "Price: High → Low",
+};
+
+function SortDropdown({
+  value,
+  onChange,
+}: {
+  value: SortOption;
+  onChange: (v: SortOption) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-2 px-4 py-3 rounded-xl border border-border
+                   bg-card text-sm font-semibold text-foreground
+                   hover:border-primary/40 hover:text-primary transition-colors w-full sm:w-auto"
+      >
+        <SlidersHorizontal size={14} />
+        <span className="hidden xs:inline">{SORT_LABELS[value]}</span>
+        <span className="xs:hidden">Sort</span>
+        <ChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-xl
+                       shadow-xl z-30 overflow-hidden"
+          >
+            {(Object.entries(SORT_LABELS) as [SortOption, string][]).map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => { onChange(val); setOpen(false); }}
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-muted/60 transition-colors
+                             ${value === val ? "text-primary font-semibold" : "text-foreground"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Medicines grid ───────────────────────────────────────────────────────────
+
+function MedicinesGrid({
+  medicines,
+  initialLoading,
+  skeletonCount = 8,
+}: {
+  medicines: CategoryMedicine[];
+  initialLoading: boolean;
+  skeletonCount?: number;
+}) {
+  if (initialLoading) {
+    return (
+      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        {Array.from({ length: skeletonCount }).map((_, i) => (
+          <MedicineSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      {medicines.map((item, i) => (
+        <MedicineCard key={item.id} item={item} index={i} />
+      ))}
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function CategoriesPage() {
-  const ref    = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-  const { categories, loading, error } = useCategories(true); // published only
-  const medicineCounts = useMedicineCounts();
+  const headerRef = useRef(null);
+  const inView    = useInView(headerRef, { once: true, margin: "-80px" });
+
+  // ── Data ──────────────────────────────────────────────────────────────────
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCategories(true);
+
+  // Always-running "All Medicines" paginated hook
+  const {
+    medicines: allMedicines,
+    initialLoading: allInitialLoading,
+    loadingMore,
+    hasMore,
+    loadMore,
+    totalLoaded,
+  } = useAllMedicines();
+
+  // Selected category state — "all" or a category NAME string
+  const [selectedCatName, setSelectedCatName] = useState<"all" | string>("all");
+
+  // Category-scoped real-time hook — skips when "all" is selected (empty string)
+  const catQueryName = selectedCatName === "all" ? "" : selectedCatName;
+  const {
+    medicines: catMedicines,
+    loading: catLoading,
+  } = useMedicinesByCategory(catQueryName);
+
+  // ── UI state ──────────────────────────────────────────────────────────────
+  const [search,     setSearch]     = useState("");
+  const [sort,       setSort]       = useState<SortOption>("default");
+  const [filterOpen, setFilterOpen] = useState(false); // unused — using SortDropdown
+
+  // Resolve selected category object (for colour accent)
+  const selectedCategory = categories.find((c) => c.name === selectedCatName);
+
+  // Active source depends on which pill is selected
+  const activeMedicines    = selectedCatName === "all" ? allMedicines : catMedicines;
+  const activeInitLoading  = selectedCatName === "all" ? allInitialLoading : catLoading;
+
+  // Client-side search + sort applied on top
+  const visibleMedicines = useMemo(() => {
+    let list = activeMedicines;
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (m) =>
+          m.name.toLowerCase().includes(q) ||
+          (m.brand ?? "").toLowerCase().includes(q) ||
+          (m.categoryName ?? "").toLowerCase().includes(q),
+      );
+    }
+    const sorted = [...list];
+    if (sort === "name")       sorted.sort((a, b) => a.name.localeCompare(b.name));
+    if (sort === "price-low")  sorted.sort((a, b) => (a.sellingPrice ?? Infinity) - (b.sellingPrice ?? Infinity));
+    if (sort === "price-high") sorted.sort((a, b) => (b.sellingPrice ?? -Infinity) - (a.sellingPrice ?? -Infinity));
+    return sorted;
+  }, [activeMedicines, search, sort]);
+
+  // Colour classes for the currently-selected category pill
+  const selectedColors = selectedCategory
+    ? getCategoryColors(selectedCategory.color)
+    : null;
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <section ref={ref} className="pt-32 pb-24 lg:pt-36 lg:pb-32 min-h-[70vh]">
+    <section className="pt-28 pb-24 lg:pt-32 lg:pb-32 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* ── Page heading ─────────────────────────────────────────── */}
+        {/* ── Page heading ─────────────────────────────────────────────── */}
         <motion.div
+          ref={headerRef}
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
-          className="text-center mb-14"
+          className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/10 text-secondary text-sm font-semibold border border-secondary/20 mb-4">
-            <Tag size={13} /> Medicine Categories
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full
+                          bg-secondary/10 text-secondary text-sm font-semibold
+                          border border-secondary/20 mb-4">
+            <Layers size={13} /> Browse Medicines
           </div>
           <h1
             className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4"
             style={{ fontFamily: "'Poppins', sans-serif" }}
           >
-            Browse by{" "}
+            Find the right{" "}
             <span className="bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">
-              Category
+              medicine
             </span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Select a category to explore our range of medicines and healthcare products.
+            Browse our full catalogue or select a category below. Updated in real time
+            from our pharmacy system.
           </p>
         </motion.div>
 
-        {/* ── Loading ───────────────────────────────────────────────── */}
-        {loading && (
-          <div className="flex justify-center py-20">
-            <Loader2 size={32} className="animate-spin text-primary" />
-          </div>
-        )}
+        {/* ── Sticky category pills ─────────────────────────────────────── */}
+        {/* Offset accounts for the fixed header height (~72 px) */}
+        <div className="sticky top-[72px] z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8
+                        bg-background/95 backdrop-blur-sm border-b border-border/50 py-3 mb-8">
+          <div
+            className="flex gap-2 overflow-x-auto pb-0.5"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {/* Fixed "All Medicines" pill */}
+            <CategoryPill
+              selected={selectedCatName === "all"}
+              onClick={() => { setSelectedCatName("all"); setSearch(""); }}
+            >
+              <Package size={13} />
+              All Medicines
+              {!allInitialLoading && totalLoaded > 0 && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold
+                                  ${selectedCatName === "all"
+                                    ? "bg-white/20 text-white"
+                                    : "bg-muted text-muted-foreground"}`}>
+                  {hasMore ? `${totalLoaded}+` : totalLoaded}
+                </span>
+              )}
+            </CategoryPill>
 
-        {/* ── Firestore error ───────────────────────────────────────── */}
-        {!loading && error && (
-          <div className="flex flex-col items-center gap-3 py-20 text-center">
-            <AlertCircle size={32} className="text-destructive/50" />
-            <p className="text-muted-foreground">
-              Could not load categories. Please check your connection and try again.
-            </p>
-          </div>
-        )}
-
-        {/* ── Empty state ───────────────────────────────────────────── */}
-        {!loading && !error && categories.length === 0 && (
-          <div className="flex flex-col items-center gap-3 py-20 text-center">
-            <Tag size={40} className="text-muted-foreground/25" />
-            <p className="text-muted-foreground">No categories published yet.</p>
-            <p className="text-sm text-muted-foreground/60">
-              Add and publish categories from the Admin Panel.
-            </p>
-          </div>
-        )}
-
-        {/* ── Category grid ─────────────────────────────────────────── */}
-        {!loading && !error && categories.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6">
-            {categories.map((cat, i) => {
+            {/* Dynamic categories from Firestore — appear as soon as admin adds them */}
+            {!categoriesLoading && categories.map((cat, i) => {
               const colors = getCategoryColors(cat.color, i);
-              const href   = `/category/${cat.slug ?? cat.id}`;
-              const count  = medicineCounts[cat.name] ?? 0;
-
+              const isSel  = selectedCatName === cat.name;
               return (
-                <Link key={cat.id} href={href} className="block">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.92 }}
-                    animate={inView ? { opacity: 1, scale: 1 } : {}}
-                    transition={{ duration: 0.35, delay: i * 0.04 }}
-                    whileHover={{ y: -7, scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    className={`group relative flex flex-col items-center text-center
-                                rounded-2xl bg-gradient-to-br ${colors.light}
-                                border border-border p-7
-                                shadow-sm hover:shadow-xl hover:shadow-black/10
-                                transition-all duration-300 cursor-pointer overflow-hidden h-full min-h-[220px] justify-center`}
-                  >
-                    {/* Hover colour wash */}
-                    <div
-                      className={`absolute inset-0 bg-gradient-to-br ${colors.gradient}
-                                  opacity-0 group-hover:opacity-[0.07] rounded-2xl
-                                  transition-opacity duration-300`}
-                    />
-
-                    {/* Medicine count badge */}
-                    {count > 0 && (
-                      <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full bg-card/90 text-foreground border border-border shadow-sm">
-                        {count}+
-                      </span>
-                    )}
-
-                    <div className="relative flex flex-col items-center">
-                      {/* Icon */}
-                      <motion.div
-                        whileHover={{ rotate: 10 }}
-                        className={`inline-flex items-center justify-center p-4 rounded-2xl
-                                    bg-gradient-to-br ${colors.gradient}
-                                    shadow-lg mb-4 group-hover:shadow-xl
-                                    transition-shadow duration-300`}
-                      >
-                        <span className="text-2xl leading-none" role="img" aria-label={cat.name}>
-                          {cat.icon || "💊"}
-                        </span>
-                      </motion.div>
-
-                      {/* Name */}
-                      <h2
-                        className="font-bold text-foreground mb-1.5 text-base leading-tight
-                                   group-hover:text-primary transition-colors duration-200"
-                        style={{ fontFamily: "'Poppins', sans-serif" }}
-                      >
-                        {cat.name}
-                      </h2>
-
-                      {/* Description */}
-                      <p className="text-xs text-muted-foreground leading-snug line-clamp-2 mb-3">
-                        {cat.description || "Explore our range of trusted, genuine medicines in this category."}
-                      </p>
-
-                      {/* Medicine count line */}
-                      <span className="text-[11px] font-semibold text-primary/80 group-hover:text-primary transition-colors">
-                        {count > 0 ? `${count} medicine${count === 1 ? "" : "s"} available` : "Browse category"}
-                      </span>
-                    </div>
-                  </motion.div>
-                </Link>
+                <CategoryPill
+                  key={cat.id}
+                  selected={isSel}
+                  gradient={isSel ? colors.gradient : undefined}
+                  onClick={() => { setSelectedCatName(cat.name); setSearch(""); }}
+                >
+                  <span role="img" aria-hidden="true" className="text-sm leading-none">
+                    {cat.icon || "💊"}
+                  </span>
+                  {cat.name}
+                </CategoryPill>
               );
             })}
+
+            {/* Skeleton pills while categories load */}
+            {categoriesLoading && [1, 2, 3, 4].map((n) => (
+              <div
+                key={n}
+                className="flex-shrink-0 h-9 w-28 rounded-full bg-muted animate-pulse"
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* ── Firestore error (categories) ──────────────────────────────── */}
+        {!categoriesLoading && categoriesError && (
+          <div className="mb-6 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/20
+                          text-sm text-destructive flex items-center gap-2">
+            <Package size={14} />
+            Could not load categories — showing All Medicines. Check your connection.
+          </div>
+        )}
+
+        {/* ── Selected category info strip ──────────────────────────────── */}
+        <AnimatePresence mode="wait">
+          {selectedCatName !== "all" && selectedCategory && (
+            <motion.div
+              key={selectedCatName}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+              className={`rounded-2xl bg-gradient-to-br ${getCategoryColors(selectedCategory.color).light}
+                          border border-border p-6 mb-8 flex items-center gap-5`}
+            >
+              <div className={`flex-shrink-0 inline-flex items-center justify-center p-3.5 rounded-2xl
+                               bg-gradient-to-br ${getCategoryColors(selectedCategory.color).gradient}
+                               shadow-lg`}>
+                <span className="text-3xl leading-none" role="img" aria-label={selectedCategory.name}>
+                  {selectedCategory.icon || "💊"}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <h2
+                  className="text-xl font-bold text-foreground"
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
+                  {selectedCategory.name}
+                </h2>
+                <p className="text-sm text-muted-foreground line-clamp-1">
+                  {selectedCategory.description ||
+                    `Showing all ${selectedCategory.name.toLowerCase()} medicines.`}
+                </p>
+              </div>
+              <Link
+                href={`/category/${selectedCategory.slug ?? selectedCategory.id}`}
+                className="ml-auto flex-shrink-0 text-xs font-semibold text-primary
+                           hover:underline hidden sm:block"
+              >
+                Full page →
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Search + sort bar ──────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={
+                selectedCatName === "all"
+                  ? "Search all medicines…"
+                  : `Search in ${selectedCatName}…`
+              }
+              className="w-full pl-11 pr-10 py-3 rounded-xl border border-border bg-card
+                         text-sm placeholder:text-muted-foreground
+                         focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary
+                         transition-all"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2
+                           text-muted-foreground hover:text-foreground"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+          <SortDropdown value={sort} onChange={setSort} />
+        </div>
+
+        {/* ── Results count ─────────────────────────────────────────────── */}
+        {!activeInitLoading && (
+          <p className="text-xs text-muted-foreground mb-5">
+            {search
+              ? `${visibleMedicines.length} result${visibleMedicines.length === 1 ? "" : "s"} for "${search}"`
+              : selectedCatName === "all"
+              ? `Showing ${totalLoaded}${hasMore ? "+" : ""} medicines`
+              : `${activeMedicines.length} medicine${activeMedicines.length === 1 ? "" : "s"} in this category`}
+          </p>
+        )}
+
+        {/* ── Medicine grid ──────────────────────────────────────────────── */}
+        <AnimatePresence mode="wait">
+          {activeInitLoading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <MedicinesGrid
+                medicines={[]}
+                initialLoading
+                skeletonCount={8}
+              />
+            </motion.div>
+          ) : visibleMedicines.length === 0 && search ? (
+            /* Search matched nothing */
+            <motion.div
+              key="no-search"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center gap-3 py-20 px-6 text-center
+                         border border-dashed border-border rounded-2xl bg-muted/10"
+            >
+              <PackageSearch size={32} className="text-muted-foreground/40" />
+              <p className="text-muted-foreground">
+                No medicines match <span className="font-semibold">"{search}"</span>.
+              </p>
+              <button
+                onClick={() => setSearch("")}
+                className="text-sm font-semibold text-primary hover:underline"
+              >
+                Clear search
+              </button>
+            </motion.div>
+          ) : visibleMedicines.length === 0 ? (
+            /* Category is empty (no medicines synced yet) */
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center gap-4 py-20 px-6
+                         border-2 border-dashed border-border rounded-2xl
+                         bg-muted/20 text-center"
+            >
+              <div className="p-4 rounded-2xl bg-muted/50">
+                <Package size={36} className="text-muted-foreground/40" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">
+                  No medicines here yet
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  Medicines appear automatically once added or synced via
+                  MediVision Gold. No page reload needed.
+                </p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key={`grid-${selectedCatName}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <MedicinesGrid
+                medicines={visibleMedicines}
+                initialLoading={false}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Load More (All Medicines only) ─────────────────────────────── */}
+        {selectedCatName === "all" && !activeInitLoading && !search && hasMore && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-10 flex flex-col items-center gap-3"
+          >
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl
+                         bg-primary text-white font-semibold text-sm
+                         hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed
+                         shadow-sm shadow-primary/30 transition-all duration-200"
+            >
+              {loadingMore ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Package size={15} />
+              )}
+              {loadingMore ? "Loading…" : "Load more medicines"}
+            </button>
+            <p className="text-xs text-muted-foreground">
+              {totalLoaded} loaded — more available
+            </p>
+          </motion.div>
+        )}
+
+        {/* ── All loaded indicator ───────────────────────────────────────── */}
+        {selectedCatName === "all" && !activeInitLoading && !search && !hasMore && totalLoaded > 0 && (
+          <p className="mt-10 text-center text-xs text-muted-foreground">
+            All {totalLoaded} medicines loaded.
+          </p>
+        )}
+
+        {/* ── Category grid teaser (when no category selected) ───────────── */}
+        {selectedCatName === "all" && !categoriesLoading && categories.length > 0 && !search && (
+          <div className="mt-16 pt-12 border-t border-border">
+            <div className="flex items-center justify-between mb-6">
+              <h2
+                className="text-xl font-bold text-foreground"
+                style={{ fontFamily: "'Poppins', sans-serif" }}
+              >
+                Or browse by category
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                {categories.length} categories
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+              {categories.map((cat, i) => {
+                const colors = getCategoryColors(cat.color, i);
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => { setSelectedCatName(cat.name); setSearch(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                    className={`group flex flex-col items-center gap-2 p-4 rounded-xl
+                                border border-border bg-gradient-to-br ${colors.light}
+                                hover:border-primary/30 hover:shadow-md transition-all duration-200
+                                text-center`}
+                  >
+                    <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl
+                                     bg-gradient-to-br ${colors.gradient} shadow-sm
+                                     group-hover:shadow-md transition-shadow`}>
+                      <span className="text-lg leading-none" role="img" aria-label={cat.name}>
+                        {cat.icon || "💊"}
+                      </span>
+                    </div>
+                    <span className="text-xs font-semibold text-foreground leading-tight line-clamp-2
+                                     group-hover:text-primary transition-colors">
+                      {cat.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 

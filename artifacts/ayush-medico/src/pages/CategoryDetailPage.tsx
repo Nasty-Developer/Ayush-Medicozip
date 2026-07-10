@@ -2,13 +2,16 @@
  * CategoryDetailPage — Public route at /category/:slug
  *
  * Shows the category hero (icon, name, description), a breadcrumb, a
- * category-scoped search bar, a (UI-only) filter/sort control, and every
- * medicine whose Firestore `categoryName` matches this category's name.
+ * category-scoped search bar, a sort control, and every medicine whose
+ * Firestore `categoryName` matches this category's name.
  *
  * Medicines are 100% dynamic — no hardcoded lists. Once MediVision Gold
  * sync starts writing to the `medicines` collection with a matching
  * `categoryName`, medicines appear here automatically in real time.
  * No redesign or code changes will be needed at that point.
+ *
+ * Shared components (MedicineCard, StockBadge, MedicineSkeleton) live in
+ * src/components/medicines/MedicineCard.tsx so changes propagate everywhere.
  */
 
 import { useMemo, useState } from "react";
@@ -16,11 +19,12 @@ import { useParams, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, Home, Package, Loader2, Search, X,
-  SlidersHorizontal, PackageCheck, PackageX, Clock, PackageSearch,
+  SlidersHorizontal, PackageSearch,
 } from "lucide-react";
-import { useCategories } from "@/hooks/useCategories";
-import { useMedicinesByCategory, type CategoryMedicine, type StockStatus } from "@/hooks/useMedicinesByCategory";
-import { getCategoryColors } from "@/lib/categoryColors";
+import { useCategories }          from "@/hooks/useCategories";
+import { useMedicinesByCategory } from "@/hooks/useMedicinesByCategory";
+import { getCategoryColors }      from "@/lib/categoryColors";
+import { MedicineCard, MedicineSkeleton } from "@/components/medicines/MedicineCard";
 import {
   Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink,
   BreadcrumbPage, BreadcrumbSeparator,
@@ -28,107 +32,7 @@ import {
 
 type SortOption = "default" | "name" | "price-low" | "price-high";
 
-function getStockStatus(item: CategoryMedicine): StockStatus {
-  if (item.stockStatus) return item.stockStatus;
-  return item.available === false ? "out_of_stock" : "in_stock";
-}
-
-function StockBadge({ status }: { status: StockStatus }) {
-  const map = {
-    in_stock: { label: "In Stock", icon: <PackageCheck size={9} />, cls: "bg-secondary/90 text-white" },
-    out_of_stock: { label: "Out of Stock", icon: <PackageX size={9} />, cls: "bg-muted/90 text-muted-foreground" },
-    coming_soon: { label: "Coming Soon", icon: <Clock size={9} />, cls: "bg-amber-500/90 text-white" },
-  };
-  const { label, icon, cls } = map[status];
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-sm ${cls}`}>
-      {icon} {label}
-    </span>
-  );
-}
-
-function MedicineSkeleton() {
-  return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm animate-pulse">
-      <div className="h-40 bg-muted" />
-      <div className="p-4 space-y-2">
-        <div className="h-3 bg-muted rounded w-1/3" />
-        <div className="h-4 bg-muted rounded w-2/3" />
-        <div className="h-3 bg-muted rounded w-full" />
-        <div className="h-5 bg-muted rounded w-1/3 mt-2" />
-      </div>
-    </div>
-  );
-}
-
-function CategoryMedicineCard({ item, index }: { item: CategoryMedicine; index: number }) {
-  const [imgErr, setImgErr] = useState(false);
-  const status = getStockStatus(item);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: Math.min(index * 0.05, 0.4) }}
-      whileHover={{ y: -6, scale: 1.02 }}
-      className="group bg-card border border-border rounded-2xl overflow-hidden shadow-sm
-                 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/25
-                 transition-all duration-300"
-    >
-      <div className="relative h-40 bg-gradient-to-br from-primary/5 to-secondary/5 overflow-hidden">
-        {item.imageUrl && !imgErr ? (
-          <img
-            src={item.imageUrl}
-            alt={item.name}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={() => setImgErr(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-2xl">{item.name.charAt(0)}</span>
-            </div>
-          </div>
-        )}
-        <div className="absolute top-2.5 right-2.5">
-          <StockBadge status={status} />
-        </div>
-      </div>
-      <div className="p-4">
-        {item.brand && (
-          <p className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-1">
-            {item.brand}
-          </p>
-        )}
-        <h3
-          className="text-sm font-bold text-foreground mb-1 leading-tight line-clamp-2"
-          style={{ fontFamily: "'Poppins', sans-serif" }}
-        >
-          {item.name}
-        </h3>
-        {item.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-            {item.description}
-          </p>
-        )}
-        {item.sellingPrice ? (
-          <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-            <span className="text-base font-bold text-foreground">₹{item.sellingPrice}</span>
-            {item.mrp && Number(item.mrp) > Number(item.sellingPrice) && (
-              <span className="text-xs text-muted-foreground line-through">₹{item.mrp}</span>
-            )}
-            {item.discount ? (
-              <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full">
-                {item.discount}% OFF
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-    </motion.div>
-  );
-}
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function CategoryDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -138,8 +42,8 @@ export default function CategoryDetailPage() {
   // the admin temporarily disables it — we'll still show the page.
   const { categories, loading: categoriesLoading } = useCategories(false);
 
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SortOption>("default");
+  const [search,     setSearch]     = useState("");
+  const [sort,       setSort]       = useState<SortOption>("default");
   const [filterOpen, setFilterOpen] = useState(false);
 
   // Match by slug field, falling back to document ID for older documents
@@ -159,8 +63,8 @@ export default function CategoryDetailPage() {
       );
     }
     const sorted = [...list];
-    if (sort === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
-    if (sort === "price-low") sorted.sort((a, b) => (a.sellingPrice ?? Infinity) - (b.sellingPrice ?? Infinity));
+    if (sort === "name")       sorted.sort((a, b) => a.name.localeCompare(b.name));
+    if (sort === "price-low")  sorted.sort((a, b) => (a.sellingPrice ?? Infinity) - (b.sellingPrice ?? Infinity));
     if (sort === "price-high") sorted.sort((a, b) => (b.sellingPrice ?? -Infinity) - (a.sellingPrice ?? -Infinity));
     return sorted;
   }, [medicines, search, sort]);
@@ -194,7 +98,7 @@ export default function CategoryDetailPage() {
           <Link href="/categories">
             <a className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white
                           rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
-              <ArrowLeft size={14} /> Back to Categories
+              <ArrowLeft size={14} /> Browse Medicines
             </a>
           </Link>
         </div>
@@ -222,7 +126,7 @@ export default function CategoryDetailPage() {
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href="/categories" className="hover:text-primary transition-colors">
-                  Categories
+                  Browse Medicines
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -240,7 +144,7 @@ export default function CategoryDetailPage() {
           <a className="inline-flex items-center gap-1.5 text-sm text-muted-foreground
                         hover:text-primary mb-6 transition-colors group">
             <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
-            All Categories
+            Browse Medicines
           </a>
         </Link>
 
@@ -323,7 +227,13 @@ export default function CategoryDetailPage() {
                          hover:border-primary/40 hover:text-primary transition-colors w-full sm:w-auto"
             >
               <SlidersHorizontal size={15} />
-              {sort === "default" ? "Sort & Filter" : sort === "name" ? "Name (A–Z)" : sort === "price-low" ? "Price: Low to High" : "Price: High to Low"}
+              {sort === "default"
+                ? "Sort & Filter"
+                : sort === "name"
+                ? "Name (A–Z)"
+                : sort === "price-low"
+                ? "Price: Low to High"
+                : "Price: High to Low"}
             </button>
 
             <AnimatePresence>
@@ -336,16 +246,16 @@ export default function CategoryDetailPage() {
                   className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-xl z-10 overflow-hidden"
                 >
                   {([
-                    ["default", "Recommended"],
-                    ["name", "Name (A–Z)"],
-                    ["price-low", "Price: Low to High"],
+                    ["default",    "Recommended"],
+                    ["name",       "Name (A–Z)"],
+                    ["price-low",  "Price: Low to High"],
                     ["price-high", "Price: High to Low"],
                   ] as [SortOption, string][]).map(([value, label]) => (
                     <button
                       key={value}
                       onClick={() => { setSort(value); setFilterOpen(false); }}
                       className={`w-full text-left px-4 py-2.5 text-sm hover:bg-muted/60 transition-colors
-                                  ${sort === value ? "text-primary font-semibold" : "text-foreground"}`}
+                                   ${sort === value ? "text-primary font-semibold" : "text-foreground"}`}
                     >
                       {label}
                     </button>
@@ -392,13 +302,6 @@ export default function CategoryDetailPage() {
                   synced via MediVision Gold. No page reload needed.
                 </p>
               </div>
-              <button
-                disabled
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
-                           bg-muted text-muted-foreground cursor-not-allowed"
-              >
-                Browse All Medicines
-              </button>
             </div>
           ) : visibleMedicines.length === 0 ? (
             /* Search matched nothing within this category */
@@ -415,7 +318,7 @@ export default function CategoryDetailPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {visibleMedicines.map((item, i) => (
-                <CategoryMedicineCard key={item.id} item={item} index={i} />
+                <MedicineCard key={item.id} item={item} index={i} />
               ))}
             </div>
           )}
