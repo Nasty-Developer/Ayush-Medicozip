@@ -25,7 +25,14 @@ To push DB schema changes: `pnpm --filter @workspace/db run push`
 
 All Firebase config keys (`VITE_FIREBASE_*`) are stored as shared env vars.  
 `DATABASE_URL` is runtime-managed by Replit PostgreSQL.  
-`SESSION_SECRET` is stored as a Replit Secret.  
-`OPENFDA_API_KEY` is stored as a shared env var (should be rotated and moved to a Secret — see Task #3).
+`SESSION_SECRET` is stored as a Replit Secret.
+
+## Inventory sources
+
+The medicine catalog comes from exactly two sources:
+- Manual entries created in the Admin Panel.
+- MediVision Gold inventory sync.
+
+There is no third-party medicine lookup API (previously OpenFDA was explored and has been fully removed).
 
 ## User preferences

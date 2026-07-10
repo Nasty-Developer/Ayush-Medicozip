@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { Phone, MapPin, MessageCircle, ShieldCheck, Clock, Star } from "lucide-react";
-import MedicineSearch from "@/components/MedicineSearch";
+import { Phone, MapPin, MessageCircle, ShieldCheck, Clock, Star, Search } from "lucide-react";
+import { Link } from "wouter";
 import PWAInstallButtons from "@/components/PWAInstallButtons";
 import { useAnnouncement } from "@/context/AnnouncementContext";
 
@@ -151,7 +151,14 @@ export default function Hero() {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="mt-8"
             >
-              <MedicineSearch />
+              <Link
+                href="/categories"
+                data-testid="hero-search-catalog-link"
+                className="flex items-center gap-3 w-full max-w-xl px-5 py-3.5 rounded-2xl border border-border bg-card/90 backdrop-blur-sm text-sm text-muted-foreground shadow-sm hover:border-primary/40 hover:text-foreground transition-all duration-200"
+              >
+                <Search size={18} className="text-muted-foreground" aria-hidden />
+                Search medicines, e.g. Paracetamol, Vitamin D3…
+              </Link>
             </motion.div>
 
             {/* Stat Row */}
