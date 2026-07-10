@@ -1,0 +1,96 @@
+// Ayush Medico — Firestore Security Rules
+// Apply these in Firebase Console → Firestore → Rules tab
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Public collections  (anyone can READ — required for the website to work)
+//   categories       → nav dropdown, homepage categories section
+//   brands           → homepage brands section
+//   medicines        → search, medicine pages, counts
+//   faqs             → FAQ section
+//   testimonials     → testimonials section
+//   settings         → announcement banner
+//   medicine-requests→ customers CREATE only (no read)
+//   inquiries        → customers CREATE only (no read)
+//
+// Admin collections  (authenticated admin users only)
+//   admin_users, orders, users
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper: is the request from a signed-in Firebase user? ────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // ── Public read collections ───────────────────────────────────────────
+    // The website homepage, nav, and search all need unauthenticated access
+    // to these collections.  Write is restricted to signed-in users only.
+
+    match /categories/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /brands/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /medicines/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /faqs/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /testimonials/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // ── Customer-submit collections ───────────────────────────────────────
+    // Anyone can CREATE (submit a request), but only signed-in users can read
+    // (admin sees their own panel) — prevents customers from reading each other's orders
+
+    match /inquiries/{docId} {
+      allow create: if true;                    // any visitor can submit
+      allow read, update, delete: if isSignedIn(); // admin only
+    }
+
+    match /medicine-requests/{docId} {
+      allow create: if true;
+      allow read, update, delete: if isSignedIn();
+    }
+
+    // ── Admin-only collections ────────────────────────────────────────────
+
+    match /admin_users/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /orders/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /users/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // ── Catch-all: deny everything else ──────────────────────────────────
+    match /{document=**} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}

@@ -1,0 +1,119 @@
+UI/UX Correction - Categories
+
+Please inspect the existing implementation first before making any changes.
+
+Do NOT create duplicate components, duplicate pages, duplicate files or duplicate Firestore logic.
+
+The current implementation does not match the intended design.
+
+What I actually want
+
+I do NOT want Categories to behave like the current dropdown.
+
+Please restore the original user experience.
+
+Homepage
+
+On the Homepage, create a dedicated Categories section.
+
+Each category created from the Admin Panel should automatically appear here as a beautiful category card.
+
+Each card should contain:
+
+Category Icon
+Category Name
+Optional description
+Professional hover animation
+
+If I add a new category from the Admin Panel, it should automatically appear on the Homepage without writing any code.
+
+Categories Page
+
+Create a dedicated page:
+
+/categories
+
+This page should display all published categories as cards.
+
+Clicking a category should open:
+
+/category/:slug
+
+At the moment, this page can simply display the category title and an empty state if there are no medicines yet.
+
+Medicines
+
+I do NOT want medicines inside the category page right now.
+
+Medicine synchronization from MediVision Gold will be implemented later.
+
+For now:
+
+Category pages can be empty.
+That is completely fine.
+Search
+
+The global Search should search medicines from Firestore.
+
+Later, when MediVision Gold is integrated, every imported medicine should automatically appear in Search.
+
+All Medicines
+
+Later we will create:
+
+/all-medicines
+
+This page will display every medicine imported from MediVision Gold.
+
+This feature is NOT required right now.
+
+Just keep the architecture ready for it.
+
+Categories
+
+Categories should only organize medicines.
+
+They should NOT contain hardcoded medicine data.
+
+The relationship should simply exist in Firestore.
+
+Admin Panel
+
+When I create a category in Admin Panel:
+
+It should automatically:
+
+appear on Homepage
+appear on Categories page
+appear inside Add Medicine form
+appear inside Edit Medicine form
+
+without refreshing.
+
+Architecture
+
+Please modify the existing implementation.
+
+Do NOT redesign everything.
+
+Do NOT create duplicate navigation.
+
+Do NOT move functionality unnecessarily.
+
+Simply implement the intended architecture cleanly.
+
+Final Goal
+
+The website should work like this:
+
+🏠 Homepage
+↓
+Categories Section (beautiful cards with icons)
+↓
+Click Category
+↓
+Category Page
+↓
+(Currently empty is okay)
+↓
+Later, when MediVision Gold sync is implemented, medicines will automatically appear inside that category.
