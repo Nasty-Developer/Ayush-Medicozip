@@ -1,0 +1,110 @@
+Fix Categories Page UI
+
+Before making any changes, inspect the existing implementation first.
+
+Do NOT create duplicate components, duplicate pages, duplicate Firestore collections or duplicate files.
+
+Improve the existing Categories page only.
+
+Current Problem
+
+The Categories page has a lot of empty white space and does not feel complete.
+
+The page should look like a professional pharmacy website.
+
+Categories Page Design
+
+The /categories page should display every published category from Firestore as beautiful responsive cards.
+
+Each card should include:
+
+Category Icon
+Category Name
+Short Description
+Medicine Count (optional)
+Hover Animation
+Click Animation
+Modern Shadow
+Rounded Corners
+Professional Color
+
+Arrange them in a responsive grid:
+
+Desktop:
+4 cards per row
+
+Tablet:
+2 cards per row
+
+Mobile:
+1 card per row
+
+Clicking a Category
+
+When the user clicks any category card:
+
+Navigate to
+
+/category/:slug
+Category Details Page
+
+The category page should NOT be empty.
+
+Create a professional layout.
+
+Show:
+
+Large Category Icon
+Category Name
+Description
+Breadcrumb
+Search Bar
+Filter Section (UI only)
+
+Then display the medicines that belong to that category.
+
+If there are no medicines yet:
+
+Instead of an empty white page, display a beautiful empty state like:
+
+"No medicines available in this category yet."
+
+Along with:
+
+Pharmacy illustration or medical icon
+Button:
+"Browse All Medicines" (can be disabled until implemented)
+
+Do NOT leave blank white space.
+
+Firestore
+
+Everything must come dynamically from Firestore.
+
+No hardcoded categories.
+
+No hardcoded pages.
+
+Realtime updates.
+
+Future Ready
+
+This page must already support MediVision Gold integration.
+
+When medicines are synced later:
+
+They should automatically appear inside their respective category.
+
+No redesign should be required later.
+
+Code Quality
+Reuse existing components.
+Improve current implementation.
+No duplicate files.
+No duplicate routes.
+No unnecessary refactoring.
+Final Result
+
+The Categories page should always feel complete.
+
+Even if there are zero medicines, the page should still look professional with proper content, spacing and layout.
