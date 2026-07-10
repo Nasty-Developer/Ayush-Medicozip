@@ -7,10 +7,10 @@ import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware";
 
 const router = Router();
 
-// Auth-protected: only the authenticated user (or admin) can access
-router.get("/:id", requireAuth, async (req: Request, res: Response): Promise<void> => {
+// Must be registered before /:id to prevent the dynamic segment from capturing it
+router.get("/by-firebase/:uid", requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, String(req.params["id"] ?? "")));
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.firebaseUid, String(req.params["uid"] ?? "")));
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
     res.json(user);
   } catch (err) {
@@ -19,9 +19,10 @@ router.get("/:id", requireAuth, async (req: Request, res: Response): Promise<voi
   }
 });
 
-router.get("/by-firebase/:uid", requireAuth, async (req: Request, res: Response): Promise<void> => {
+// Auth-protected: only the authenticated user (or admin) can access
+router.get("/:id", requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.firebaseUid, String(req.params["uid"] ?? "")));
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, String(req.params["id"] ?? "")));
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
     res.json(user);
   } catch (err) {
