@@ -16,6 +16,12 @@ const basePath = rawBase.startsWith("/") ? rawBase : `/${rawBase}`;
 
 export default defineConfig({
   base: basePath,
+  // Map GOOGLE_API_KEY secret → import.meta.env.VITE_FIREBASE_API_KEY.
+  // Vite only exposes VITE_-prefixed env vars to the client; this bridges
+  // the gap so the Firebase SDK receives the key without storing it twice.
+  define: process.env.GOOGLE_API_KEY
+    ? { "import.meta.env.VITE_FIREBASE_API_KEY": JSON.stringify(process.env.GOOGLE_API_KEY) }
+    : {},
   plugins: [
     react(),
     tailwindcss(),
