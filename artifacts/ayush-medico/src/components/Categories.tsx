@@ -23,13 +23,13 @@ function SkeletonGrid() {
     <section className="py-20 lg:py-28">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <div className="h-6 w-36 rounded-full bg-muted/60 animate-pulse mx-auto mb-4" />
-          <div className="h-10 w-72 rounded-xl bg-muted/60 animate-pulse mx-auto mb-3" />
-          <div className="h-4 w-96 rounded-lg bg-muted/40 animate-pulse mx-auto" />
+          <div className="h-6 w-36 rounded-full bg-muted animate-pulse mx-auto mb-4" />
+          <div className="h-10 w-72 rounded-xl bg-muted animate-pulse mx-auto mb-3" />
+          <div className="h-4 w-96 rounded-lg bg-muted animate-pulse mx-auto" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="rounded-2xl bg-muted/40 border border-border h-36 animate-pulse" />
+            <div key={i} className="rounded-2xl bg-muted border border-border h-36 animate-pulse" />
           ))}
         </div>
       </div>
