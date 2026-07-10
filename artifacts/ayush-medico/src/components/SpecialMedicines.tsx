@@ -22,6 +22,7 @@ type Medicine = {
   order?: number;
   prescriptionRequired?: boolean;
   stockQuantity?: number;
+  stockQty?: number;
 };
 
 function getStockStatus(item: Medicine): StockStatus {
@@ -96,7 +97,7 @@ function ExclusiveCard({ item, index }: { item: Medicine; index: number }) {
       unitPrice: item.sellingPrice!,
       prescriptionRequired: item.prescriptionRequired ?? false,
       imageUrl: item.imageUrl,
-      maxStock: item.stockQuantity,
+      maxStock: item.stockQty ?? item.stockQuantity,
     });
   };
 
@@ -110,7 +111,7 @@ function ExclusiveCard({ item, index }: { item: Medicine; index: number }) {
   const handleIncrement = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!cartItem) return;
-    const max = item.stockQuantity;
+    const max = item.stockQty ?? item.stockQuantity;
     if (max && cartItem.quantity >= max) return;
     updateQuantity(item.id, cartItem.quantity + 1);
   };
@@ -195,7 +196,7 @@ function ExclusiveCard({ item, index }: { item: Medicine; index: number }) {
                 </button>
                 <span className="text-sm font-bold text-secondary min-w-[32px] text-center">{cartItem.quantity}</span>
                 <button onClick={handleIncrement}
-                  disabled={!!(item.stockQuantity && cartItem.quantity >= item.stockQuantity)}
+                  disabled={!!((item.stockQty ?? item.stockQuantity) && cartItem.quantity >= (item.stockQty ?? item.stockQuantity)!)}
                   className="flex-1 flex items-center justify-center h-9 hover:bg-secondary/10 transition-colors text-secondary disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label="Increase quantity">
                   <Plus size={14} />

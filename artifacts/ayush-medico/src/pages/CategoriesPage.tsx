@@ -30,6 +30,7 @@ import {
 import { useCategories }          from "@/hooks/useCategories";
 import { useMedicinesByCategory } from "@/hooks/useMedicinesByCategory";
 import { useAllMedicines }        from "@/hooks/useAllMedicines";
+import { useMedicineCounts }      from "@/hooks/useMedicineCounts";
 import { getCategoryColors }      from "@/lib/categoryColors";
 import { MedicineCard, MedicineSkeleton } from "@/components/medicines/MedicineCard";
 import type { CategoryMedicine }  from "@/hooks/useMedicinesByCategory";
@@ -175,6 +176,9 @@ export default function CategoriesPage() {
   // Selected category state — "all" or a category NAME string
   const [selectedCatName, setSelectedCatName] = useState<"all" | string>("all");
 
+  // Real-time medicine counts per category (drives badge on pills and grid cards)
+  const medicineCounts = useMedicineCounts();
+
   // Category-scoped real-time hook — skips when "all" is selected (empty string)
   const catQueryName = selectedCatName === "all" ? "" : selectedCatName;
   const {
@@ -292,6 +296,14 @@ export default function CategoriesPage() {
                     {cat.icon || "💊"}
                   </span>
                   {cat.name}
+                  {medicineCounts[cat.name] !== undefined && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold
+                                      ${isSel
+                                        ? "bg-white/20 text-white"
+                                        : "bg-muted text-muted-foreground"}`}>
+                      {medicineCounts[cat.name]}
+                    </span>
+                  )}
                 </CategoryPill>
               );
             })}
@@ -549,6 +561,11 @@ export default function CategoriesPage() {
                                      group-hover:text-primary transition-colors">
                       {cat.name}
                     </span>
+                    {medicineCounts[cat.name] !== undefined && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {medicineCounts[cat.name]} medicine{medicineCounts[cat.name] !== 1 ? "s" : ""}
+                      </span>
+                    )}
                   </button>
                 );
               })}

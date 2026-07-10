@@ -5,6 +5,7 @@ import {
   LayoutDashboard, Pill, Megaphone, MessageSquare, HelpCircle,
   Star, Settings, LogOut, Menu, X, ChevronRight, ExternalLink,
   Shield, Tag, Building2, Sparkles, Award, Home, ClipboardList, ShoppingCart,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeToCollection, where } from "@/lib/firestoreHelpers";
@@ -23,6 +24,7 @@ import FAQPage from "./FAQPage";
 import TestimonialsPage from "./TestimonialsPage";
 import SettingsPage from "./SettingsPage";
 import AdminLogin from "./AdminLogin";
+import InventorySyncPage from "./InventorySyncPage";
 
 type NavItemDef = {
   divider?: string;
@@ -52,6 +54,8 @@ function buildNavItems(newInquiries: number, pendingRequests: number): NavItemDe
     { icon: HelpCircle,  label: "FAQ",          href: "/admin/faq" },
     { icon: Star,        label: "Testimonials", href: "/admin/testimonials" },
     { icon: Settings,    label: "Settings",     href: "/admin/settings" },
+    { divider: "Inventory" },
+    { icon: RefreshCw,   label: "Inventory Sync", href: "/admin/inventory-sync" },
   ];
 }
 
@@ -397,6 +401,7 @@ export default function AdminLayout() {
             <Route path="/admin/faq" component={FAQPage} />
             <Route path="/admin/testimonials" component={TestimonialsPage} />
             <Route path="/admin/settings" component={SettingsPage} />
+            <Route path="/admin/inventory-sync" component={InventorySyncPage} />
             <Route path="/admin/login" component={AdminLogin} />
           </Switch>
         </main>

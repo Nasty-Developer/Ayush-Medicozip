@@ -35,6 +35,7 @@ import AdminLayout from "@/pages/admin/AdminLayout";
 import OrderTracker from "@/pages/OrderTracker";
 import CategoriesPage from "@/pages/CategoriesPage";
 import CategoryDetailPage from "@/pages/CategoryDetailPage";
+import MedicineDetailPage from "@/pages/MedicineDetailPage";
 import CartPage from "@/pages/CartPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import OrderConfirmationPage from "@/pages/OrderConfirmationPage";
@@ -164,6 +165,15 @@ function App() {
                         {() => (
                           <PublicLayout>
                             <CategoriesPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
+
+                      {/* ── Public: medicine detail ── */}
+                      <Route path="/medicine/:id">
+                        {() => (
+                          <PublicLayout>
+                            <MedicineDetailPage />
                           </PublicLayout>
                         )}
                       </Route>

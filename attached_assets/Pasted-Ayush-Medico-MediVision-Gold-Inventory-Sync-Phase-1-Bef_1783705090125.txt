@@ -1,0 +1,140 @@
+Ayush Medico – MediVision Gold Inventory Sync (Phase 1)
+
+Before writing any code, inspect the existing project architecture, Firestore collections, Admin Panel, Medicines module, Categories, Brands, Search, and Order system.
+
+Do NOT create duplicate pages, duplicate Firestore collections, duplicate medicine models, duplicate category systems, duplicate brand systems, or duplicate upload components.
+
+I am attaching real MediVision Gold export files from a live pharmacy:
+
+PRODUCT.SDF
+STOCK.SDF
+COMPANY.SDF
+CATEGORY.SDF
+DRUG.SDF
+
+These are real files exported from MediVision Gold.
+
+Phase 1 Objective
+
+Do NOT immediately sync data into Firestore.
+
+First, reverse engineer and understand the structure of the attached SDF files.
+
+Identify:
+
+Record structure
+Field boundaries
+Product IDs
+Company IDs
+Category IDs
+Drug IDs
+Stock mapping
+Relationships between all files
+
+Create a reusable parser architecture.
+
+Do NOT assume fixed offsets without validating them.
+
+Build an Admin Inventory Sync Module
+
+Create an admin-only page:
+
+Admin
+↓
+
+Inventory Sync
+
+Features:
+
+Upload PRODUCT.SDF
+Upload STOCK.SDF
+Upload COMPANY.SDF
+Upload CATEGORY.SDF
+Upload DRUG.SDF
+
+After upload:
+
+Parse all files.
+
+Create a temporary staging area.
+
+Do NOT write directly into Firestore.
+
+Preview Screen
+
+Show:
+
+Total Products Found
+Total Companies
+Total Categories
+Total Drug Groups
+Total Stock Records
+
+Then compare with Firestore.
+
+Show:
+
+New Medicines
+Medicines to Update
+New Categories
+New Companies
+Stock Changes
+Price Changes
+Parsing Errors
+
+Only after the admin clicks Confirm Sync should Firestore be updated.
+
+Firestore Rules
+
+Reuse the existing:
+
+medicines
+categories
+brands
+
+collections.
+
+Do not duplicate them.
+
+Automatically match medicines with existing categories and brands where possible.
+
+Create new categories and brands only when required.
+
+Prevent duplicates.
+
+Performance
+
+Design the parser so it can handle:
+
+5,000 medicines
+10,000 medicines
+Future growth
+
+without freezing the browser.
+
+Code Quality
+
+Build this as a reusable production-ready Inventory Sync module.
+
+Separate:
+
+File Reader
+Parser
+Mapping Engine
+Validation
+Preview
+Firestore Sync
+
+Do not place everything into one file.
+
+IMPORTANT
+
+The attached SDF files are sample data for analysis.
+
+Treat them as the reference format for MediVision Gold.
+
+Before writing the parser logic, inspect these files carefully and explain the inferred structure in your final report.
+
+Generate a Preview after implementation.
+
+💖 Baby

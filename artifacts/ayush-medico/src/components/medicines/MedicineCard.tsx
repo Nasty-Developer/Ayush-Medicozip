@@ -16,14 +16,24 @@
  */
 
 import { useState } from "react";
+import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { PackageCheck, PackageX, Clock, ShoppingCart, Plus, Minus } from "lucide-react";
+import { PackageCheck, PackageX, Clock, ShoppingCart, Plus, Minus, Eye } from "lucide-react";
 import type { CategoryMedicine, StockStatus } from "@/hooks/useMedicinesByCategory";
 import { useCart } from "@/context/CartContext";
+
+/** Resolve max-stock from either Firestore field name convention. */
+function resolveMaxStock(item: CategoryMedicine): number | undefined {
+  return item.stockQty ?? item.stockQuantity;
+}
 
 export type { CategoryMedicine, StockStatus };
 
 // ─── Stock status helper ──────────────────────────────────────────────────────
+// Note: exported as a named function but kept here so MedicineCard can use it.
+// Vite Fast Refresh allows non-component exports when the file also exports
+// named components (this causes a full-page reload instead of hot swap in dev,
+// which is acceptable).
 
 export function getStockStatus(item: CategoryMedicine): StockStatus {
   if (item.stockStatus) return item.stockStatus;
@@ -94,7 +104,7 @@ export function MedicineCard({ item, index }: MedicineCardProps) {
       unitPrice: item.sellingPrice!,
       prescriptionRequired: item.prescriptionRequired ?? false,
       imageUrl: item.imageUrl,
-      maxStock: item.stockQuantity,
+      maxStock: resolveMaxStock(item),
     });
   };
 
@@ -111,7 +121,7 @@ export function MedicineCard({ item, index }: MedicineCardProps) {
   const handleIncrement = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!cartItem) return;
-    const max = item.stockQuantity;
+    const max = resolveMaxStock(item);
     if (max && cartItem.quantity >= max) return;
     updateQuantity(item.id, cartItem.quantity + 1);
   };
@@ -196,8 +206,19 @@ export function MedicineCard({ item, index }: MedicineCardProps) {
           </div>
         ) : null}
 
+        {/* ── View Details link ── */}
+        <Link
+          href={`/medicine/${item.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="mt-3 w-full flex items-center justify-center gap-1.5 h-8 rounded-xl
+                     text-xs font-semibold text-primary border border-primary/30
+                     hover:bg-primary/5 hover:border-primary/60 transition-all duration-200"
+        >
+          <Eye size={12} /> View Details
+        </Link>
+
         {/* ── Add to Cart / Quantity controls ── */}
-        <div className="mt-3 mt-auto pt-3">
+        <div className="mt-2 pt-0">
           <AnimatePresence mode="wait" initial={false}>
             {inCart ? (
               /* Inline quantity stepper */
@@ -223,7 +244,7 @@ export function MedicineCard({ item, index }: MedicineCardProps) {
                 </span>
                 <button
                   onClick={handleIncrement}
-                  disabled={!!(item.stockQuantity && cartItem.quantity >= item.stockQuantity)}
+                  disabled={!!((resolveMaxStock(item) ?? 0) > 0 && cartItem.quantity >= resolveMaxStock(item)!)}
                   className="flex-1 flex items-center justify-center h-9
                              hover:bg-primary/10 transition-colors text-primary
                              disabled:opacity-40 disabled:cursor-not-allowed"

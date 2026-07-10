@@ -1,0 +1,51 @@
+🟢 Auto Category Generation & Medicine Sorting
+
+Before writing any code, inspect the existing project architecture and reuse the current Firestore collections (medicines, categories, brands). Do not create duplicate collections or duplicate category logic.
+
+Objective
+
+Implement a fully automatic category system driven by the medicine inventory.
+
+Requirements
+Every medicine imported from MediVision (or added manually) contains category information.
+During Inventory Sync:
+Read the category from every medicine.
+If the category already exists, assign the medicine to it.
+If the category does not exist, automatically create it.
+Never create duplicate categories (case-insensitive matching and trimming).
+The Categories page should always be generated dynamically from Firestore.
+Every category card should automatically display:
+Category Name
+Medicine Count
+Category Icon (default placeholder if none exists)
+Number of medicines available
+Clicking a category should automatically display all medicines belonging to that category.
+Homepage sections such as:
+New Medicine Arrivals
+Special Medicines
+Browse Medicines
+Categories
+must all reuse the same medicine database.
+Every medicine card must automatically include:
+Medicine Image (or placeholder)
+Medicine Name
+Brand
+Price
+Stock Status
+Prescription Badge (if required)
+Add to Cart
+View Details
+When Inventory Sync updates medicines:
+New medicines should automatically appear.
+Updated medicines should move to the correct category.
+Removed medicines should disappear.
+Out-of-stock medicines should remain visible but show "Out of Stock" and disable Add to Cart.
+Categories should automatically update their medicine count after every sync.
+Reuse existing UI components and design system. Do not hardcode any categories.
+Ensure the system scales efficiently for 20,000+ medicines.
+After implementation, generate a Preview and verify:
+Categories are created automatically.
+Medicines appear under the correct category.
+Search works across all medicines.
+Add to Cart continues working.
+No duplicate categories are created.

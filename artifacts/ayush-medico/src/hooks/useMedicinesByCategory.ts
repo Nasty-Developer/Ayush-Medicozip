@@ -28,8 +28,10 @@ export type CategoryMedicine = {
   categoryName?: string;
   order?: number;
   prescriptionRequired?: boolean;
-  /** Max units available; 0 or absent = unlimited */
+  /** Max units available (legacy field name used by manually-added medicines) */
   stockQuantity?: number;
+  /** Max units available (written by MediVision inventory sync) */
+  stockQty?: number;
 };
 
 /**
