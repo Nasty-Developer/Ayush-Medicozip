@@ -18,15 +18,19 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { PackageCheck, PackageX, Clock, ShoppingCart, Plus, Minus, Eye, Crown, Sparkles } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Eye, Crown, Sparkles, PackageSearch, BellRing } from "lucide-react";
 import type { CategoryMedicine, StockStatus } from "@/hooks/useMedicinesByCategory";
 import { useCart } from "@/context/CartContext";
 import { resolveMedicineImage } from "@/lib/medicineImage";
+import { useRequestMedicine } from "@/context/RequestMedicineContext";
 
 /** Resolve max-stock from either Firestore field name convention. */
 function resolveMaxStock(item: CategoryMedicine): number | undefined {
   return item.stockQty ?? item.stockQuantity;
 }
+
+/** Units at or below this threshold are shown as "Low Stock" instead of "In Stock". */
+const LOW_STOCK_THRESHOLD = 10;
 
 export type { CategoryMedicine, StockStatus };
 
@@ -37,25 +41,48 @@ export type { CategoryMedicine, StockStatus };
 // which is acceptable).
 
 export function getStockStatus(item: CategoryMedicine): StockStatus {
-  if (item.stockStatus) return item.stockStatus;
-  return item.available === false ? "out_of_stock" : "in_stock";
+  const base: StockStatus = item.stockStatus
+    ? item.stockStatus
+    : item.available === false
+    ? "out_of_stock"
+    : "in_stock";
+
+  if (base === "in_stock") {
+    const qty = resolveMaxStock(item);
+    if (typeof qty === "number" && qty > 0 && qty <= LOW_STOCK_THRESHOLD) {
+      return "low_stock";
+    }
+  }
+  return base;
+}
+
+/** Ordering used to show in-stock products first — "customers should see
+ * what they can actually buy" before anything unavailable. */
+export function stockPriority(item: CategoryMedicine): number {
+  switch (getStockStatus(item)) {
+    case "in_stock":     return 0;
+    case "low_stock":    return 1;
+    case "coming_soon":  return 2;
+    case "out_of_stock": return 3;
+  }
 }
 
 // ─── StockBadge ───────────────────────────────────────────────────────────────
 
 export function StockBadge({ status }: { status: StockStatus }) {
   const map = {
-    in_stock:     { label: "In Stock",     icon: <PackageCheck size={9} />, cls: "bg-secondary/90 text-white" },
-    out_of_stock: { label: "Out of Stock", icon: <PackageX     size={9} />, cls: "bg-muted/90 text-muted-foreground" },
-    coming_soon:  { label: "Coming Soon",  icon: <Clock        size={9} />, cls: "bg-amber-500/90 text-white" },
+    in_stock:     { emoji: "🟢", label: "In Stock",     cls: "bg-secondary/90 text-white" },
+    low_stock:    { emoji: "🟡", label: "Low Stock",    cls: "bg-amber-500/90 text-white" },
+    out_of_stock: { emoji: "🔴", label: "Out of Stock", cls: "bg-muted/90 text-muted-foreground" },
+    coming_soon:  { emoji: "🟡", label: "Coming Soon",  cls: "bg-amber-500/90 text-white" },
   };
-  const { label, icon, cls } = map[status];
+  const { emoji, label, cls } = map[status];
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                   text-[10px] font-semibold backdrop-blur-sm ${cls}`}
     >
-      {icon} {label}
+      <span aria-hidden="true">{emoji}</span> {label}
     </span>
   );
 }
@@ -88,14 +115,21 @@ interface MedicineCardProps {
 export function MedicineCard({ item, index }: MedicineCardProps) {
   const [imgErr, setImgErr] = useState(false);
   const { addItem, items, updateQuantity, removeItem } = useCart();
+  const { triggerRequest } = useRequestMedicine();
   const status = getStockStatus(item);
+  const isUnavailable = status === "out_of_stock" || status === "coming_soon";
 
   const cartItem = items.find((i) => i.medicineId === item.id);
   const inCart = !!cartItem;
-  const canAdd = status === "in_stock" && !!item.sellingPrice;
+  const canAdd = (status === "in_stock" || status === "low_stock") && !!item.sellingPrice;
   const imageSrc = imgErr
     ? resolveMedicineImage(null, item.categoryName)
     : resolveMedicineImage(item.imageUrl, item.categoryName);
+
+  const handleRequestMedicine = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    triggerRequest(item.name, item.brand, item.categoryName);
+  };
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -189,15 +223,19 @@ export function MedicineCard({ item, index }: MedicineCardProps) {
         >
           {item.name}
         </h3>
+        {item.packInfo && (
+          <p className="text-xs text-muted-foreground mt-0.5">{item.packInfo}</p>
+        )}
         {item.description && (
           <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
             {item.description}
           </p>
         )}
         {item.categoryName && (
-          <p className="text-[10px] text-muted-foreground/60 mt-1 truncate">
+          <span className="inline-block w-fit text-[10px] font-medium text-muted-foreground
+                            bg-muted/60 px-1.5 py-0.5 rounded-md mt-1.5 truncate max-w-full">
             {item.categoryName}
-          </p>
+          </span>
         )}
 
         {/* Price row */}
@@ -279,15 +317,25 @@ export function MedicineCard({ item, index }: MedicineCardProps) {
                 <ShoppingCart size={14} /> Add to Cart
               </motion.button>
             ) : (
-              /* Unavailable */
+              /* Unavailable — offer to request this medicine instead */
               <motion.div
                 key="unavail"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="w-full flex items-center justify-center h-9 rounded-xl
-                           bg-muted/50 text-muted-foreground text-sm font-medium cursor-not-allowed"
+                className="flex flex-col gap-1.5"
               >
-                {status === "out_of_stock" ? "Out of Stock" : "Unavailable"}
+                <p className="text-[10px] text-muted-foreground leading-snug flex items-start gap-1">
+                  <BellRing size={11} className="mt-0.5 flex-shrink-0 text-amber-500" />
+                  Currently unavailable. We will notify you when it is available.
+                </p>
+                <button
+                  onClick={handleRequestMedicine}
+                  className="w-full flex items-center justify-center gap-2 h-9 rounded-xl
+                             text-sm font-semibold bg-secondary/10 text-secondary border border-secondary/30
+                             hover:bg-secondary hover:text-white active:scale-[0.98] transition-all duration-200"
+                >
+                  <PackageSearch size={14} /> Request this Medicine
+                </button>
               </motion.div>
             )}
           </AnimatePresence>

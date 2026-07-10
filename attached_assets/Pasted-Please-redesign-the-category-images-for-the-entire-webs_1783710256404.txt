@@ -1,0 +1,45 @@
+Please redesign the category images for the entire website.
+
+The current placeholder capsule image looks repetitive and empty.
+
+Instead, create one beautiful representative image for each category.
+
+Requirements:
+
+- Do NOT create one image for every medicine (there are 51,000+ medicines).
+- Instead, create ONE attractive hero image per category.
+- Detect the category name and automatically assign the correct category image.
+
+Examples:
+
+• Baby Care → diapers, baby lotion, baby powder, baby oil, baby shampoo
+• Skin Care → face wash, moisturizer, sunscreen, cream, lotion
+• Hair Care → shampoo, conditioner, hair oil, serum
+• Oral Care → toothbrush, toothpaste, mouthwash, dental floss
+• First Aid → bandages, antiseptic, gauze, cotton, tape
+• Diabetes Care → glucometer, strips, lancets, insulin accessories
+• Personal Care → soap, deodorant, perfume, body wash
+• Nutrition → protein powder, vitamins, supplements
+• Beverages → ORS, glucose drinks, health drinks
+• Food & Grocery → bread, biscuits, honey, oats, peanut butter, cereals
+• Ayurvedic → herbal medicines, chyawanprash, herbal oils
+• Medical Devices → thermometer, BP monitor, nebulizer, oximeter
+• Women's Care → sanitary pads, feminine hygiene products
+• Men's Care → shaving cream, razor, beard care
+• Pain Relief → pain relief gels, sprays, heating patches
+• General Medicines → clean medicine blister packs and bottles
+
+Each category image should:
+- look modern and realistic
+- contain multiple related products in one image
+- have a clean pharmacy style
+- use a white/light background
+- use soft shadows
+- look premium and trustworthy
+- maintain a consistent design language across all categories
+
+For medicines that don't have their own image, automatically use the image of their assigned category.
+
+Special Medicines and New Arrivals should continue using their own featured medicine images if available.
+
+The UI should feel like a modern pharmacy app instead of showing the same capsule image everywhere.

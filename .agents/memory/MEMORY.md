@@ -9,3 +9,4 @@
 - [MedicineCard cart wiring](medicine-card-cart-wiring.md) — MedicineCard was missing Add to Cart entirely; fixed by adding useCart() inline with qty stepper; prescriptionRequired and stockQuantity added to CategoryMedicine type.
 - [Ayush Medico placeholder image system](ayush-medico-placeholder-images.md) — shared inline-SVG fallback via resolveMedicineImage(), now picked per-category; imageUrl/flags only seeded on Firestore doc creation, never on update.
 - [Ayush Medico Firestore write-quota-safe sync](ayush-medico-firestore-quota-sync.md) — batched/throttled/retried writes with deterministic doc IDs (sdf-<id>) to avoid RESOURCE_EXHAUSTED and duplicates at 50k+ scale; no BulkWriter (client SDK only).
+- [Ayush Medico Request Medicine cross-page trigger](ayush-medico-request-medicine-trigger.md) — the request form only lives on the homepage anchor; triggering it from other routes needs navigate-then-retry-scroll, not a plain scrollIntoView.

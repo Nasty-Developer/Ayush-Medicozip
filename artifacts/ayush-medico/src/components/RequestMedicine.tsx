@@ -77,7 +77,7 @@ export default function RequestMedicine() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
   const { toast } = useToast();
-  const { prefillMedicine, requestToken } = useRequestMedicine();
+  const { prefillMedicine, prefillBrand, prefillCategory, requestToken } = useRequestMedicine();
   const { user: customerUser, loading: customerLoading } = useCustomerAuth();
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
   const [medicinePhotoFile, setMedicinePhotoFile] = useState<File | null>(null);
@@ -119,6 +119,14 @@ export default function RequestMedicine() {
   useEffect(() => {
     if (requestToken > 0 && prefillMedicine) {
       form.setValue("medicineName", prefillMedicine, { shouldValidate: false });
+      if (prefillBrand) form.setValue("medicineBrand", prefillBrand, { shouldValidate: false });
+      if (prefillCategory) {
+        form.setValue(
+          "notes",
+          `Category: ${prefillCategory}`,
+          { shouldValidate: false }
+        );
+      }
       form.setFocus("customerName");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -12,7 +12,7 @@
 import { useEffect, useState } from "react";
 import { subscribeToCollection, where } from "@/lib/firestoreHelpers";
 
-export type StockStatus = "in_stock" | "out_of_stock" | "coming_soon";
+export type StockStatus = "in_stock" | "low_stock" | "out_of_stock" | "coming_soon";
 
 export type CategoryMedicine = {
   id: string;
@@ -28,6 +28,8 @@ export type CategoryMedicine = {
   categoryName?: string;
   order?: number;
   prescriptionRequired?: boolean;
+  /** Strength / pack size, e.g. "500mg × 10" — written by MediVision sync */
+  packInfo?: string;
   /** Max units available (legacy field name used by manually-added medicines) */
   stockQuantity?: number;
   /** Max units available (written by MediVision inventory sync) */

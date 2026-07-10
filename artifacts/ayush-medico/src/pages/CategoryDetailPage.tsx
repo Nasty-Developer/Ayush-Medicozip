@@ -24,7 +24,7 @@ import {
 import { useCategories }          from "@/hooks/useCategories";
 import { useMedicinesByCategory } from "@/hooks/useMedicinesByCategory";
 import { getCategoryColors }      from "@/lib/categoryColors";
-import { MedicineCard, MedicineSkeleton } from "@/components/medicines/MedicineCard";
+import { MedicineCard, MedicineSkeleton, stockPriority } from "@/components/medicines/MedicineCard";
 import {
   Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink,
   BreadcrumbPage, BreadcrumbSeparator,
@@ -63,9 +63,15 @@ export default function CategoryDetailPage() {
       );
     }
     const sorted = [...list];
-    if (sort === "name")       sorted.sort((a, b) => a.name.localeCompare(b.name));
-    if (sort === "price-low")  sorted.sort((a, b) => (a.sellingPrice ?? Infinity) - (b.sellingPrice ?? Infinity));
-    if (sort === "price-high") sorted.sort((a, b) => (b.sellingPrice ?? -Infinity) - (a.sellingPrice ?? -Infinity));
+    sorted.sort((a, b) => {
+      const pa = stockPriority(a);
+      const pb = stockPriority(b);
+      if (pa !== pb) return pa - pb;
+      if (sort === "name")       return a.name.localeCompare(b.name);
+      if (sort === "price-low")  return (a.sellingPrice ?? Infinity) - (b.sellingPrice ?? Infinity);
+      if (sort === "price-high") return (b.sellingPrice ?? -Infinity) - (a.sellingPrice ?? -Infinity);
+      return (a.order ?? 0) - (b.order ?? 0);
+    });
     return sorted;
   }, [medicines, search, sort]);
 
