@@ -120,12 +120,18 @@ async function syncBrands(
 
 // ── Medicine sync ─────────────────────────────────────────────────────────────
 
+/**
+ * Fields shared by both create and update — everything MediVision Gold
+ * controls and should always be kept in sync (category, brand, price,
+ * stock, searchability). This never touches `imageUrl` or the manual
+ * Admin flags (`showInNewArrivals` / `showInSpecialMedicines` / `featured`)
+ * so a re-sync never clobbers an admin-uploaded photo or curation choice.
+ */
 function buildMedicineDoc(m: StagedMedicine) {
   return {
     name: m.name,
     brand: m.brand,
     description: m.genericName || m.packInfo || "",
-    imageUrl: "",
     stockStatus: m.stockStatus,
     available: m.available,
     sellingPrice: m.sellingPrice,
@@ -138,6 +144,22 @@ function buildMedicineDoc(m: StagedMedicine) {
     packInfo: m.packInfo,
     sdfProductId: m.sdfProductId,
     updatedAt: Timestamp.now(),
+  };
+}
+
+/**
+ * New medicines only: seeds the shared placeholder image + default
+ * curation flags so an imported medicine appears fully functional
+ * (searchable, categorized, orderable) without any manual editing.
+ * `imageUrl: ""` tells the frontend to fall back to the shared placeholder
+ * (see `lib/medicineImage.ts`) — no per-medicine image file is created.
+ */
+function buildNewMedicineFields() {
+  return {
+    imageUrl: "",
+    showInNewArrivals: false,
+    showInSpecialMedicines: false,
+    featured: false,
   };
 }
 
@@ -163,6 +185,7 @@ async function syncMedicines(
         const ref = doc(medCollection);
         batch.set(ref, {
           ...buildMedicineDoc(m),
+          ...buildNewMedicineFields(),
           createdAt: Timestamp.now(),
         });
       }

@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, AlertCircle, Tag, X } from "lucide-react";
 import { useState } from "react";
 import { useCart } from "@/context/CartContext";
+import { resolveMedicineImage } from "@/lib/medicineImage";
 
 // ─── Coupon stub ──────────────────────────────────────────────────────────────
 // When a coupon system is ready, replace this with a Firestore lookup.
@@ -116,13 +117,12 @@ export default function CartPage() {
                     className="flex gap-4 p-4 rounded-2xl border border-border bg-card shadow-sm"
                   >
                     {/* Image */}
-                    <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      {item.imageUrl ? (
-                        <img src={item.imageUrl} alt={item.medicineName}
-                          className="w-full h-full object-contain rounded-xl" />
-                      ) : (
-                        <span className="text-3xl">💊</span>
-                      )}
+                    <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      <img
+                        src={resolveMedicineImage(item.imageUrl)}
+                        alt={item.medicineName}
+                        className="w-full h-full object-contain rounded-xl"
+                      />
                     </div>
 
                     {/* Details */}

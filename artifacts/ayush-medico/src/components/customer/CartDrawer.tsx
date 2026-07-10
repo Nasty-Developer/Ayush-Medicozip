@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2, Plus, Minus, ShoppingCart, AlertCircle, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
 import { useCart } from "@/context/CartContext";
+import { resolveMedicineImage } from "@/lib/medicineImage";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -153,16 +154,12 @@ export default function CartDrawer() {
                         className="flex gap-3 p-3 rounded-2xl border border-border bg-card"
                       >
                         {/* Medicine image placeholder */}
-                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          {item.imageUrl ? (
-                            <img
-                              src={item.imageUrl}
-                              alt={item.medicineName}
-                              className="w-full h-full object-contain rounded-xl"
-                            />
-                          ) : (
-                            <span className="text-2xl">💊</span>
-                          )}
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          <img
+                            src={resolveMedicineImage(item.imageUrl)}
+                            alt={item.medicineName}
+                            className="w-full h-full object-contain rounded-xl"
+                          />
                         </div>
 
                         {/* Info */}

@@ -4,6 +4,7 @@ import { Sparkles, PackageCheck, PackageX, Clock, ChevronLeft, ChevronRight, Sho
 import { subscribeToCollection, subscribeToDoc, orderBy, where } from "@/lib/firestoreHelpers";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { useCart } from "@/context/CartContext";
+import { resolveMedicineImage } from "@/lib/medicineImage";
 
 type StockStatus = "in_stock" | "out_of_stock" | "coming_soon";
 
@@ -126,17 +127,13 @@ function ArrivalCard({ item, index }: { item: Medicine; index: number }) {
     >
       {/* Image */}
       <div className="relative h-40 bg-gradient-to-br from-primary/5 to-secondary/5 overflow-hidden flex-shrink-0">
-        {item.imageUrl && !imgErr ? (
-          <img src={item.imageUrl} alt={item.name} loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={() => setImgErr(true)} />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-2xl">{item.name.charAt(0)}</span>
-            </div>
-          </div>
-        )}
+        <img
+          src={imgErr ? resolveMedicineImage(null) : resolveMedicineImage(item.imageUrl)}
+          alt={item.name}
+          loading="lazy"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          onError={() => setImgErr(true)}
+        />
         {/* NEW badge */}
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-primary to-secondary text-white text-[10px] font-bold shadow-md">

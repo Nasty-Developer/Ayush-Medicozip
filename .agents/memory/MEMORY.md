@@ -7,3 +7,4 @@
 - [Firebase Admin v14 modular API](firebase-admin-v14-modular.md) — firebase-admin v14+ uses modular imports (firebase-admin/app, firebase-admin/auth); the old admin.auth() namespace no longer exists on the default export.
 - [Ayush Medico DB schema](ayush-medico-db-schema.md) — PostgreSQL schema (users, admin_users, categories, products, inventory, addresses, coupons, orders, order_items) lives in lib/db/src/schema/; uses Drizzle $inferInsert/$inferSelect (not drizzle-zod, which has Zod v3.25 compat issues).
 - [MedicineCard cart wiring](medicine-card-cart-wiring.md) — MedicineCard was missing Add to Cart entirely; fixed by adding useCart() inline with qty stepper; prescriptionRequired and stockQuantity added to CategoryMedicine type.
+- [Ayush Medico placeholder image system](ayush-medico-placeholder-images.md) — shared inline-SVG fallback via resolveMedicineImage(); imageUrl/flags only seeded on Firestore doc creation, never on update.

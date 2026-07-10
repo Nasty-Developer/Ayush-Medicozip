@@ -19,6 +19,7 @@ import { db } from "@/lib/firebase";
 import { useCart } from "@/context/CartContext";
 import type { CategoryMedicine } from "@/hooks/useMedicinesByCategory";
 import { StockBadge, getStockStatus, MedicineSkeleton } from "@/components/medicines/MedicineCard";
+import { resolveMedicineImage } from "@/lib/medicineImage";
 
 export default function MedicineDetailPage() {
   const params = useParams<{ id: string }>();
@@ -121,19 +122,12 @@ export default function MedicineDetailPage() {
       >
         {/* Image */}
         <div className="relative h-56 sm:h-72 bg-gradient-to-br from-primary/5 to-secondary/5 flex items-center justify-center">
-          {medicine.imageUrl && !imgErr ? (
-            <img
-              src={medicine.imageUrl}
-              alt={medicine.name}
-              className="w-full h-full object-cover"
-              onError={() => setImgErr(true)}
-            />
-          ) : (
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-secondary
-                            flex items-center justify-center shadow-xl">
-              <span className="text-white font-bold text-4xl">{medicine.name.charAt(0)}</span>
-            </div>
-          )}
+          <img
+            src={imgErr ? resolveMedicineImage(null) : resolveMedicineImage(medicine.imageUrl)}
+            alt={medicine.name}
+            className="w-full h-full object-cover"
+            onError={() => setImgErr(true)}
+          />
           <div className="absolute top-3 right-3">
             <StockBadge status={status} />
           </div>

@@ -32,6 +32,11 @@ export type CategoryMedicine = {
   stockQuantity?: number;
   /** Max units available (written by MediVision inventory sync) */
   stockQty?: number;
+  /** Manually toggled in Admin Panel — shows a premium "SPECIAL" badge + real image */
+  showInSpecialMedicines?: boolean;
+  /** Manually toggled in Admin Panel — shows a "NEW" badge + real image */
+  showInNewArrivals?: boolean;
+  featured?: boolean;
 };
 
 /**
