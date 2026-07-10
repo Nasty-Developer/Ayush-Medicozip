@@ -14,12 +14,14 @@ import { Link } from "wouter";
 import { motion, useInView } from "framer-motion";
 import { Tag, Loader2, AlertCircle } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
+import { useMedicineCounts } from "@/hooks/useMedicineCounts";
 import { getCategoryColors } from "@/lib/categoryColors";
 
 export default function CategoriesPage() {
   const ref    = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
   const { categories, loading, error } = useCategories(true); // published only
+  const medicineCounts = useMedicineCounts();
 
   return (
     <section ref={ref} className="pt-32 pb-24 lg:pt-36 lg:pb-32 min-h-[70vh]">
@@ -79,10 +81,11 @@ export default function CategoriesPage() {
 
         {/* ── Category grid ─────────────────────────────────────────── */}
         {!loading && !error && categories.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6">
             {categories.map((cat, i) => {
               const colors = getCategoryColors(cat.color, i);
               const href   = `/category/${cat.slug ?? cat.id}`;
+              const count  = medicineCounts[cat.name] ?? 0;
 
               return (
                 <Link key={cat.id} href={href} className="block">
@@ -91,11 +94,12 @@ export default function CategoriesPage() {
                     animate={inView ? { opacity: 1, scale: 1 } : {}}
                     transition={{ duration: 0.35, delay: i * 0.04 }}
                     whileHover={{ y: -7, scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
                     className={`group relative flex flex-col items-center text-center
                                 rounded-2xl bg-gradient-to-br ${colors.light}
-                                border border-border p-6
+                                border border-border p-7
                                 shadow-sm hover:shadow-xl hover:shadow-black/10
-                                transition-all duration-300 cursor-pointer overflow-hidden h-full`}
+                                transition-all duration-300 cursor-pointer overflow-hidden h-full min-h-[220px] justify-center`}
                   >
                     {/* Hover colour wash */}
                     <div
@@ -104,7 +108,14 @@ export default function CategoriesPage() {
                                   transition-opacity duration-300`}
                     />
 
-                    <div className="relative">
+                    {/* Medicine count badge */}
+                    {count > 0 && (
+                      <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full bg-card/90 text-foreground border border-border shadow-sm">
+                        {count}+
+                      </span>
+                    )}
+
+                    <div className="relative flex flex-col items-center">
                       {/* Icon */}
                       <motion.div
                         whileHover={{ rotate: 10 }}
@@ -120,19 +131,22 @@ export default function CategoriesPage() {
 
                       {/* Name */}
                       <h2
-                        className="font-bold text-foreground mb-1 text-sm sm:text-base leading-tight
+                        className="font-bold text-foreground mb-1.5 text-base leading-tight
                                    group-hover:text-primary transition-colors duration-200"
                         style={{ fontFamily: "'Poppins', sans-serif" }}
                       >
                         {cat.name}
                       </h2>
 
-                      {/* Optional description */}
-                      {cat.description && (
-                        <p className="text-xs text-muted-foreground leading-snug">
-                          {cat.description}
-                        </p>
-                      )}
+                      {/* Description */}
+                      <p className="text-xs text-muted-foreground leading-snug line-clamp-2 mb-3">
+                        {cat.description || "Explore our range of trusted, genuine medicines in this category."}
+                      </p>
+
+                      {/* Medicine count line */}
+                      <span className="text-[11px] font-semibold text-primary/80 group-hover:text-primary transition-colors">
+                        {count > 0 ? `${count} medicine${count === 1 ? "" : "s"} available` : "Browse category"}
+                      </span>
                     </div>
                   </motion.div>
                 </Link>
