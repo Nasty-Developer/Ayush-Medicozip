@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Moon, Sun, Menu, X, Phone, Sparkles, Award, Pill, Send, User,
-  ChevronDown, ChevronRight, ClipboardList, LogOut, UserCircle, Tag,
+  ChevronDown, ChevronRight, ClipboardList, LogOut, UserCircle,
+  Tag, AlertCircle, Loader2,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
@@ -18,7 +19,7 @@ const navLinks = [
   { label: "Home",         href: "#home" },
   { label: "About",        href: "#about" },
   { label: "Services",     href: "#services" },
-  { label: "Products",     href: "#categories" }, // enhanced to dropdown
+  { label: "Categories",   href: "#categories" }, // ← live dropdown
   { label: "Why Us",       href: "#why-us" },
   { label: "Testimonials", href: "#testimonials" },
   { label: "Contact",      href: "#contact" },
@@ -26,10 +27,10 @@ const navLinks = [
 
 // Extra quick-access items shown only in the mobile hamburger menu
 const mobileQuickLinks = [
-  { icon: Sparkles, label: "New Medicine Arrivals",      href: "#new-arrivals" },
-  { icon: Award,    label: "Special Medicines",           href: "#special-medicines" },
-  { icon: Pill,     label: "Check Medicine Availability", href: "#medicine-search" },
-  { icon: Send,     label: "Request a Medicine",          href: "#request-medicine" },
+  { icon: Sparkles, label: "New Medicine Arrivals",       href: "#new-arrivals" },
+  { icon: Award,    label: "Special Medicines",            href: "#special-medicines" },
+  { icon: Pill,     label: "Check Medicine Availability",  href: "#medicine-search" },
+  { icon: Send,     label: "Request a Medicine",           href: "#request-medicine" },
 ];
 
 /* ── Logo ─────────────────────────────────────────────────────────────────── */
@@ -52,39 +53,128 @@ function Logo() {
   );
 }
 
-/* ── Main component ───────────────────────────────────────────────────────── */
+/* ── Category dropdown body (desktop) ────────────────────────────────────── */
+/**
+ * Separated into its own component so it has no conditional-hook risk.
+ * Renders loading skeletons, error state, or the live category list.
+ */
+function CategoryDropdownBody({
+  categories,
+  loading,
+  error,
+  onSelect,
+}: {
+  categories: ReturnType<typeof useCategories>["categories"];
+  loading: boolean;
+  error: string | null;
+  onSelect: () => void;
+}) {
+  return (
+    <>
+      {/* ── "View all" header row ── */}
+      <button
+        onClick={onSelect}
+        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors"
+      >
+        <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <Tag size={13} className="text-primary" />
+        </div>
+        All Categories
+        <ChevronRight size={12} className="ml-auto text-muted-foreground" />
+      </button>
+
+      <div className="mx-4 my-1 h-px bg-border" />
+
+      {/* ── Loading skeleton ── */}
+      {loading && (
+        <div className="px-4 py-2 space-y-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 size={11} className="animate-spin" />
+            Loading categories…
+          </div>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3 py-1">
+              <div className="w-7 h-7 rounded-lg bg-muted animate-pulse flex-shrink-0" />
+              <div className="h-3 bg-muted animate-pulse rounded flex-1" style={{ width: `${55 + i * 12}%` }} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Firestore error ── */}
+      {!loading && error && (
+        <div className="px-4 py-3 flex items-start gap-2 text-xs text-destructive">
+          <AlertCircle size={13} className="flex-shrink-0 mt-0.5" />
+          <span>Could not load categories. Check your connection and try again.</span>
+        </div>
+      )}
+
+      {/* ── Empty state (loaded, no categories published) ── */}
+      {!loading && !error && categories.length === 0 && (
+        <div className="px-4 py-3 text-xs text-muted-foreground">
+          No categories published yet.
+        </div>
+      )}
+
+      {/* ── Category list ── */}
+      {!loading && !error && categories.length > 0 && (
+        <div className="max-h-72 overflow-y-auto">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={onSelect}
+              data-testid={`nav-category-${cat.slug ?? cat.id}`}
+              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:text-primary hover:bg-primary/5 transition-colors"
+            >
+              <span
+                className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-base flex-shrink-0 leading-none"
+                role="img"
+                aria-label={cat.name}
+              >
+                {cat.icon || "💊"}
+              </span>
+              <span className="truncate">{cat.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ── Main Header ──────────────────────────────────────────────────────────── */
 export default function Header() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme }             = useTheme();
   const { enabled: announcementEnabled } = useAnnouncement();
-  const { user, signOut } = useCustomerAuth();
+  const { user, signOut }               = useCustomerAuth();
 
-  // Live categories from Firestore — only published, real-time updates
-  const { categories } = useCategories(true);
+  // Live, published-only categories from Firestore (real-time)
+  const { categories, loading: catsLoading, error: catsError } = useCategories(true);
 
-  const [scrolled,          setScrolled]          = useState(false);
-  const [mobileOpen,        setMobileOpen]         = useState(false);
-  const [accountMenuOpen,   setAccountMenuOpen]    = useState(false);
-  const [productsOpen,      setProductsOpen]       = useState(false);
-  const [productsExpanded,  setProductsExpanded]   = useState(false); // mobile accordion
-  const [showSignIn,        setShowSignIn]         = useState(false);
-  const [showMyOrders,      setShowMyOrders]       = useState(false);
-  const [showMyProfile,     setShowMyProfile]      = useState(false);
+  const [scrolled,           setScrolled]          = useState(false);
+  const [mobileOpen,         setMobileOpen]         = useState(false);
+  const [accountMenuOpen,    setAccountMenuOpen]    = useState(false);
+  const [categoriesOpen,     setCategoriesOpen]     = useState(false);
+  const [categoriesExpanded, setCategoriesExpanded] = useState(false); // mobile accordion
+  const [showSignIn,         setShowSignIn]         = useState(false);
+  const [showMyOrders,       setShowMyOrders]       = useState(false);
+  const [showMyProfile,      setShowMyProfile]      = useState(false);
 
-  const productsRef = useRef<HTMLDivElement>(null);
-  const accountRef  = useRef<HTMLDivElement>(null);
+  const categoriesRef = useRef<HTMLDivElement>(null);
+  const accountRef    = useRef<HTMLDivElement>(null);
 
-  /* ── Scroll detection ── */
+  /* ── Scroll shadow ── */
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* ── Click-outside to close dropdowns ── */
+  /* ── Click-outside closes both dropdowns ── */
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (productsRef.current && !productsRef.current.contains(e.target as Node)) {
-        setProductsOpen(false);
+      if (categoriesRef.current && !categoriesRef.current.contains(e.target as Node)) {
+        setCategoriesOpen(false);
       }
       if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
         setAccountMenuOpen(false);
@@ -94,11 +184,11 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /* ── Helpers ── */
+  /* ── Smooth scroll + close menus ── */
   const scrollTo = (href: string) => {
     setMobileOpen(false);
-    setProductsOpen(false);
-    setProductsExpanded(false);
+    setCategoriesOpen(false);
+    setCategoriesExpanded(false);
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
@@ -122,33 +212,33 @@ export default function Header() {
           <div className="flex items-center justify-between h-16 md:h-20">
             <Logo />
 
-            {/* ── Desktop nav ─────────────────────────────────────────────── */}
+            {/* ── Desktop nav ──────────────────────────────────────────────── */}
             <nav className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => {
-                if (link.label === "Products") {
-                  /* Products — dropdown showing live Firestore categories */
+                if (link.label === "Categories") {
+                  /* Categories — live dropdown from Firestore */
                   return (
-                    <div key="Products" className="relative" ref={productsRef}>
+                    <div key="Categories" className="relative" ref={categoriesRef}>
                       <button
-                        onClick={() => setProductsOpen((v) => !v)}
-                        data-testid="nav-link-products"
-                        aria-haspopup="true"
-                        aria-expanded={productsOpen}
+                        onClick={() => setCategoriesOpen((v) => !v)}
+                        data-testid="nav-link-categories"
+                        aria-haspopup="listbox"
+                        aria-expanded={categoriesOpen}
                         className={`flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                          productsOpen
+                          categoriesOpen
                             ? "text-primary bg-primary/10"
                             : "text-muted-foreground hover:text-primary hover:bg-primary/5"
                         }`}
                       >
-                        Products
+                        Categories
                         <ChevronDown
                           size={13}
-                          className={`transition-transform duration-200 ${productsOpen ? "rotate-180" : ""}`}
+                          className={`transition-transform duration-200 ${categoriesOpen ? "rotate-180" : ""}`}
                         />
                       </button>
 
                       <AnimatePresence>
-                        {productsOpen && (
+                        {categoriesOpen && (
                           <motion.div
                             initial={{ opacity: 0, y: -8, scale: 0.97 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -156,42 +246,12 @@ export default function Header() {
                             transition={{ duration: 0.15 }}
                             className="absolute left-0 top-full mt-2 w-64 bg-card border border-border rounded-2xl shadow-xl shadow-black/10 py-2 z-50 overflow-hidden"
                           >
-                            {/* View all categories link */}
-                            <button
-                              onClick={() => scrollTo("#categories")}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors"
-                            >
-                              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                <Tag size={13} className="text-primary" />
-                              </div>
-                              All Categories
-                              <ChevronRight size={12} className="ml-auto text-muted-foreground" />
-                            </button>
-
-                            {categories.length > 0 && (
-                              <>
-                                <div className="mx-4 my-1 h-px bg-border" />
-                                <div className="max-h-72 overflow-y-auto">
-                                  {categories.map((cat) => (
-                                    <button
-                                      key={cat.id}
-                                      onClick={() => scrollTo("#categories")}
-                                      data-testid={`nav-category-${cat.slug ?? cat.id}`}
-                                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:text-primary hover:bg-primary/5 transition-colors"
-                                    >
-                                      <span
-                                        className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-base flex-shrink-0 leading-none"
-                                        role="img"
-                                        aria-label={cat.name}
-                                      >
-                                        {cat.icon || "💊"}
-                                      </span>
-                                      <span className="truncate">{cat.name}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              </>
-                            )}
+                            <CategoryDropdownBody
+                              categories={categories}
+                              loading={catsLoading}
+                              error={catsError}
+                              onSelect={() => scrollTo("#categories")}
+                            />
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -199,12 +259,12 @@ export default function Header() {
                   );
                 }
 
-                /* All other nav links — plain scroll buttons */
+                /* All other links — plain scroll buttons */
                 return (
                   <button
                     key={link.label}
                     onClick={() => scrollTo(link.href)}
-                    data-testid={`nav-link-${link.label.toLowerCase()}`}
+                    data-testid={`nav-link-${link.label.toLowerCase().replace(/\s+/g, "-")}`}
                     className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-primary rounded-lg hover:bg-primary/5 transition-all duration-200"
                   >
                     {link.label}
@@ -213,7 +273,7 @@ export default function Header() {
               })}
             </nav>
 
-            {/* ── Right-side actions ──────────────────────────────────────── */}
+            {/* ── Right-side actions ─────────────────────────────────────── */}
             <div className="flex items-center gap-2">
               <a
                 href="tel:+919833273838"
@@ -289,7 +349,7 @@ export default function Header() {
                 {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
               </button>
 
-              {/* Hamburger (mobile) */}
+              {/* Hamburger (mobile only) */}
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
                 data-testid="mobile-menu-toggle"
@@ -316,26 +376,27 @@ export default function Header() {
           >
             <div className="px-4 py-4 flex flex-col gap-1">
               {navLinks.map((link) => {
-                if (link.label === "Products") {
-                  /* Products accordion — expands to show live categories */
+                if (link.label === "Categories") {
+                  /* Categories accordion — shows live Firestore categories */
                   return (
-                    <div key="Products">
+                    <div key="Categories">
                       <button
-                        onClick={() => setProductsExpanded((v) => !v)}
-                        aria-expanded={productsExpanded}
-                        aria-controls="mobile-products-menu"
+                        onClick={() => setCategoriesExpanded((v) => !v)}
+                        aria-expanded={categoriesExpanded}
+                        aria-controls="mobile-categories-menu"
                         className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all duration-200"
                       >
-                        <span>Products</span>
+                        <span>Categories</span>
                         <ChevronDown
                           size={14}
-                          className={`text-muted-foreground transition-transform duration-200 ${productsExpanded ? "rotate-180" : ""}`}
+                          className={`text-muted-foreground transition-transform duration-200 ${categoriesExpanded ? "rotate-180" : ""}`}
                         />
                       </button>
 
                       <AnimatePresence>
-                        {productsExpanded && (
+                        {categoriesExpanded && (
                           <motion.div
+                            id="mobile-categories-menu"
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
@@ -352,8 +413,24 @@ export default function Header() {
                                 All Categories
                               </button>
 
-                              {/* Live categories from Firestore */}
-                              {categories.map((cat) => (
+                              {/* Loading */}
+                              {catsLoading && (
+                                <div className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground">
+                                  <Loader2 size={11} className="animate-spin" />
+                                  Loading…
+                                </div>
+                              )}
+
+                              {/* Error */}
+                              {!catsLoading && catsError && (
+                                <div className="flex items-center gap-2 px-4 py-2 text-xs text-destructive">
+                                  <AlertCircle size={11} />
+                                  Could not load categories
+                                </div>
+                              )}
+
+                              {/* Category list */}
+                              {!catsLoading && !catsError && categories.map((cat) => (
                                 <button
                                   key={cat.id}
                                   onClick={() => scrollTo("#categories")}
