@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, useInView } from "framer-motion";
-import { Sparkles, PackageCheck, PackageX, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
+import { Sparkles, PackageCheck, PackageX, Clock, ChevronLeft, ChevronRight, ShoppingCart, Plus, Minus } from "lucide-react";
 import { subscribeToCollection, subscribeToDoc, orderBy, where } from "@/lib/firestoreHelpers";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { useCart } from "@/context/CartContext";
 
 type StockStatus = "in_stock" | "out_of_stock" | "coming_soon";
 
@@ -19,6 +20,8 @@ type Medicine = {
   discount?: number;
   showInNewArrivals?: boolean;
   order?: number;
+  prescriptionRequired?: boolean;
+  stockQuantity?: number;
 };
 
 function getStockStatus(item: Medicine): StockStatus {
@@ -49,6 +52,7 @@ function SkeletonCard() {
         <div className="h-4 bg-muted rounded w-3/4" />
         <div className="h-3 bg-muted rounded w-full" />
         <div className="h-5 bg-muted rounded w-1/3 mt-2" />
+        <div className="h-9 bg-muted rounded-xl mt-3" />
       </div>
     </div>
   );
@@ -73,9 +77,43 @@ function EmptyState() {
   );
 }
 
-function MedicineCard({ item, index }: { item: Medicine; index: number }) {
+function ArrivalCard({ item, index }: { item: Medicine; index: number }) {
   const [imgErr, setImgErr] = useState(false);
+  const { addItem, items, updateQuantity, removeItem } = useCart();
   const status = getStockStatus(item);
+
+  const cartItem = items.find((i) => i.medicineId === item.id);
+  const inCart = !!cartItem;
+  const canAdd = status === "in_stock" && !!item.sellingPrice;
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!canAdd) return;
+    addItem({
+      medicineId: item.id,
+      medicineName: item.name,
+      brandName: item.brand,
+      unitPrice: item.sellingPrice!,
+      prescriptionRequired: item.prescriptionRequired ?? false,
+      imageUrl: item.imageUrl,
+      maxStock: item.stockQuantity,
+    });
+  };
+
+  const handleDecrement = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!cartItem) return;
+    if (cartItem.quantity <= 1) removeItem(item.id);
+    else updateQuantity(item.id, cartItem.quantity - 1);
+  };
+
+  const handleIncrement = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!cartItem) return;
+    const max = item.stockQuantity;
+    if (max && cartItem.quantity >= max) return;
+    updateQuantity(item.id, cartItem.quantity + 1);
+  };
 
   return (
     <motion.div
@@ -83,9 +121,10 @@ function MedicineCard({ item, index }: { item: Medicine; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.06, 0.4) }}
       whileHover={{ y: -6, scale: 1.02 }}
-      className="flex-shrink-0 w-56 sm:w-64 bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-primary/10 hover:border-primary/25 transition-all duration-300 group"
+      className="flex-shrink-0 w-56 sm:w-64 bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-primary/10 hover:border-primary/25 transition-all duration-300 group flex flex-col"
     >
-      <div className="relative h-40 bg-gradient-to-br from-primary/5 to-secondary/5 overflow-hidden">
+      {/* Image */}
+      <div className="relative h-40 bg-gradient-to-br from-primary/5 to-secondary/5 overflow-hidden flex-shrink-0">
         {item.imageUrl && !imgErr ? (
           <img src={item.imageUrl} alt={item.name} loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -97,16 +136,24 @@ function MedicineCard({ item, index }: { item: Medicine; index: number }) {
             </div>
           </div>
         )}
-        <div className="absolute top-2.5 left-2.5">
+        {/* NEW badge */}
+        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-primary to-secondary text-white text-[10px] font-bold shadow-md">
             <Sparkles size={9} /> NEW
           </span>
+          {item.prescriptionRequired && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/90 text-white backdrop-blur-sm">
+              Rx
+            </span>
+          )}
         </div>
         <div className="absolute top-2.5 right-2.5">
           <StockBadge status={status} />
         </div>
       </div>
-      <div className="p-4">
+
+      {/* Details */}
+      <div className="p-4 flex flex-col flex-1">
         {item.brand && <p className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-1">{item.brand}</p>}
         <h3 className="text-sm font-bold text-foreground mb-1 leading-tight line-clamp-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
           {item.name}
@@ -123,6 +170,56 @@ function MedicineCard({ item, index }: { item: Medicine; index: number }) {
             ) : null}
           </div>
         ) : null}
+
+        {/* ── Add to Cart / Qty stepper — reuses CartContext.addItem ── */}
+        <div className="mt-auto pt-3">
+          <AnimatePresence mode="wait" initial={false}>
+            {inCart ? (
+              <motion.div
+                key="qty"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center justify-between rounded-xl border border-primary/40 bg-primary/5 overflow-hidden"
+              >
+                <button onClick={handleDecrement}
+                  className="flex-1 flex items-center justify-center h-9 hover:bg-primary/10 transition-colors text-primary"
+                  aria-label="Decrease quantity">
+                  <Minus size={14} />
+                </button>
+                <span className="text-sm font-bold text-primary min-w-[32px] text-center">{cartItem.quantity}</span>
+                <button onClick={handleIncrement}
+                  disabled={!!(item.stockQuantity && cartItem.quantity >= item.stockQuantity)}
+                  className="flex-1 flex items-center justify-center h-9 hover:bg-primary/10 transition-colors text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Increase quantity">
+                  <Plus size={14} />
+                </button>
+              </motion.div>
+            ) : canAdd ? (
+              <motion.button
+                key="add"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                onClick={handleAddToCart}
+                className="w-full flex items-center justify-center gap-2 h-9 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all duration-200 shadow-sm shadow-primary/20"
+              >
+                <ShoppingCart size={14} /> Add to Cart
+              </motion.button>
+            ) : (
+              <motion.div
+                key="unavail"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="w-full flex items-center justify-center h-9 rounded-xl bg-muted/50 text-muted-foreground text-sm font-medium cursor-not-allowed"
+              >
+                {status === "out_of_stock" ? "Out of Stock" : "Unavailable"}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </motion.div>
   );
@@ -146,7 +243,6 @@ export default function NewArrivals() {
   useEffect(() => {
     if (!isFirebaseConfigured) { setLoading(false); return; }
 
-    // Real-time: all medicines where showInNewArrivals == true
     const unsubMeds = subscribeToCollection(
       "medicines",
       [where("showInNewArrivals", "==", true)],
@@ -158,7 +254,6 @@ export default function NewArrivals() {
       () => setLoading(false)
     );
 
-    // Real-time: homepage settings
     const unsubSettings = subscribeToDoc("settings", "homepage", (doc) => {
       if (!doc) return;
       if (doc.newArrivalsEnabled === false) setSectionEnabled(false);
@@ -170,7 +265,6 @@ export default function NewArrivals() {
     return () => { unsubMeds(); unsubSettings(); };
   }, []);
 
-  // If section disabled by admin → don't show at all
   if (!loading && !sectionEnabled) return null;
 
   const scroll = (dir: "left" | "right") =>
@@ -222,7 +316,7 @@ export default function NewArrivals() {
           >
             {items.map((item, i) => (
               <div key={item.id} className="snap-start">
-                <MedicineCard item={item} index={i} />
+                <ArrivalCard item={item} index={i} />
               </div>
             ))}
           </div>
