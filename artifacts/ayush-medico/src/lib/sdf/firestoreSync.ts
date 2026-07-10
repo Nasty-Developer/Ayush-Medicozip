@@ -31,14 +31,14 @@ import { db } from "@/lib/firebase";
 import type { SyncPreview, SyncProgress, StagedMedicine } from "./types";
 
 /** Firestore hard cap is 500 ops/batch — we stay well under it. */
-const DEFAULT_BATCH_SIZE = 300;
+const DEFAULT_BATCH_SIZE = 250;
 /** Pause between batches to respect sustained write-per-second limits. */
-const BATCH_DELAY_MS = 400;
+const BATCH_DELAY_MS = 700;
 /** Max retry attempts for a single batch before giving up on it. */
-const MAX_RETRIES = 6;
+const MAX_RETRIES = 8;
 /** Backoff base — doubles each retry, capped below. */
-const RETRY_BASE_DELAY_MS = 1000;
-const RETRY_MAX_DELAY_MS = 20000;
+const RETRY_BASE_DELAY_MS = 1500;
+const RETRY_MAX_DELAY_MS = 30000;
 
 type ProgressCallback = (p: Partial<SyncProgress>) => void;
 
