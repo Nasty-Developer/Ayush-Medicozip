@@ -32,13 +32,26 @@ import type { SyncPreview, SyncProgress, StagedMedicine } from "./types";
 
 /** Firestore hard cap is 500 ops/batch — we stay well under it. */
 const DEFAULT_BATCH_SIZE = 250;
-/** Pause between batches to respect sustained write-per-second limits. */
+/** Base pause between batches to respect sustained write-per-second limits. */
 const BATCH_DELAY_MS = 700;
+/** Upper bound for the adaptive inter-batch delay once we start seeing quota errors. */
+const BATCH_DELAY_MAX_MS = 15000;
 /** Max retry attempts for a single batch before giving up on it. */
 const MAX_RETRIES = 8;
 /** Backoff base — doubles each retry, capped below. */
 const RETRY_BASE_DELAY_MS = 1500;
 const RETRY_MAX_DELAY_MS = 30000;
+/**
+ * If this many batches in a row fail *entirely* (all retries exhausted) due
+ * to a quota error, the daily/project write quota is almost certainly
+ * exhausted rather than a transient rate-limit blip. Grinding through every
+ * remaining batch at that point would just spend ~8 retries x 30s each for
+ * no benefit and make the sync look "stuck" for a very long time. Instead we
+ * stop early with a clear message — already-written medicines are kept
+ * (deterministic IDs + the staging diff mean re-running the sync later
+ * automatically resumes with only what's left).
+ */
+const MAX_CONSECUTIVE_QUOTA_BATCH_FAILURES = 3;
 
 type ProgressCallback = (p: Partial<SyncProgress>) => void;
 
@@ -248,122 +261,147 @@ function medicineDocId(sdfProductId: number): string {
   return `sdf-${sdfProductId}`;
 }
 
+type MedicineOp = { kind: "create" | "update"; medicine: StagedMedicine };
+
 async function syncMedicines(
   preview: SyncPreview,
   onProgress: ProgressCallback,
   batchSize: number
-): Promise<{ created: number; updated: number; failed: number }> {
+): Promise<{ created: number; updated: number; failed: number; quotaExhausted: boolean }> {
+  // Already-in-memory: the staging engine built the full create/update/skip
+  // list up front from the parsed SDF files, so nothing here re-reads or
+  // re-parses anything — we just walk the plan.
   const toCreate = preview.medicines.items.filter((m) => m.action === "create");
   const toUpdate = preview.medicines.items.filter((m) => m.action === "update");
+  // "skip" items (unchanged medicines already in Firestore) are never
+  // touched — no read or write is issued for them.
 
   let created = 0;
   let updated = 0;
   let failed = 0;
   let retries = 0;
+  let quotaExhausted = false;
+  let consecutiveQuotaBatchFailures = 0;
+  let adaptiveDelay = BATCH_DELAY_MS;
 
   const medCollection = collection(db!, "medicines");
   const total = toCreate.length + toUpdate.length;
 
-  const createChunks = chunks(toCreate, batchSize);
-  const updateChunks = chunks(toUpdate, batchSize);
-  const totalBatches = createChunks.length + updateChunks.length;
+  // A single, unified op queue — one shared batch counter/progress stream
+  // for both creates and updates, so "Uploading batch X/Y" always reflects
+  // true overall progress instead of resetting between phases.
+  const ops: MedicineOp[] = [
+    ...toCreate.map((medicine): MedicineOp => ({ kind: "create", medicine })),
+    ...toUpdate.map((medicine): MedicineOp => ({ kind: "update", medicine })),
+  ];
+  const opChunks = chunks(ops, batchSize);
+  const totalBatches = opChunks.length;
   const getEta = makeEtaTracker(totalBatches);
-  let batchIndex = 0;
 
-  // Create — deterministic IDs so a batch can be safely retried/re-run.
-  for (const chunk of createChunks) {
-    batchIndex++;
+  onProgress({
+    message: `Preparing to upload ${total.toLocaleString()} medicine(s) in ${totalBatches.toLocaleString()} batch(es)…`,
+    processed: 0,
+    total,
+    currentBatch: 0,
+    totalBatches,
+  });
+
+  for (let batchIndex = 0; batchIndex < opChunks.length; batchIndex++) {
+    const chunkOps = opChunks[batchIndex];
+    const batchNum = batchIndex + 1;
     const batch = writeBatch(db!);
-    for (const m of chunk) {
-      const ref = doc(medCollection, medicineDocId(m.sdfProductId));
-      batch.set(
-        ref,
-        {
-          ...buildMedicineDoc(m),
-          ...buildNewMedicineFields(),
-          createdAt: Timestamp.now(),
-        },
-        { merge: true }
-      );
-    }
 
-    const result = await commitWithRetry(() => batch.commit(), (attempt, delay, quota) => {
-      retries++;
-      onProgress({
-        message: quota
-          ? `Firestore write quota hit — retrying batch ${batchIndex}/${totalBatches} in ${Math.round(delay / 1000)}s… (attempt ${attempt}/${MAX_RETRIES})`
-          : `Batch ${batchIndex}/${totalBatches} failed — retrying in ${Math.round(delay / 1000)}s… (attempt ${attempt}/${MAX_RETRIES})`,
-        processed: created + updated,
-        total,
-        currentBatch: batchIndex,
-        totalBatches,
-        retries,
-      });
-    });
-
-    if (result.ok) {
-      created += chunk.length;
-    } else {
-      failed += chunk.length;
+    for (const op of chunkOps) {
+      const m = op.medicine;
+      if (op.kind === "create") {
+        const ref = doc(medCollection, medicineDocId(m.sdfProductId));
+        batch.set(
+          ref,
+          { ...buildMedicineDoc(m), ...buildNewMedicineFields(), createdAt: Timestamp.now() },
+          { merge: true }
+        );
+      } else {
+        if (!m.existingDocId) continue;
+        const ref = doc(db!, "medicines", m.existingDocId);
+        batch.set(ref, buildMedicineDoc(m), { merge: true });
+      }
     }
 
     onProgress({
-      message: `Creating medicines… batch ${batchIndex}/${totalBatches} (${created.toLocaleString()}/${toCreate.length.toLocaleString()} created${failed ? `, ${failed} failed` : ""})`,
+      message: `Uploading batch ${batchNum}/${totalBatches}…`,
       processed: created + updated,
       total,
-      currentBatch: batchIndex,
+      currentBatch: batchNum,
       totalBatches,
       etaSeconds: getEta(batchIndex),
       retries,
     });
 
-    await sleep(BATCH_DELAY_MS);
-  }
-
-  // Update — existing doc IDs are already stable (matched by staging engine).
-  for (const chunk of updateChunks) {
-    batchIndex++;
-    const batch = writeBatch(db!);
-    for (const m of chunk) {
-      if (!m.existingDocId) continue;
-      const ref = doc(db!, "medicines", m.existingDocId);
-      batch.set(ref, buildMedicineDoc(m), { merge: true });
-    }
-
-    const result = await commitWithRetry(() => batch.commit(), (attempt, delay, quota) => {
-      retries++;
-      onProgress({
-        message: quota
-          ? `Firestore write quota hit — retrying batch ${batchIndex}/${totalBatches} in ${Math.round(delay / 1000)}s… (attempt ${attempt}/${MAX_RETRIES})`
-          : `Batch ${batchIndex}/${totalBatches} failed — retrying in ${Math.round(delay / 1000)}s… (attempt ${attempt}/${MAX_RETRIES})`,
-        processed: created + updated,
-        total,
-        currentBatch: batchIndex,
-        totalBatches,
-        retries,
-      });
-    });
+    let batchHitQuota = false;
+    const result = await commitWithRetry(
+      () => batch.commit(),
+      (attempt, delay, quota) => {
+        retries++;
+        if (quota) batchHitQuota = true;
+        onProgress({
+          message: quota
+            ? `Firestore write quota hit — retrying batch ${batchNum}/${totalBatches} in ${Math.round(delay / 1000)}s… (attempt ${attempt}/${MAX_RETRIES})`
+            : `Batch ${batchNum}/${totalBatches} failed — retrying in ${Math.round(delay / 1000)}s… (attempt ${attempt}/${MAX_RETRIES})`,
+          processed: created + updated,
+          total,
+          currentBatch: batchNum,
+          totalBatches,
+          retries,
+        });
+      }
+    );
 
     if (result.ok) {
-      updated += chunk.length;
+      consecutiveQuotaBatchFailures = 0;
+      // Slowly relax the adaptive delay back down once batches succeed again.
+      adaptiveDelay = Math.max(BATCH_DELAY_MS, adaptiveDelay * 0.7);
+      for (const op of chunkOps) {
+        if (op.kind === "create") created++;
+        else updated++;
+      }
     } else {
-      failed += chunk.length;
+      failed += chunkOps.length;
+      if (batchHitQuota || isResourceExhausted(result.error)) {
+        consecutiveQuotaBatchFailures++;
+        // Ramp the delay between batches up sharply once we're clearly
+        // bumping into the quota, instead of hammering it at full speed.
+        adaptiveDelay = Math.min(BATCH_DELAY_MAX_MS, adaptiveDelay * 2);
+      }
     }
 
     onProgress({
-      message: `Updating medicines… batch ${batchIndex}/${totalBatches} (${updated.toLocaleString()}/${toUpdate.length.toLocaleString()} updated${failed ? `, ${failed} failed` : ""})`,
+      message: `Uploaded batch ${batchNum}/${totalBatches} (${(created + updated).toLocaleString()}/${total.toLocaleString()} done${failed ? `, ${failed} failed` : ""})`,
       processed: created + updated,
       total,
-      currentBatch: batchIndex,
+      currentBatch: batchNum,
       totalBatches,
-      etaSeconds: getEta(batchIndex),
+      etaSeconds: getEta(batchNum),
       retries,
     });
 
-    await sleep(BATCH_DELAY_MS);
+    if (consecutiveQuotaBatchFailures >= MAX_CONSECUTIVE_QUOTA_BATCH_FAILURES) {
+      quotaExhausted = true;
+      const remaining = total - (created + updated);
+      onProgress({
+        message: `Firestore's write quota is exhausted for now. Stopped after batch ${batchNum}/${totalBatches} — ${(created + updated).toLocaleString()} medicine(s) saved, ${remaining.toLocaleString()} remaining. Re-run the sync later (e.g. tomorrow) and it will automatically pick up only what's left.`,
+        processed: created + updated,
+        total,
+        currentBatch: batchNum,
+        totalBatches,
+        retries,
+      });
+      break;
+    }
+
+    await sleep(adaptiveDelay);
   }
 
-  return { created, updated, failed };
+  return { created, updated, failed, quotaExhausted };
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
