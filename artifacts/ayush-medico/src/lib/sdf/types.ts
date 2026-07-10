@@ -180,4 +180,12 @@ export interface SyncProgress {
   processed: number;
   total: number;
   errors: string[];
+  /** 1-based index of the batch currently being written */
+  currentBatch?: number;
+  /** Total number of batches for this sync run */
+  totalBatches?: number;
+  /** Estimated seconds remaining, based on average time-per-batch so far */
+  etaSeconds?: number;
+  /** How many write retries have happened so far (e.g. after quota errors) */
+  retries?: number;
 }

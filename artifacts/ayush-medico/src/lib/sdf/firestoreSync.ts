@@ -2,7 +2,21 @@
  * Firestore Sync Engine
  *
  * Writes staged changes to the medicines / categories / brands collections.
- * Uses batched writes (≤ 400 ops per batch to stay under Firestore's 500 limit).
+ *
+ * Designed to survive Firestore's per-project write-quota limits when
+ * importing 50,000+ medicines from MediVision Gold:
+ *   - Small batches (200–500 ops), never "write everything at once".
+ *   - A delay between batches so we stay well under sustained write limits.
+ *   - Automatic retry with exponential backoff, specifically for
+ *     `resource-exhausted` (quota) errors from Firestore.
+ *   - A batch that still fails after retries is skipped (counted as
+ *     failed) and the sync *resumes* with the next batch rather than
+ *     aborting the whole run.
+ *   - Deterministic document IDs for MediVision-imported medicines
+ *     (`sdf-<sdfProductId>`), so retrying a batch — or re-running a sync
+ *     after a crash — can never create a duplicate medicine.
+ *   - Progress is reported after every batch: processed/total, current
+ *     batch/total batches, and an ETA based on the observed time-per-batch.
  *
  * Writes ONLY after the admin confirms the sync preview.
  */
@@ -12,12 +26,19 @@ import {
   doc,
   writeBatch,
   Timestamp,
-  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { SyncPreview, SyncProgress, StagedMedicine } from "./types";
 
-const BATCH_SIZE = 400;
+/** Firestore hard cap is 500 ops/batch — we stay well under it. */
+const DEFAULT_BATCH_SIZE = 300;
+/** Pause between batches to respect sustained write-per-second limits. */
+const BATCH_DELAY_MS = 400;
+/** Max retry attempts for a single batch before giving up on it. */
+const MAX_RETRIES = 6;
+/** Backoff base — doubles each retry, capped below. */
+const RETRY_BASE_DELAY_MS = 1000;
+const RETRY_MAX_DELAY_MS = 20000;
 
 type ProgressCallback = (p: Partial<SyncProgress>) => void;
 
@@ -37,6 +58,57 @@ function chunks<T>(arr: T[], size: number): T[][] {
     result.push(arr.slice(i, i + size));
   }
   return result;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isResourceExhausted(err: unknown): boolean {
+  const code = (err as { code?: string })?.code ?? "";
+  const msg = err instanceof Error ? err.message : String(err);
+  return code === "resource-exhausted" || /RESOURCE_EXHAUSTED|resource-exhausted/i.test(msg);
+}
+
+/**
+ * Runs `commitFn` with automatic retry + exponential backoff. Quota errors
+ * (`resource-exhausted`) always get the full retry budget since they are
+ * expected to clear on their own; other errors get retried too (transient
+ * network blips) but we don't loop forever on a batch that's fundamentally
+ * broken.
+ */
+async function commitWithRetry(
+  commitFn: () => Promise<void>,
+  onRetry?: (attempt: number, willRetryIn: number, quota: boolean) => void
+): Promise<{ ok: true } | { ok: false; error: unknown }> {
+  let attempt = 0;
+  while (true) {
+    try {
+      await commitFn();
+      return { ok: true };
+    } catch (err) {
+      attempt++;
+      const quota = isResourceExhausted(err);
+      if (attempt > MAX_RETRIES) {
+        return { ok: false, error: err };
+      }
+      const delay = Math.min(RETRY_BASE_DELAY_MS * 2 ** (attempt - 1), RETRY_MAX_DELAY_MS);
+      onRetry?.(attempt, delay, quota);
+      await sleep(delay);
+    }
+  }
+}
+
+/** Tracks elapsed time across batches to compute a live ETA. */
+function makeEtaTracker(totalBatches: number) {
+  const start = Date.now();
+  return (batchesDone: number): number | undefined => {
+    if (batchesDone <= 0) return undefined;
+    const elapsedMs = Date.now() - start;
+    const perBatchMs = elapsedMs / batchesDone;
+    const remaining = totalBatches - batchesDone;
+    return Math.max(0, Math.round((perBatchMs * remaining) / 1000));
+  };
 }
 
 // ── Category sync ─────────────────────────────────────────────────────────────
@@ -59,10 +131,10 @@ async function syncCategories(
 
   const catCollection = collection(db!, "categories");
 
-  for (const chunk of chunks(toCreate, BATCH_SIZE)) {
+  for (const chunk of chunks(toCreate, DEFAULT_BATCH_SIZE)) {
     const batch = writeBatch(db!);
     for (const cat of chunk) {
-      const ref = doc(catCollection);
+      const ref = doc(catCollection, `cat-${slugify(cat.name)}`);
       batch.set(ref, {
         name: cat.name,
         icon: "💊",
@@ -76,7 +148,8 @@ async function syncCategories(
       });
       catIdMap.set(cat.name.toLowerCase().trim(), ref.id);
     }
-    await batch.commit();
+    await commitWithRetry(() => batch.commit());
+    await sleep(BATCH_DELAY_MS);
   }
 
   return catIdMap;
@@ -99,10 +172,10 @@ async function syncBrands(
 
   const brandCollection = collection(db!, "brands");
 
-  for (const chunk of chunks(toCreate, BATCH_SIZE)) {
+  for (const chunk of chunks(toCreate, DEFAULT_BATCH_SIZE)) {
     const batch = writeBatch(db!);
     for (const brand of chunk) {
-      const ref = doc(brandCollection);
+      const ref = doc(brandCollection, `brand-${slugify(brand.name)}`);
       batch.set(ref, {
         name: brand.name,
         logoUrl: "",
@@ -114,7 +187,8 @@ async function syncBrands(
         updatedAt: Timestamp.now(),
       });
     }
-    await batch.commit();
+    await commitWithRetry(() => batch.commit());
+    await sleep(BATCH_DELAY_MS);
   }
 }
 
@@ -148,11 +222,12 @@ function buildMedicineDoc(m: StagedMedicine) {
 }
 
 /**
- * New medicines only: seeds the shared placeholder image + default
- * curation flags so an imported medicine appears fully functional
- * (searchable, categorized, orderable) without any manual editing.
- * `imageUrl: ""` tells the frontend to fall back to the shared placeholder
- * (see `lib/medicineImage.ts`) — no per-medicine image file is created.
+ * New medicines only: leaves `imageUrl` empty so the frontend falls back
+ * to a category-appropriate placeholder (see `lib/medicineImage.ts` —
+ * picked automatically from `categoryName` at render time, no per-medicine
+ * image file is ever created), plus default curation flags so an imported
+ * medicine is fully functional (searchable, categorized, orderable)
+ * without any manual editing.
  */
 function buildNewMedicineFields() {
   return {
@@ -163,9 +238,20 @@ function buildNewMedicineFields() {
   };
 }
 
+/**
+ * Deterministic doc ID for a MediVision-imported medicine. Using a stable
+ * ID (instead of an auto-generated one) means retrying a failed/uncertain
+ * batch — or re-running the whole sync — always overwrites the *same*
+ * document instead of creating a duplicate.
+ */
+function medicineDocId(sdfProductId: number): string {
+  return `sdf-${sdfProductId}`;
+}
+
 async function syncMedicines(
   preview: SyncPreview,
-  onProgress: ProgressCallback
+  onProgress: ProgressCallback,
+  batchSize: number
 ): Promise<{ created: number; updated: number; failed: number }> {
   const toCreate = preview.medicines.items.filter((m) => m.action === "create");
   const toUpdate = preview.medicines.items.filter((m) => m.action === "update");
@@ -173,53 +259,108 @@ async function syncMedicines(
   let created = 0;
   let updated = 0;
   let failed = 0;
+  let retries = 0;
 
   const medCollection = collection(db!, "medicines");
   const total = toCreate.length + toUpdate.length;
 
-  // Create
-  for (const chunk of chunks(toCreate, BATCH_SIZE)) {
-    try {
-      const batch = writeBatch(db!);
-      for (const m of chunk) {
-        const ref = doc(medCollection);
-        batch.set(ref, {
+  const createChunks = chunks(toCreate, batchSize);
+  const updateChunks = chunks(toUpdate, batchSize);
+  const totalBatches = createChunks.length + updateChunks.length;
+  const getEta = makeEtaTracker(totalBatches);
+  let batchIndex = 0;
+
+  // Create — deterministic IDs so a batch can be safely retried/re-run.
+  for (const chunk of createChunks) {
+    batchIndex++;
+    const batch = writeBatch(db!);
+    for (const m of chunk) {
+      const ref = doc(medCollection, medicineDocId(m.sdfProductId));
+      batch.set(
+        ref,
+        {
           ...buildMedicineDoc(m),
           ...buildNewMedicineFields(),
           createdAt: Timestamp.now(),
-        });
-      }
-      await batch.commit();
-      created += chunk.length;
+        },
+        { merge: true }
+      );
+    }
+
+    const result = await commitWithRetry(() => batch.commit(), (attempt, delay, quota) => {
+      retries++;
       onProgress({
-        message: `Creating medicines… (${created}/${toCreate.length})`,
+        message: quota
+          ? `Firestore write quota hit — retrying batch ${batchIndex}/${totalBatches} in ${Math.round(delay / 1000)}s… (attempt ${attempt}/${MAX_RETRIES})`
+          : `Batch ${batchIndex}/${totalBatches} failed — retrying in ${Math.round(delay / 1000)}s… (attempt ${attempt}/${MAX_RETRIES})`,
         processed: created + updated,
         total,
+        currentBatch: batchIndex,
+        totalBatches,
+        retries,
       });
-    } catch (err) {
+    });
+
+    if (result.ok) {
+      created += chunk.length;
+    } else {
       failed += chunk.length;
     }
+
+    onProgress({
+      message: `Creating medicines… batch ${batchIndex}/${totalBatches} (${created.toLocaleString()}/${toCreate.length.toLocaleString()} created${failed ? `, ${failed} failed` : ""})`,
+      processed: created + updated,
+      total,
+      currentBatch: batchIndex,
+      totalBatches,
+      etaSeconds: getEta(batchIndex),
+      retries,
+    });
+
+    await sleep(BATCH_DELAY_MS);
   }
 
-  // Update
-  for (const chunk of chunks(toUpdate, BATCH_SIZE)) {
-    try {
-      const batch = writeBatch(db!);
-      for (const m of chunk) {
-        if (!m.existingDocId) continue;
-        const ref = doc(db!, "medicines", m.existingDocId);
-        batch.update(ref, buildMedicineDoc(m));
-      }
-      await batch.commit();
-      updated += chunk.length;
+  // Update — existing doc IDs are already stable (matched by staging engine).
+  for (const chunk of updateChunks) {
+    batchIndex++;
+    const batch = writeBatch(db!);
+    for (const m of chunk) {
+      if (!m.existingDocId) continue;
+      const ref = doc(db!, "medicines", m.existingDocId);
+      batch.set(ref, buildMedicineDoc(m), { merge: true });
+    }
+
+    const result = await commitWithRetry(() => batch.commit(), (attempt, delay, quota) => {
+      retries++;
       onProgress({
-        message: `Updating medicines… (${updated}/${toUpdate.length})`,
+        message: quota
+          ? `Firestore write quota hit — retrying batch ${batchIndex}/${totalBatches} in ${Math.round(delay / 1000)}s… (attempt ${attempt}/${MAX_RETRIES})`
+          : `Batch ${batchIndex}/${totalBatches} failed — retrying in ${Math.round(delay / 1000)}s… (attempt ${attempt}/${MAX_RETRIES})`,
         processed: created + updated,
         total,
+        currentBatch: batchIndex,
+        totalBatches,
+        retries,
       });
-    } catch (err) {
+    });
+
+    if (result.ok) {
+      updated += chunk.length;
+    } else {
       failed += chunk.length;
     }
+
+    onProgress({
+      message: `Updating medicines… batch ${batchIndex}/${totalBatches} (${updated.toLocaleString()}/${toUpdate.length.toLocaleString()} updated${failed ? `, ${failed} failed` : ""})`,
+      processed: created + updated,
+      total,
+      currentBatch: batchIndex,
+      totalBatches,
+      etaSeconds: getEta(batchIndex),
+      retries,
+    });
+
+    await sleep(BATCH_DELAY_MS);
   }
 
   return { created, updated, failed };
@@ -227,14 +368,21 @@ async function syncMedicines(
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+export interface SyncOptions {
+  /** Documents per batch. Kept within Firestore-safe 200–500 range. */
+  batchSize?: number;
+}
+
 export async function executeSyncToFirestore(
   preview: SyncPreview,
-  onProgress: ProgressCallback
+  onProgress: ProgressCallback,
+  options: SyncOptions = {}
 ): Promise<{ created: number; updated: number; failed: number; errors: string[] }> {
   if (!db) {
     return { created: 0, updated: 0, failed: 0, errors: ["Firebase not configured"] };
   }
 
+  const batchSize = Math.min(500, Math.max(200, options.batchSize ?? DEFAULT_BATCH_SIZE));
   const errors: string[] = [];
 
   try {
@@ -244,8 +392,14 @@ export async function executeSyncToFirestore(
     // 2. Brands
     await syncBrands(preview, onProgress);
 
-    // 3. Medicines
-    const result = await syncMedicines(preview, onProgress);
+    // 3. Medicines — batched, throttled, retried, resumable.
+    const result = await syncMedicines(preview, onProgress, batchSize);
+
+    if (result.failed > 0) {
+      errors.push(
+        `${result.failed} medicine(s) could not be written after ${MAX_RETRIES} retries each — re-run the sync to retry just the remaining items.`
+      );
+    }
 
     return { ...result, errors };
   } catch (err) {

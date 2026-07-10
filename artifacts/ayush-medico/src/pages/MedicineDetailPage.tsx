@@ -123,7 +123,9 @@ export default function MedicineDetailPage() {
         {/* Image */}
         <div className="relative h-56 sm:h-72 bg-gradient-to-br from-primary/5 to-secondary/5 flex items-center justify-center">
           <img
-            src={imgErr ? resolveMedicineImage(null) : resolveMedicineImage(medicine.imageUrl)}
+            src={imgErr
+              ? resolveMedicineImage(null, medicine.categoryName)
+              : resolveMedicineImage(medicine.imageUrl, medicine.categoryName)}
             alt={medicine.name}
             className="w-full h-full object-cover"
             onError={() => setImgErr(true)}

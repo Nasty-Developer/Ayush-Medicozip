@@ -351,6 +351,14 @@ function PreviewSection({ preview }: { preview: SyncPreview }) {
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
+function formatEta(seconds?: number): string | null {
+  if (seconds === undefined || seconds === null) return null;
+  if (seconds < 60) return `~${seconds}s left`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `~${mins}m ${secs}s left`;
+}
+
 function ProgressBar({ progress }: { progress: SyncProgress }) {
   const pct =
     progress.total > 0
@@ -366,12 +374,14 @@ function ProgressBar({ progress }: { progress: SyncProgress }) {
     error: "bg-destructive",
   };
 
+  const eta = formatEta(progress.etaSeconds);
+
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">{progress.message}</span>
+      <div className="flex items-center justify-between text-sm gap-2">
+        <span className="text-muted-foreground truncate">{progress.message}</span>
         {progress.total > 0 && (
-          <span className="font-mono text-xs">{pct}%</span>
+          <span className="font-mono text-xs shrink-0">{pct}%</span>
         )}
       </div>
       <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -380,6 +390,16 @@ function ProgressBar({ progress }: { progress: SyncProgress }) {
           style={{ width: `${pct || (progress.phase !== "idle" ? 100 : 0)}%` }}
         />
       </div>
+      {(progress.totalBatches || eta) && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+          <span>
+            {progress.processed.toLocaleString()} / {progress.total.toLocaleString()} medicines
+            {progress.totalBatches ? ` · batch ${progress.currentBatch}/${progress.totalBatches}` : ""}
+            {progress.retries ? ` · ${progress.retries} retr${progress.retries === 1 ? "y" : "ies"}` : ""}
+          </span>
+          {eta && <span>{eta}</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -403,6 +423,7 @@ export default function InventorySyncPage() {
     created: number;
     updated: number;
     failed: number;
+    errors: string[];
   } | null>(null);
 
   const handleFile = useCallback((key: SdfFileKey, file: File | null) => {
@@ -479,7 +500,7 @@ export default function InventorySyncPage() {
       message: `Sync complete: ${result.created} created, ${result.updated} updated${result.failed > 0 ? `, ${result.failed} failed` : ""}`,
       processed: result.created + result.updated,
       total: result.created + result.updated + result.failed,
-      errors: [],
+      errors: result.errors,
     });
   }
 
@@ -643,6 +664,17 @@ export default function InventorySyncPage() {
               <div className="text-xs text-muted-foreground mt-1">Failed</div>
             </div>
           </div>
+
+          {syncResult.errors.length > 0 && (
+            <div className="max-w-lg mx-auto text-left flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-400">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                {syncResult.errors.map((e, i) => (
+                  <p key={i}>{e}</p>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button
             onClick={handleReset}

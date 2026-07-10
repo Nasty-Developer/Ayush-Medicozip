@@ -14,6 +14,7 @@ type Medicine = {
   brand?: string;
   description?: string;
   imageUrl?: string;
+  categoryName?: string;
   stockStatus?: StockStatus;
   available?: boolean;
   sellingPrice?: number;
@@ -130,7 +131,9 @@ function ExclusiveCard({ item, index }: { item: Medicine; index: number }) {
       {/* Image */}
       <div className="relative h-44 bg-gradient-to-br from-secondary/8 to-primary/8 overflow-hidden flex-shrink-0">
         <img
-          src={imgErr ? resolveMedicineImage(null) : resolveMedicineImage(item.imageUrl)}
+          src={imgErr
+            ? resolveMedicineImage(null, item.categoryName)
+            : resolveMedicineImage(item.imageUrl, item.categoryName)}
           alt={item.name}
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
