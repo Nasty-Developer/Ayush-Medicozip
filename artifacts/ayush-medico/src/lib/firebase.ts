@@ -27,12 +27,14 @@ export const isFirebaseConfigured =
 let app: FirebaseApp | undefined;
 let db: Firestore | undefined;
 let auth: Auth | undefined;
+let storage: FirebaseStorage | undefined;
 let analytics: Analytics | undefined;
 
 if (isFirebaseConfigured) {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   db = getFirestore(app);
   auth = getAuth(app);
+  storage = getStorage(app);
 
   if (typeof window !== "undefined") {
     isSupported().then((supported) => {
@@ -43,4 +45,4 @@ if (isFirebaseConfigured) {
   }
 }
 
-export { app, db, auth, analytics };
+export { app, db, auth, storage, analytics };
