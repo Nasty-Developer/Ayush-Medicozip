@@ -29,7 +29,10 @@ app.use(
   }),
 );
 app.use(cors());
-app.use(express.json());
+// Increase body size limit to handle large sync payloads
+// (e.g. 51k medicine records as JSON ≈ 15–25 MB)
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);

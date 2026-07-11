@@ -1,23 +1,13 @@
 /**
  * CategoriesPage — Public route at /categories
  *
- * This is the unified "Browse Medicines" page.
- *
- * Architecture:
- *   • "All Medicines" pill is always first — fetches the full `medicines`
- *     collection via cursor-based pagination (useAllMedicines, 24 per page).
- *   • Every other pill comes directly from the Firestore `categories` collection
- *     via useCategories(true) — sorted by the admin-set `order` field.
- *     Adding a new category in the Admin Panel makes it appear here instantly;
- *     no code change is required.
- *   • Selecting a category pill filters in real time via useMedicinesByCategory,
- *     the same Firestore hook used by the /category/:slug route.
- *   • Search and sort are applied client-side on whatever medicines are loaded.
- *
- * Performance for 5 000 – 10 000 medicines:
- *   • "All Medicines" uses getDocs pagination (24/page + Load More).
- *     No real-time listener over the whole collection.
- *   • Category views use onSnapshot — each category has a manageable subset.
+ * Performance improvements:
+ *  - Search is debounced (300ms) — no filtering on every keystroke.
+ *  - Category pill view uses paginated useMedicinesByCategory with
+ *    a "Load More" button instead of streaming all medicines at once.
+ *  - "All Medicines" view already uses cursor-based pagination (unchanged).
+ *  - useMedicineCounts now uses getCountFromServer() instead of streaming
+ *    the entire medicines collection (done in hook, not here).
  */
 
 import { useMemo, useRef, useState } from "react";
@@ -31,6 +21,7 @@ import { useCategories }          from "@/hooks/useCategories";
 import { useMedicinesByCategory } from "@/hooks/useMedicinesByCategory";
 import { useAllMedicines }        from "@/hooks/useAllMedicines";
 import { useMedicineCounts }      from "@/hooks/useMedicineCounts";
+import { useDebounce }            from "@/hooks/useDebounce";
 import { getCategoryColors }      from "@/lib/categoryColors";
 import { MedicineCard, MedicineSkeleton, stockPriority } from "@/components/medicines/MedicineCard";
 import type { CategoryMedicine }  from "@/hooks/useMedicinesByCategory";
@@ -42,7 +33,7 @@ type SortOption = "default" | "name" | "price-low" | "price-high";
 interface PillProps {
   selected: boolean;
   onClick: () => void;
-  gradient?: string;       // Tailwind gradient classes for selected state
+  gradient?: string;
   children: React.ReactNode;
 }
 
@@ -70,19 +61,13 @@ function CategoryPill({ selected, onClick, gradient, children }: PillProps) {
 // ─── Sort dropdown ────────────────────────────────────────────────────────────
 
 const SORT_LABELS: Record<SortOption, string> = {
-  default:    "Recommended",
-  name:       "Name (A–Z)",
+  default:      "Recommended",
+  name:         "Name (A–Z)",
   "price-low":  "Price: Low → High",
   "price-high": "Price: High → Low",
 };
 
-function SortDropdown({
-  value,
-  onChange,
-}: {
-  value: SortOption;
-  onChange: (v: SortOption) => void;
-}) {
+function SortDropdown({ value, onChange }: { value: SortOption; onChange: (v: SortOption) => void }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
@@ -97,16 +82,12 @@ function SortDropdown({
         <span className="xs:hidden">Sort</span>
         <ChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
-
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-xl
-                       shadow-xl z-30 overflow-hidden"
+            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}
+            className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-xl shadow-xl z-30 overflow-hidden"
           >
             {(Object.entries(SORT_LABELS) as [SortOption, string][]).map(([val, label]) => (
               <button
@@ -128,28 +109,18 @@ function SortDropdown({
 // ─── Medicines grid ───────────────────────────────────────────────────────────
 
 function MedicinesGrid({
-  medicines,
-  initialLoading,
-  skeletonCount = 8,
-}: {
-  medicines: CategoryMedicine[];
-  initialLoading: boolean;
-  skeletonCount?: number;
-}) {
+  medicines, initialLoading, skeletonCount = 8,
+}: { medicines: CategoryMedicine[]; initialLoading: boolean; skeletonCount?: number }) {
   if (initialLoading) {
     return (
       <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {Array.from({ length: skeletonCount }).map((_, i) => (
-          <MedicineSkeleton key={i} />
-        ))}
+        {Array.from({ length: skeletonCount }).map((_, i) => <MedicineSkeleton key={i} />)}
       </div>
     );
   }
   return (
     <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-      {medicines.map((item, i) => (
-        <MedicineCard key={item.id} item={item} index={i} />
-      ))}
+      {medicines.map((item, i) => <MedicineCard key={item.id} item={item} index={i} />)}
     </div>
   );
 }
@@ -163,45 +134,46 @@ export default function CategoriesPage() {
   // ── Data ──────────────────────────────────────────────────────────────────
   const { categories, loading: categoriesLoading, error: categoriesError } = useCategories(true);
 
-  // Always-running "All Medicines" paginated hook
   const {
     medicines: allMedicines,
     initialLoading: allInitialLoading,
-    loadingMore,
-    hasMore,
-    loadMore,
+    loadingMore: allLoadingMore,
+    hasMore: allHasMore,
+    loadMore: allLoadMore,
     totalLoaded,
   } = useAllMedicines();
 
-  // Selected category state — "all" or a category NAME string
   const [selectedCatName, setSelectedCatName] = useState<"all" | string>("all");
 
-  // Real-time medicine counts per category (drives badge on pills and grid cards)
   const medicineCounts = useMedicineCounts();
 
-  // Category-scoped real-time hook — skips when "all" is selected (empty string)
   const catQueryName = selectedCatName === "all" ? "" : selectedCatName;
   const {
     medicines: catMedicines,
     loading: catLoading,
+    loadingMore: catLoadingMore,
+    hasMore: catHasMore,
+    loadMore: catLoadMore,
   } = useMedicinesByCategory(catQueryName);
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  const [search,     setSearch]     = useState("");
-  const [sort,       setSort]       = useState<SortOption>("default");
-  const [filterOpen, setFilterOpen] = useState(false); // unused — using SortDropdown
+  const [search, setSearch] = useState("");
+  const [sort,   setSort]   = useState<SortOption>("default");
 
-  // Resolve selected category object (for colour accent)
+  // Debounce search — avoid filtering on every keystroke
+  const debouncedSearch = useDebounce(search, 300);
+
   const selectedCategory = categories.find((c) => c.name === selectedCatName);
 
-  // Active source depends on which pill is selected
-  const activeMedicines    = selectedCatName === "all" ? allMedicines : catMedicines;
-  const activeInitLoading  = selectedCatName === "all" ? allInitialLoading : catLoading;
+  const activeMedicines   = selectedCatName === "all" ? allMedicines : catMedicines;
+  const activeInitLoading = selectedCatName === "all" ? allInitialLoading : catLoading;
+  const activeLoadingMore = selectedCatName === "all" ? allLoadingMore : catLoadingMore;
+  const activeHasMore     = selectedCatName === "all" ? allHasMore : catHasMore;
+  const activeLoadMore    = selectedCatName === "all" ? allLoadMore : catLoadMore;
 
-  // Client-side search + sort applied on top
   const visibleMedicines = useMemo(() => {
     let list = activeMedicines;
-    const q = search.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
     if (q) {
       list = list.filter(
         (m) =>
@@ -221,14 +193,9 @@ export default function CategoriesPage() {
       return (a.order ?? 0) - (b.order ?? 0);
     });
     return sorted;
-  }, [activeMedicines, search, sort]);
+  }, [activeMedicines, debouncedSearch, sort]);
 
-  // Colour classes for the currently-selected category pill
-  const selectedColors = selectedCategory
-    ? getCategoryColors(selectedCategory.color)
-    : null;
-
-  // ─────────────────────────────────────────────────────────────────────────
+  const selectedColors = selectedCategory ? getCategoryColors(selectedCategory.color) : null;
 
   return (
     <section className="pt-28 pb-24 lg:pt-32 lg:pb-32 min-h-screen">
@@ -257,20 +224,14 @@ export default function CategoriesPage() {
             </span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Browse our full catalogue or select a category below. Updated in real time
-            from our pharmacy system.
+            Browse our full catalogue or select a category below.
           </p>
         </motion.div>
 
         {/* ── Sticky category pills ─────────────────────────────────────── */}
-        {/* Offset accounts for the fixed header height (~72 px) */}
         <div className="sticky top-[72px] z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8
                         bg-background/95 backdrop-blur-sm border-b border-border/50 py-3 mb-8">
-          <div
-            className="flex gap-2 overflow-x-auto pb-0.5"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {/* Fixed "All Medicines" pill */}
+          <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
             <CategoryPill
               selected={selectedCatName === "all"}
               onClick={() => { setSelectedCatName("all"); setSearch(""); }}
@@ -279,15 +240,12 @@ export default function CategoriesPage() {
               All Medicines
               {!allInitialLoading && totalLoaded > 0 && (
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold
-                                  ${selectedCatName === "all"
-                                    ? "bg-white/20 text-white"
-                                    : "bg-muted text-muted-foreground"}`}>
-                  {hasMore ? `${totalLoaded}+` : totalLoaded}
+                                  ${selectedCatName === "all" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"}`}>
+                  {allHasMore ? `${totalLoaded}+` : totalLoaded}
                 </span>
               )}
             </CategoryPill>
 
-            {/* Dynamic categories from Firestore — appear as soon as admin adds them */}
             {!categoriesLoading && categories.map((cat, i) => {
               const colors = getCategoryColors(cat.color, i);
               const isSel  = selectedCatName === cat.name;
@@ -304,9 +262,7 @@ export default function CategoriesPage() {
                   {cat.name}
                   {medicineCounts[cat.name] !== undefined && (
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold
-                                      ${isSel
-                                        ? "bg-white/20 text-white"
-                                        : "bg-muted text-muted-foreground"}`}>
+                                      ${isSel ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"}`}>
                       {medicineCounts[cat.name]}
                     </span>
                   )}
@@ -314,17 +270,13 @@ export default function CategoriesPage() {
               );
             })}
 
-            {/* Skeleton pills while categories load */}
             {categoriesLoading && [1, 2, 3, 4].map((n) => (
-              <div
-                key={n}
-                className="flex-shrink-0 h-9 w-28 rounded-full bg-muted animate-pulse"
-              />
+              <div key={n} className="flex-shrink-0 h-9 w-28 rounded-full bg-muted animate-pulse" />
             ))}
           </div>
         </div>
 
-        {/* ── Firestore error (categories) ──────────────────────────────── */}
+        {/* ── Firestore error ───────────────────────────────────────────── */}
         {!categoriesLoading && categoriesError && (
           <div className="mb-6 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/20
                           text-sm text-destructive flex items-center gap-2">
@@ -361,13 +313,12 @@ export default function CategoriesPage() {
                 </h2>
                 <p className="text-sm text-muted-foreground line-clamp-1">
                   {selectedCategory.description ||
-                    `Showing all ${selectedCategory.name.toLowerCase()} medicines.`}
+                    `Showing ${selectedCategory.name.toLowerCase()} medicines.`}
                 </p>
               </div>
               <Link
                 href={`/category/${selectedCategory.slug ?? selectedCategory.id}`}
-                className="ml-auto flex-shrink-0 text-xs font-semibold text-primary
-                           hover:underline hidden sm:block"
+                className="ml-auto flex-shrink-0 text-xs font-semibold text-primary hover:underline hidden sm:block"
               >
                 Full page →
               </Link>
@@ -397,8 +348,7 @@ export default function CategoriesPage() {
               <button
                 onClick={() => setSearch("")}
                 aria-label="Clear search"
-                className="absolute right-3.5 top-1/2 -translate-y-1/2
-                           text-muted-foreground hover:text-foreground"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X size={15} />
               </button>
@@ -410,128 +360,90 @@ export default function CategoriesPage() {
         {/* ── Results count ─────────────────────────────────────────────── */}
         {!activeInitLoading && (
           <p className="text-xs text-muted-foreground mb-5">
-            {search
-              ? `${visibleMedicines.length} result${visibleMedicines.length === 1 ? "" : "s"} for "${search}"`
+            {debouncedSearch
+              ? `${visibleMedicines.length} result${visibleMedicines.length === 1 ? "" : "s"} for "${debouncedSearch}"`
               : selectedCatName === "all"
-              ? `Showing ${totalLoaded}${hasMore ? "+" : ""} medicines`
-              : `${activeMedicines.length} medicine${activeMedicines.length === 1 ? "" : "s"} in this category`}
+              ? `Showing ${totalLoaded}${allHasMore ? "+" : ""} medicines`
+              : `${activeMedicines.length}${activeHasMore ? "+" : ""} medicine${activeMedicines.length === 1 ? "" : "s"} in this category`}
           </p>
         )}
 
         {/* ── Medicine grid ──────────────────────────────────────────────── */}
         <AnimatePresence mode="wait">
           {activeInitLoading ? (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <MedicinesGrid
-                medicines={[]}
-                initialLoading
-                skeletonCount={8}
-              />
+            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+              <MedicinesGrid medicines={[]} initialLoading skeletonCount={8} />
             </motion.div>
-          ) : visibleMedicines.length === 0 && search ? (
-            /* Search matched nothing */
+          ) : visibleMedicines.length === 0 && debouncedSearch ? (
             <motion.div
-              key="no-search"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center gap-3 py-20 px-6 text-center
-                         border border-dashed border-border rounded-2xl bg-muted/10"
+              key="no-search" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex flex-col items-center gap-3 py-20 px-6 text-center border border-dashed border-border rounded-2xl bg-muted/10"
             >
               <PackageSearch size={32} className="text-muted-foreground/40" />
               <p className="text-muted-foreground">
-                No medicines match <span className="font-semibold">"{search}"</span>.
+                No medicines match <span className="font-semibold">"{debouncedSearch}"</span>.
               </p>
-              <button
-                onClick={() => setSearch("")}
-                className="text-sm font-semibold text-primary hover:underline"
-              >
+              <button onClick={() => setSearch("")} className="text-sm font-semibold text-primary hover:underline">
                 Clear search
               </button>
             </motion.div>
           ) : visibleMedicines.length === 0 ? (
-            /* Category is empty (no medicines synced yet) */
             <motion.div
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center gap-4 py-20 px-6
-                         border-2 border-dashed border-border rounded-2xl
-                         bg-muted/20 text-center"
+              key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex flex-col items-center gap-4 py-20 px-6 border-2 border-dashed border-border rounded-2xl bg-muted/20 text-center"
             >
               <div className="p-4 rounded-2xl bg-muted/50">
                 <Package size={36} className="text-muted-foreground/40" />
               </div>
               <div>
-                <h3 className="font-semibold text-foreground mb-1">
-                  No medicines here yet
-                </h3>
+                <h3 className="font-semibold text-foreground mb-1">No medicines here yet</h3>
                 <p className="text-sm text-muted-foreground max-w-sm">
-                  Medicines appear automatically once added or synced via
-                  MediVision Gold. No page reload needed.
+                  Medicines appear automatically once added or synced via MediVision Gold. No reload needed.
                 </p>
               </div>
             </motion.div>
           ) : (
             <motion.div
               key={`grid-${selectedCatName}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
             >
-              <MedicinesGrid
-                medicines={visibleMedicines}
-                initialLoading={false}
-              />
+              <MedicinesGrid medicines={visibleMedicines} initialLoading={false} />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── Load More (All Medicines only) ─────────────────────────────── */}
-        {selectedCatName === "all" && !activeInitLoading && !search && hasMore && (
+        {/* ── Load More ─────────────────────────────────────────────────── */}
+        {!activeInitLoading && !debouncedSearch && activeHasMore && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
             className="mt-10 flex flex-col items-center gap-3"
           >
             <button
-              onClick={loadMore}
-              disabled={loadingMore}
+              onClick={activeLoadMore}
+              disabled={activeLoadingMore}
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl
                          bg-primary text-white font-semibold text-sm
                          hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed
                          shadow-sm shadow-primary/30 transition-all duration-200"
             >
-              {loadingMore ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : (
-                <Package size={15} />
-              )}
-              {loadingMore ? "Loading…" : "Load more medicines"}
+              {activeLoadingMore ? <Loader2 size={15} className="animate-spin" /> : <Package size={15} />}
+              {activeLoadingMore ? "Loading…" : "Load more medicines"}
             </button>
             <p className="text-xs text-muted-foreground">
-              {totalLoaded} loaded — more available
+              {activeMedicines.length} loaded — more available
             </p>
           </motion.div>
         )}
 
         {/* ── All loaded indicator ───────────────────────────────────────── */}
-        {selectedCatName === "all" && !activeInitLoading && !search && !hasMore && totalLoaded > 0 && (
+        {!activeInitLoading && !debouncedSearch && !activeHasMore && activeMedicines.length > 0 && (
           <p className="mt-10 text-center text-xs text-muted-foreground">
-            All {totalLoaded} medicines loaded.
+            All {activeMedicines.length} medicines loaded.
           </p>
         )}
 
-        {/* ── Category grid teaser (when no category selected) ───────────── */}
-        {selectedCatName === "all" && !categoriesLoading && categories.length > 0 && !search && (
+        {/* ── Category grid teaser ───────────────────────────────────────── */}
+        {selectedCatName === "all" && !categoriesLoading && categories.length > 0 && !debouncedSearch && (
           <div className="mt-16 pt-12 border-t border-border">
             <div className="flex items-center justify-between mb-6">
               <h2
@@ -540,9 +452,7 @@ export default function CategoriesPage() {
               >
                 Or browse by category
               </h2>
-              <span className="text-xs text-muted-foreground">
-                {categories.length} categories
-              </span>
+              <span className="text-xs text-muted-foreground">{categories.length} categories</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
               {categories.map((cat, i) => {
@@ -553,18 +463,15 @@ export default function CategoriesPage() {
                     onClick={() => { setSelectedCatName(cat.name); setSearch(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                     className={`group flex flex-col items-center gap-2 p-4 rounded-xl
                                 border border-border bg-gradient-to-br ${colors.light}
-                                hover:border-primary/30 hover:shadow-md transition-all duration-200
-                                text-center`}
+                                hover:border-primary/30 hover:shadow-md transition-all duration-200 text-center`}
                   >
                     <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl
-                                     bg-gradient-to-br ${colors.gradient} shadow-sm
-                                     group-hover:shadow-md transition-shadow`}>
+                                     bg-gradient-to-br ${colors.gradient} shadow-sm group-hover:shadow-md transition-shadow`}>
                       <span className="text-lg leading-none" role="img" aria-label={cat.name}>
                         {cat.icon || "💊"}
                       </span>
                     </div>
-                    <span className="text-xs font-semibold text-foreground leading-tight line-clamp-2
-                                     group-hover:text-primary transition-colors">
+                    <span className="text-xs font-semibold text-foreground leading-tight line-clamp-2 group-hover:text-primary transition-colors">
                       {cat.name}
                     </span>
                     {medicineCounts[cat.name] !== undefined && (
@@ -578,7 +485,6 @@ export default function CategoriesPage() {
             </div>
           </div>
         )}
-
       </div>
     </section>
   );

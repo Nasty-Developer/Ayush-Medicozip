@@ -1,8 +1,21 @@
+/**
+ * Admin Dashboard
+ *
+ * Performance fix: replaced full collection fetches (getCollection) with
+ * Firestore getCountFromServer() aggregation queries. The old code read all
+ * 51k+ medicine documents just to count them; now each stat card costs
+ * exactly one lightweight count query.
+ */
+
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Pill, MessageSquare, Megaphone, Star, HelpCircle, TrendingUp, Clock, CheckCircle2, Tag, Building2 } from "lucide-react";
+import {
+  Pill, MessageSquare, Megaphone, Star, HelpCircle,
+  TrendingUp, Clock, CheckCircle2, Tag, Building2,
+} from "lucide-react";
 import { Link } from "wouter";
-import { getCollection, orderBy } from "@/lib/firestoreHelpers";
+import { collection, query, where, getCountFromServer } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type Stats = {
   medicines: number;
@@ -14,7 +27,9 @@ type Stats = {
   brands: number;
 };
 
-function StatCard({ icon: Icon, label, value, sub, color, href }: {
+function StatCard({
+  icon: Icon, label, value, sub, color, href,
+}: {
   icon: React.ElementType; label: string; value: string | number; sub?: string;
   color: string; href: string;
 }) {
@@ -31,7 +46,12 @@ function StatCard({ icon: Icon, label, value, sub, color, href }: {
             </div>
             <TrendingUp size={14} className="text-muted-foreground" />
           </div>
-          <p className="text-2xl font-bold text-foreground mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{value}</p>
+          <p
+            className="text-2xl font-bold text-foreground mb-1"
+            style={{ fontFamily: "'Poppins', sans-serif" }}
+          >
+            {typeof value === "number" ? value.toLocaleString() : value}
+          </p>
           <p className="text-sm font-medium text-foreground">{label}</p>
           {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
         </motion.div>
@@ -41,49 +61,64 @@ function StatCard({ icon: Icon, label, value, sub, color, href }: {
 }
 
 const quickLinks = [
-  { label: "Add Medicine", href: "/admin/medicines", icon: Pill, desc: "Manage your medicine catalog" },
-  { label: "View Inquiries", href: "/admin/inquiries", icon: MessageSquare, desc: "Customer medicine requests" },
-  { label: "Update Announcement", href: "/admin/announcement", icon: Megaphone, desc: "Control the banner" },
-  { label: "Manage Categories", href: "/admin/categories", icon: Tag, desc: "Medicine categories" },
-  { label: "Manage Brands", href: "/admin/brands", icon: Building2, desc: "Featured brands" },
-  { label: "Manage FAQs", href: "/admin/faq", icon: HelpCircle, desc: "Edit common questions" },
-  { label: "Testimonials", href: "/admin/testimonials", icon: Star, desc: "Customer reviews" },
-  { label: "Store Settings", href: "/admin/settings", icon: Clock, desc: "Hours, phone, address" },
+  { label: "Add Medicine",         href: "/admin/medicines",    icon: Pill,         desc: "Manage your medicine catalog" },
+  { label: "View Inquiries",       href: "/admin/inquiries",    icon: MessageSquare,desc: "Customer medicine requests" },
+  { label: "Update Announcement",  href: "/admin/announcement", icon: Megaphone,    desc: "Control the banner" },
+  { label: "Manage Categories",    href: "/admin/categories",   icon: Tag,          desc: "Medicine categories" },
+  { label: "Manage Brands",        href: "/admin/brands",       icon: Building2,    desc: "Featured brands" },
+  { label: "Manage FAQs",          href: "/admin/faq",          icon: HelpCircle,   desc: "Edit common questions" },
+  { label: "Testimonials",         href: "/admin/testimonials", icon: Star,         desc: "Customer reviews" },
+  { label: "Store Settings",       href: "/admin/settings",     icon: Clock,        desc: "Hours, phone, address" },
 ];
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats>({
     medicines: 0, inquiries: 0, newInquiries: 0,
-    faqs: 0, testimonials: 0, categories: 0, brands: 0
+    faqs: 0, testimonials: 0, categories: 0, brands: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!db) { setLoading(false); return; }
+
+    // Use getCountFromServer() — reads 0 document data, just returns a count.
+    // This replaces 6 full collection fetches that previously read 51k+ docs.
     Promise.all([
-      getCollection("medicines", [], "medicines"),
-      getCollection("inquiries", [orderBy("createdAt", "desc")], "inquiries"),
-      getCollection("faqs", [], "faqs"),
-      getCollection("testimonials", [], "testimonials"),
-      getCollection("categories", [], "categories"),
-      getCollection("brands", [], "brands"),
-    ]).then(([meds, inquiries, faqs, testimonials, categories, brands]) => {
-      setStats({
-        medicines: meds.length,
-        inquiries: inquiries.length,
-        newInquiries: inquiries.filter((i) => i.status === "new").length,
-        faqs: faqs.length,
-        testimonials: testimonials.length,
-        categories: categories.length,
-        brands: brands.length,
-      });
-    }).catch(console.error).finally(() => setLoading(false));
+      getCountFromServer(collection(db, "medicines")),
+      getCountFromServer(collection(db, "inquiries")),
+      getCountFromServer(query(collection(db, "inquiries"), where("status", "==", "new"))),
+      getCountFromServer(collection(db, "faqs")),
+      getCountFromServer(collection(db, "testimonials")),
+      getCountFromServer(collection(db, "categories")),
+      getCountFromServer(collection(db, "brands")),
+    ])
+      .then(([meds, inq, newInq, faqs, tests, cats, brands]) => {
+        setStats({
+          medicines:    meds.data().count,
+          inquiries:    inq.data().count,
+          newInquiries: newInq.data().count,
+          faqs:         faqs.data().count,
+          testimonials: tests.data().count,
+          categories:   cats.data().count,
+          brands:       brands.data().count,
+        });
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>Dashboard</h1>
-        <p className="text-muted-foreground text-sm mt-1">Welcome back! Here's what's happening at Ayush Medico.</p>
+        <h1
+          className="text-2xl font-bold text-foreground"
+          style={{ fontFamily: "'Poppins', sans-serif" }}
+        >
+          Dashboard
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Welcome back! Here's what's happening at Ayush Medico.
+        </p>
       </div>
 
       {loading ? (
@@ -94,12 +129,12 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={Pill} label="Medicines" value={stats.medicines} sub="In catalog" color="bg-primary/10 text-primary" href="/admin/medicines" />
-          <StatCard icon={MessageSquare} label="Inquiries" value={stats.inquiries} sub={`${stats.newInquiries} new`} color="bg-secondary/10 text-secondary" href="/admin/inquiries" />
-          <StatCard icon={Tag} label="Categories" value={stats.categories} sub="Product groups" color="bg-accent/10 text-accent" href="/admin/categories" />
-          <StatCard icon={Building2} label="Brands" value={stats.brands} sub="Featured" color="bg-purple-500/10 text-purple-500" href="/admin/brands" />
-          <StatCard icon={HelpCircle} label="FAQs" value={stats.faqs} sub="Published" color="bg-orange-500/10 text-orange-500" href="/admin/faq" />
-          <StatCard icon={Star} label="Reviews" value={stats.testimonials} sub="Testimonials" color="bg-pink-500/10 text-pink-500" href="/admin/testimonials" />
+          <StatCard icon={Pill}         label="Medicines"   value={stats.medicines}    sub="In catalog"        color="bg-primary/10 text-primary"      href="/admin/medicines" />
+          <StatCard icon={MessageSquare}label="Inquiries"   value={stats.inquiries}    sub={`${stats.newInquiries} new`} color="bg-secondary/10 text-secondary" href="/admin/inquiries" />
+          <StatCard icon={Tag}          label="Categories"  value={stats.categories}   sub="Product groups"    color="bg-accent/10 text-accent"         href="/admin/categories" />
+          <StatCard icon={Building2}    label="Brands"      value={stats.brands}       sub="Featured"          color="bg-purple-500/10 text-purple-500"  href="/admin/brands" />
+          <StatCard icon={HelpCircle}   label="FAQs"        value={stats.faqs}         sub="Published"         color="bg-orange-500/10 text-orange-500"  href="/admin/faq" />
+          <StatCard icon={Star}         label="Reviews"     value={stats.testimonials} sub="Testimonials"      color="bg-pink-500/10 text-pink-500"      href="/admin/testimonials" />
         </div>
       )}
 
@@ -132,7 +167,9 @@ export default function DashboardPage() {
           <Clock size={14} className="text-primary" />
           <p className="text-sm font-semibold text-foreground">Store Hours</p>
         </div>
-        <p className="text-sm text-muted-foreground">Mon – Sun: <span className="font-medium text-foreground">8:00 AM – 10:00 PM</span></p>
+        <p className="text-sm text-muted-foreground">
+          Mon – Sun: <span className="font-medium text-foreground">8:00 AM – 10:00 PM</span>
+        </p>
         <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
           <CheckCircle2 size={12} className="text-secondary" />
           Update hours anytime from the Settings page.

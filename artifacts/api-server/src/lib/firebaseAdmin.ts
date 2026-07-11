@@ -1,5 +1,6 @@
 import { initializeApp, cert, getApps, type App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 import { logger } from "./logger";
 
 let app: App | null = null;
@@ -30,6 +31,21 @@ export function initFirebaseAdmin(): void {
     }
   } catch (err) {
     logger.error({ err }, "Failed to initialize Firebase Admin");
+  }
+}
+
+/**
+ * Returns a Firestore instance for the Admin SDK.
+ * Returns null if no service account is configured — projectId-only mode
+ * cannot authenticate Firestore writes in production.
+ */
+export function getFirestoreDb() {
+  const serviceAccountJson = process.env["FIREBASE_SERVICE_ACCOUNT_JSON"];
+  if (!serviceAccountJson || !app) return null;
+  try {
+    return getFirestore(app);
+  } catch {
+    return null;
   }
 }
 

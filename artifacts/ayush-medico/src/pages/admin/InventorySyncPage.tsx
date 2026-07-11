@@ -5,12 +5,13 @@
  * then confirm to write changes. Nothing touches Firestore until "Confirm Sync".
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Upload, FileText, CheckCircle2, AlertCircle, RefreshCw,
   Eye, Zap, Package, Building2, Tag, Pill, BarChart3,
-  ChevronDown, ChevronUp, Loader2, X, Info,
+  ChevronDown, ChevronUp, Loader2, X, Info, Server, Monitor,
 } from "lucide-react";
+import { auth } from "@/lib/firebase";
 import { readSdfLines } from "@/lib/sdf/sdfReader";
 import { parseAllFiles } from "@/lib/sdf/stagingEngine";
 import { buildSyncPreview } from "@/lib/sdf/stagingEngine";
@@ -427,6 +428,24 @@ export default function InventorySyncPage() {
     quotaExhausted: boolean;
   } | null>(null);
 
+  // Which sync path was used: "backend" (API server) or "frontend" (browser)
+  const [syncMode, setSyncMode] = useState<"backend" | "frontend" | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
+
+  const stopPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  };
+
   const handleFile = useCallback((key: SdfFileKey, file: File | null) => {
     setFiles((prev) => {
       const next = { ...prev };
@@ -489,7 +508,130 @@ export default function InventorySyncPage() {
 
     const total = preview.medicines.toCreate + preview.medicines.toUpdate;
     setPhase("syncing");
-    setProgress({ phase: "syncing", message: "Preparing…", processed: 0, total, errors: [] });
+    setSyncMode(null);
+    setProgress({ phase: "syncing", message: "Connecting to sync service…", processed: 0, total, errors: [] });
+
+    // ── Step 1: Try backend sync ────────────────────────────────────────────
+    try {
+      const token = await auth?.currentUser?.getIdToken();
+      const body = {
+        medicines: {
+          creates: preview.medicines.items
+            .filter((m) => m.action === "create")
+            .map(({ action: _a, existingDocId: _e, changedFields: _c, ...m }) => m),
+          updates: preview.medicines.items
+            .filter((m) => m.action === "update")
+            .map(({ action: _a, changedFields: _c, ...m }) => m),
+        },
+        categories: preview.categories.items
+          .filter((c) => c.action === "create")
+          .map(({ action: _a, ...c }) => c),
+        brands: preview.brands.items
+          .filter((b) => b.action === "create")
+          .map(({ action: _a, ...b }) => b),
+      };
+
+      const startResp = await fetch("/api/sync/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (startResp.ok) {
+        // Backend accepted the job — start polling
+        setSyncMode("backend");
+        setProgress((p) => ({
+          ...p, message: "Backend sync started — processing in server…",
+        }));
+
+        pollIntervalRef.current = setInterval(async () => {
+          try {
+            const pollToken = await auth?.currentUser?.getIdToken();
+            const statusResp = await fetch("/api/sync/status", {
+              headers: pollToken ? { Authorization: `Bearer ${pollToken}` } : {},
+            });
+            const data = await statusResp.json() as {
+              running: boolean;
+              job?: {
+                status: string;
+                phase: string;
+                message: string;
+                processed: number;
+                total: number;
+                currentBatch: number;
+                totalBatches: number;
+                created: number;
+                updated: number;
+                failed: number;
+                errors: string[];
+                quotaExhausted: boolean;
+              };
+            };
+
+            if (data.job) {
+              const job = data.job;
+              setProgress({
+                phase: job.status === "done" ? "done" : job.status === "error" ? "error" : "syncing",
+                message: job.message,
+                processed: job.processed,
+                total: job.total,
+                currentBatch: job.currentBatch,
+                totalBatches: job.totalBatches,
+                errors: job.errors ?? [],
+              });
+
+              if (job.status !== "running") {
+                stopPolling();
+                setSyncResult({
+                  created: job.created,
+                  updated: job.updated,
+                  failed: job.failed,
+                  errors: job.errors ?? [],
+                  quotaExhausted: job.quotaExhausted,
+                });
+                setPhase("done");
+              }
+            }
+          } catch {
+            // Network hiccup — keep polling
+          }
+        }, 3000);
+
+        return; // Backend is handling it — don't run frontend sync
+      }
+
+      // 503 = no service account configured → fall through to frontend sync
+      // 409 = already running → tell user
+      if (startResp.status === 409) {
+        const err = await startResp.json() as { error: string };
+        setProgress({
+          phase: "error",
+          message: err.error ?? "A backend sync is already running. Cancel it first.",
+          processed: 0, total, errors: [err.error],
+        });
+        setPhase("upload");
+        return;
+      }
+
+      // For 503 (no service account) or any other error, fall through
+      const errData = await startResp.json() as { error?: string; code?: string };
+      if (errData.code !== "no_service_account") {
+        // Unexpected backend error — fall through to frontend sync
+        console.warn("[sync] Backend error:", errData.error, "— falling back to frontend sync");
+      }
+    } catch {
+      // Backend unreachable — fall through to frontend sync
+      console.warn("[sync] Backend unavailable — falling back to frontend sync");
+    }
+
+    // ── Step 2: Frontend fallback sync ──────────────────────────────────────
+    setSyncMode("frontend");
+    setProgress((p) => ({
+      ...p, message: "Using browser sync (backend service account not configured)…",
+    }));
 
     const result = await executeSyncToFirestore(preview, (p) =>
       setProgress((prev) => ({ ...prev, ...p, phase: "syncing" }))
@@ -509,10 +651,12 @@ export default function InventorySyncPage() {
   }
 
   function handleReset() {
+    stopPolling();
     setFiles({});
     setPhase("upload");
     setPreview(null);
     setSyncResult(null);
+    setSyncMode(null);
     setProgress({ phase: "idle", message: "Ready", processed: 0, total: 0, errors: [] });
   }
 
@@ -636,10 +780,26 @@ export default function InventorySyncPage() {
         <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-4">
           <Loader2 size={40} className="animate-spin text-primary mx-auto" />
           <h2 className="text-lg font-semibold">Syncing to Firestore…</h2>
+          {syncMode && (
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold
+              ${syncMode === "backend"
+                ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800"
+                : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
+              }`}>
+              {syncMode === "backend"
+                ? <><Server size={12} /> Running in server (closes tab safely)</>
+                : <><Monitor size={12} /> Running in browser (keep tab open)</>
+              }
+            </div>
+          )}
           <div className="max-w-md mx-auto">
             <ProgressBar progress={progress} />
           </div>
-          <p className="text-sm text-muted-foreground">Please keep this tab open</p>
+          {syncMode === "backend" ? (
+            <p className="text-sm text-muted-foreground">Processing on the server — you can navigate away safely.</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">Please keep this tab open while syncing.</p>
+          )}
         </div>
       )}
 

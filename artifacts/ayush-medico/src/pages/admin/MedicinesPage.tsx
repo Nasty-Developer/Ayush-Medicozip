@@ -22,7 +22,7 @@ import {
   PackageCheck, PackageX, Clock, Loader2, Upload, Sparkles, Award, ChevronDown,
   FlaskConical, Pill, ClipboardList, Barcode, Tag, Calendar, Star,
 } from "lucide-react";
-import { subscribeToCollection, addDocument, updateDocument, deleteDocument, orderBy } from "@/lib/firestoreHelpers";
+import { subscribeToCollection, addDocument, updateDocument, deleteDocument, orderBy, limit } from "@/lib/firestoreHelpers";
 import { uploadMedicineImage } from "@/lib/storageHelpers";
 import { useCategories } from "@/hooks/useCategories";
 import { useBrands } from "@/hooks/useBrands";
@@ -670,8 +670,13 @@ export default function MedicinesPage() {
   const { categories } = useCategories();
 
   useEffect(() => {
+    // Performance: subscribe to first 50 medicines only (ordered by name).
+    // For a catalog with 51k+ items, subscribing to all is unsustainable.
+    // Use the search bar to find specific medicines — it queries the loaded set.
+    // "Load More" is intentionally omitted here because the real-time listener
+    // keeps the visible 50 up-to-date (add/edit/delete reflect immediately).
     const unsub = subscribeToCollection(
-      "medicines", [orderBy("name")],
+      "medicines", [orderBy("name"), limit(50)],
       (docs) => { setMedicines(docs as unknown as Medicine[]); setLoading(false); },
       () => { toast({ variant: "destructive", title: "Failed to load medicines" }); setLoading(false); }
     );
