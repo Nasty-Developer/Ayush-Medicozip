@@ -1,0 +1,267 @@
+We are changing the inventory architecture to make the website scalable and production-ready.
+
+The current Firestore-based medicine catalogue is not suitable for 50,000+ medicines because of Firestore quota limits, write limits, aggregation limits, and performance issues.
+
+DO NOT delete any existing code. Preserve the current UI, routes, components, authentication, orders, and admin panel.
+
+====================================================
+NEW ARCHITECTURE
+====================================================
+
+Move the medicine catalogue from Firestore to PostgreSQL.
+
+Firestore will only be used for real-time application data.
+
+====================================================
+POSTGRESQL DATABASE
+====================================================
+
+Create normalized PostgreSQL tables.
+
+medicines
+---------
+id
+product_code
+name
+generic_name
+company_id
+category_id
+drug_group_id
+packing
+mrp
+selling_price
+gst
+hsn
+description
+image
+prescription_required
+featured
+special
+new_arrival
+status
+created_at
+updated_at
+
+companies
+----------
+id
+name
+
+categories
+-----------
+id
+name
+slug
+icon
+image
+
+drug_groups
+-----------
+id
+name
+
+stock
+------
+id
+medicine_id
+batch_no
+expiry
+quantity
+purchase_price
+selling_price
+last_updated
+
+====================================================
+IMPORTER
+====================================================
+
+Build a production-ready importer.
+
+Import these files:
+
+PRODUCT.SDF
+STOCK.SDF
+COMPANY.SDF
+CATEGORY.SDF
+DRUG.SDF
+
+The importer must:
+
+• Parse every file
+• Merge relationships correctly
+• Prevent duplicates
+• Update existing medicines
+• Insert new medicines
+• Update stock
+• Update companies
+• Update categories
+• Update drug groups
+
+Everything should happen inside PostgreSQL.
+
+Do NOT import medicines into Firestore anymore.
+
+====================================================
+API
+====================================================
+
+Create REST endpoints.
+
+GET /api/medicines
+GET /api/medicines/:id
+GET /api/search
+GET /api/categories
+GET /api/category/:slug
+GET /api/featured
+GET /api/new-arrivals
+GET /api/special
+GET /api/related
+GET /api/stock
+
+Support:
+
+• Pagination
+• Filtering
+• Category
+• Company
+• Search
+• Sorting
+• In-stock first
+
+====================================================
+FRONTEND
+====================================================
+
+Update the frontend so medicines load from PostgreSQL APIs instead of Firestore.
+
+Do NOT change the existing UI.
+
+Everything should continue working:
+
+✓ Homepage
+✓ Categories
+✓ Search
+✓ Product Details
+✓ Related Medicines
+✓ Featured Medicines
+✓ New Arrivals
+✓ Special Medicines
+
+====================================================
+FIREBASE
+====================================================
+
+Keep Firebase ONLY for:
+
+Authentication
+
+Users
+
+Orders
+
+Medicine Requests
+
+Wishlist
+
+Testimonials
+
+Announcements
+
+Notifications
+
+Settings
+
+Admin authentication
+
+Do NOT store the medicine catalogue inside Firestore.
+
+====================================================
+STOCK
+====================================================
+
+Always show medicines in this order:
+
+1. In Stock
+2. Low Stock
+3. Out of Stock
+
+Never display exact quantity to customers.
+
+====================================================
+IMAGES
+====================================================
+
+Continue using category-based placeholder images for imported medicines.
+
+Example:
+
+General Medicines
+
+Cosmetics
+
+Baby Care
+
+Food & Nutrition
+
+Dental Care
+
+Ayurvedic
+
+Devices
+
+Each category should have one premium placeholder image reused by medicines in that category.
+
+Special Medicines and New Arrivals should continue supporting custom uploaded images.
+
+====================================================
+FUTURE SYNC
+====================================================
+
+Design the importer so future sync becomes easy.
+
+Later we will build an Inventory Sync Agent that:
+
+• Detects changed medicines
+• Detects changed stock
+• Detects changed prices
+• Updates only modified rows
+
+Do NOT build the automatic sync agent yet.
+
+Just design the importer architecture so it can support incremental syncing later.
+
+====================================================
+BACKWARD COMPATIBILITY
+====================================================
+
+Do NOT break any existing functionality.
+
+Existing Orders, Admin Panel, Authentication, Cart, Checkout, Medicine Requests, and UI should continue working exactly as before.
+
+====================================================
+FINAL TASK
+====================================================
+
+After migration:
+
+• Verify all imported medicines appear correctly.
+• Verify categories.
+• Verify search.
+• Verify stock.
+• Verify Add to Cart.
+• Verify checkout.
+• Verify admin panel.
+• Verify performance.
+
+Generate a migration report including:
+
+- Total medicines imported
+- Companies imported
+- Categories imported
+- Drug groups imported
+- Stock records imported
+- Failed records
+- Duplicate records
+- Total execution time
+
+Do not mark the task complete until the website is fully running from PostgreSQL for the medicine catalogue while Firebase continues handling only application data.

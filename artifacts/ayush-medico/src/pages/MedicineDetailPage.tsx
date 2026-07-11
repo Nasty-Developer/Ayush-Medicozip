@@ -1,10 +1,8 @@
 /**
  * MedicineDetailPage — Public route at /medicine/:id
  *
- * Shows full details for a single medicine document fetched from Firestore.
- * Includes image, name, brand, category, pricing, stock status, prescription
- * flag, description, and Add to Cart — all sourced from the same `medicines`
- * Firestore collection that drives the rest of the app.
+ * Shows full details for a single medicine fetched from the PostgreSQL API.
+ * `:id` is the numeric database ID returned by GET /api/medicines.
  */
 
 import { useEffect, useState } from "react";
@@ -14,8 +12,6 @@ import {
   ArrowLeft, ShoppingCart, Plus, Minus, Tag,
   PackageCheck, PackageX, Clock, ShieldCheck, Package, PackageSearch,
 } from "lucide-react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useCart } from "@/context/CartContext";
 import { useRequestMedicine } from "@/context/RequestMedicineContext";
 import type { CategoryMedicine } from "@/hooks/useMedicinesByCategory";
@@ -29,18 +25,22 @@ export default function MedicineDetailPage() {
   const [medicine, setMedicine] = useState<CategoryMedicine | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [imgErr,   setImgErr]   = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   const { addItem, items, updateQuantity, removeItem } = useCart();
   const { triggerRequest } = useRequestMedicine();
 
   useEffect(() => {
-    if (!id || !db) { setLoading(false); return; }
+    if (!id) { setLoading(false); setNotFound(true); return; }
     setLoading(true);
-    getDoc(doc(db, "medicines", id))
-      .then((snap) => {
-        if (snap.exists()) {
-          setMedicine({ id: snap.id, ...snap.data() } as CategoryMedicine);
-        }
+    setNotFound(false);
+
+    fetch(`/api/medicines/${id}`)
+      .then(async (r) => {
+        if (r.status === 404) { setNotFound(true); return; }
+        if (!r.ok) throw new Error(`API error ${r.status}`);
+        const data = await r.json() as CategoryMedicine;
+        setMedicine(data);
       })
       .catch(console.warn)
       .finally(() => setLoading(false));
@@ -55,7 +55,7 @@ export default function MedicineDetailPage() {
     );
   }
 
-  if (!medicine) {
+  if (notFound || !medicine) {
     return (
       <main className="max-w-2xl mx-auto px-4 py-16 text-center">
         <Package size={48} className="mx-auto text-muted-foreground mb-4" />
@@ -110,7 +110,7 @@ export default function MedicineDetailPage() {
     <main className="max-w-2xl mx-auto px-4 py-8">
       {/* Back link */}
       <Link
-        href={medicine.categoryName ? `/categories` : "/categories"}
+        href="/categories"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground
                    hover:text-primary transition-colors mb-6"
       >
@@ -193,10 +193,17 @@ export default function MedicineDetailPage() {
             </div>
           ) : null}
 
-          {/* Stock info — availability label only, no raw numbers for customers */}
+          {/* Stock info */}
           {status === "low_stock" && (
             <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
               🟡 Limited availability — order soon
+            </p>
+          )}
+
+          {/* Pack info */}
+          {medicine.packInfo && (
+            <p className="text-xs text-muted-foreground">
+              📦 {medicine.packInfo}
             </p>
           )}
 
@@ -243,7 +250,7 @@ export default function MedicineDetailPage() {
                   {status === "out_of_stock" ? "Currently unavailable" : "Coming soon"}
                 </p>
                 <button
-                  onClick={() => triggerRequest(medicine.name, medicine.brand, medicine.categoryName)}
+                  onClick={() => triggerRequest(medicine.name, medicine.brand ?? undefined, medicine.categoryName ?? undefined)}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2
                              px-8 h-11 rounded-xl text-sm font-semibold border border-dashed
                              border-muted-foreground/50 bg-muted/30 text-muted-foreground
@@ -259,3 +266,6 @@ export default function MedicineDetailPage() {
     </main>
   );
 }
+
+// Lucide icons referenced but not used directly via JSX — kept for completeness
+void PackageCheck; void PackageX; void Clock;

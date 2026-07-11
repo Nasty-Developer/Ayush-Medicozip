@@ -1,19 +1,30 @@
 /**
  * CategoriesPage — Admin
  *
- * Changes from original:
- *   • Real-time listener via subscribeToCollection (live updates everywhere).
- *   • Drag-and-drop ordering — saves order field to Firestore.
- *   • Duplicate name validation (case-insensitive, trimmed).
- *   • Slug auto-generated on create.
+ * Reads/writes categories from PostgreSQL via the API server.
+ * Drag-and-drop reordering, icon/color/enabled management.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Pencil, Trash2, X, Loader2, GripVertical, Tag, AlertCircle } from "lucide-react";
-import { addDocument, updateDocument, deleteDocument } from "@/lib/firestoreHelpers";
-import { useCategories, type Category } from "@/hooks/useCategories";
+import { Plus, Pencil, Trash2, X, Loader2, GripVertical, Tag, AlertCircle, RefreshCw } from "lucide-react";
+import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string;
+  description: string;
+  color: string;
+  order?: number;
+  enabled: boolean;
+  imageUrl?: string | null;
+  count?: number;
+}
 
 const PRESET_ICONS  = ["💊","🩺","🩹","💉","🧬","🫀","🫁","🧠","👶","🌿","💪","🔬","❤️‍🩹","🏥","⚕️","🍀","🌡️","🧪","🦷","👁️"];
 const PRESET_COLORS = ["primary","secondary","accent","purple","orange","pink","red","yellow"];
@@ -22,7 +33,22 @@ function slugify(s: string) {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-/* ── Dialog ───────────────────────────────────────────────────────────────── */
+// ── Admin API helper ──────────────────────────────────────────────────────────
+
+async function adminFetch(path: string, init: RequestInit = {}) {
+  const token = await auth.currentUser?.getIdToken();
+  return fetch(path, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...init.headers,
+    },
+  });
+}
+
+// ── Dialog ────────────────────────────────────────────────────────────────────
+
 function CategoryDialog({ category, allCategories, onClose, onSave }: {
   category: Category | null;
   allCategories: Category[];
@@ -46,10 +72,7 @@ function CategoryDialog({ category, allCategories, onClose, onSave }: {
     return !dup && trimmed.length > 0;
   };
 
-  const handleNameChange = (val: string) => {
-    setName(val);
-    validateName(val);
-  };
+  const handleNameChange = (val: string) => { setName(val); validateName(val); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,11 +81,11 @@ function CategoryDialog({ category, allCategories, onClose, onSave }: {
     try {
       await onSave({
         name:        name.trim(),
+        slug:        slugify(name),
         icon,
         description: description.trim(),
         color,
         enabled,
-        slug:        slugify(name),
         order:       category?.order ?? Date.now(),
       });
       onClose();
@@ -85,7 +108,6 @@ function CategoryDialog({ category, allCategories, onClose, onSave }: {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Category Name *</label>
             <input
@@ -102,7 +124,6 @@ function CategoryDialog({ category, allCategories, onClose, onSave }: {
             )}
           </div>
 
-          {/* Icon */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Icon (emoji)</label>
             <div className="flex gap-2 flex-wrap mb-2">
@@ -120,7 +141,6 @@ function CategoryDialog({ category, allCategories, onClose, onSave }: {
             />
           </div>
 
-          {/* Description */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Description</label>
             <input
@@ -130,7 +150,6 @@ function CategoryDialog({ category, allCategories, onClose, onSave }: {
             />
           </div>
 
-          {/* Color */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Color Theme</label>
             <div className="flex gap-2 flex-wrap">
@@ -145,7 +164,6 @@ function CategoryDialog({ category, allCategories, onClose, onSave }: {
             </div>
           </div>
 
-          {/* Published toggle */}
           <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border">
             <div>
               <p className="text-sm font-medium text-foreground">Published</p>
@@ -174,16 +192,53 @@ function CategoryDialog({ category, allCategories, onClose, onSave }: {
   );
 }
 
-/* ── Page ─────────────────────────────────────────────────────────────────── */
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function CategoriesPage() {
-  const { categories, loading } = useCategories();   // real-time, all (not just enabled)
-  const [dialog, setDialog]     = useState<{ open: boolean; category: Category | null }>({ open: false, category: null });
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [dialog, setDialog] = useState<{ open: boolean; category: Category | null }>({ open: false, category: null });
+  const [deleting,   setDeleting]   = useState<string | null>(null);
   const { toast } = useToast();
 
-  /* ── Drag-and-drop ──────────────────────────────────────────────────────── */
+  // Drag state
   const dragFrom   = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+
+  // ── Fetch all categories (admin sees all, incl. disabled) ─────────────────
+
+  const fetchCategories = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const resp  = await fetch("/api/admin/categories", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) throw new Error(`API error ${resp.status}`);
+      const data = await resp.json() as { id: number; name: string; slug: string; icon: string; description: string; color: string; displayOrder: number; enabled: boolean }[];
+      setCategories(
+        data.map((r) => ({
+          id:          String(r.id),
+          name:        r.name,
+          slug:        r.slug,
+          icon:        r.icon,
+          description: r.description ?? "",
+          color:       r.color,
+          order:       r.displayOrder,
+          enabled:     r.enabled,
+        }))
+      );
+    } catch (err) {
+      console.warn("[CategoriesPage] fetch error:", err);
+      toast({ variant: "destructive", title: "Failed to load categories" });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => { void fetchCategories(); }, [fetchCategories]);
+
+  // ── Drag-and-drop reorder ─────────────────────────────────────────────────
 
   const handleDragStart = (idx: number) => { dragFrom.current = idx; };
   const handleDragOver  = (e: React.DragEvent, idx: number) => { e.preventDefault(); setDragOver(idx); };
@@ -196,27 +251,43 @@ export default function CategoriesPage() {
     dragFrom.current = null;
     if (fromIdx === null || fromIdx === dropIdx) return;
 
-    // Re-order array
     const reordered = [...categories];
     const [item] = reordered.splice(fromIdx, 1);
-    reordered.splice(dropIdx, 0, item);
+    if (item) reordered.splice(dropIdx, 0, item);
+    // Optimistic update
+    setCategories(reordered);
 
-    // Persist new order to Firestore (sequential integers × 10 leaves room for inserts)
+    // Persist new display order
     await Promise.all(
-      reordered.map((cat, i) => updateDocument("categories", cat.id, { order: (i + 1) * 10 }))
+      reordered.map((cat, i) =>
+        adminFetch(`/api/admin/categories/${cat.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ displayOrder: (i + 1) * 10 }),
+        })
+      )
     );
   };
 
-  /* ── CRUD ───────────────────────────────────────────────────────────────── */
+  // ── CRUD ──────────────────────────────────────────────────────────────────
+
   const handleSave = async (data: Omit<Category, "id">) => {
     try {
       if (dialog.category) {
-        await updateDocument("categories", dialog.category.id, data);
+        const resp = await adminFetch(`/api/admin/categories/${dialog.category.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ ...data, displayOrder: data.order }),
+        });
+        if (!resp.ok) throw new Error(`API error ${resp.status}`);
         toast({ title: "Category updated ✓" });
       } else {
-        await addDocument("categories", data);
+        const resp = await adminFetch("/api/admin/categories", {
+          method: "POST",
+          body: JSON.stringify({ ...data, displayOrder: data.order ?? 0 }),
+        });
+        if (!resp.ok) throw new Error(`API error ${resp.status}`);
         toast({ title: "Category added ✓" });
       }
+      await fetchCategories();
     } catch {
       toast({ variant: "destructive", title: "Failed to save category" });
       throw new Error("save failed");
@@ -226,8 +297,10 @@ export default function CategoriesPage() {
   const handleDelete = async (id: string) => {
     setDeleting(id);
     try {
-      await deleteDocument("categories", id);
+      const resp = await adminFetch(`/api/admin/categories/${id}`, { method: "DELETE" });
+      if (!resp.ok) throw new Error(`API error ${resp.status}`);
       toast({ title: "Category removed" });
+      await fetchCategories();
     } catch {
       toast({ variant: "destructive", title: "Failed to delete category" });
     } finally {
@@ -237,7 +310,13 @@ export default function CategoriesPage() {
 
   const handleToggle = async (cat: Category) => {
     try {
-      await updateDocument("categories", cat.id, { enabled: !cat.enabled });
+      const resp = await adminFetch(`/api/admin/categories/${cat.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ enabled: !cat.enabled }),
+      });
+      if (!resp.ok) throw new Error();
+      // Optimistic UI update
+      setCategories((prev) => prev.map((c) => c.id === cat.id ? { ...c, enabled: !c.enabled } : c));
     } catch {
       toast({ variant: "destructive", title: "Failed to update" });
     }
@@ -249,13 +328,19 @@ export default function CategoriesPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>Categories</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {categories.length} categories · <span className="text-primary font-medium">live sync</span>
+            {categories.length} categories · <span className="text-primary font-medium">PostgreSQL</span>
           </p>
         </div>
-        <button onClick={() => setDialog({ open: true, category: null })}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 hover:bg-primary/90 transition-all flex-shrink-0">
-          <Plus size={16} /> Add Category
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={fetchCategories} disabled={loading}
+            className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all disabled:opacity-50">
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          </button>
+          <button onClick={() => setDialog({ open: true, category: null })}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 hover:bg-primary/90 transition-all flex-shrink-0">
+            <Plus size={16} /> Add Category
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -264,7 +349,7 @@ export default function CategoriesPage() {
         <div className="flex flex-col items-center justify-center h-40 bg-card border border-border rounded-2xl text-muted-foreground">
           <Tag size={28} className="mb-2" />
           <p className="text-sm font-medium">No categories yet</p>
-          <p className="text-xs mt-1">Add your first category above</p>
+          <p className="text-xs mt-1">Run an SDF import to populate categories, or add one manually above</p>
         </div>
       ) : (
         <div className="space-y-2">

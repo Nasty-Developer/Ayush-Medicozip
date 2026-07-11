@@ -1,54 +1,37 @@
 /**
  * useMedicinesByCategory
  *
- * Cursor-based paginated fetch for medicines belonging to a single category.
- *
- * Performance fix (was: real-time onSnapshot with no limit):
- * Now uses getDocs with limit(PAGE_SIZE) + cursor pagination so we never
- * stream the entire category at once. A category with 5,000 medicines
- * previously triggered 5,000 Firestore reads on every mount; now we
- * read 25 at a time and only load more when the user asks.
+ * Cursor-based paginated fetch for medicines in one category from the
+ * PostgreSQL API. Replaces the previous Firestore implementation.
  *
  * Returns:
  *   medicines     — currently loaded page(s)
  *   loading       — true during the first page fetch
  *   loadingMore   — true while fetching a subsequent page
- *   hasMore       — false once Firestore returns fewer docs than PAGE_SIZE
+ *   hasMore       — false once the API reports no more pages
  *   loadMore()    — call to append the next page
  */
 
-import { useEffect, useState, useCallback } from "react";
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  startAfter,
-  getDocs,
-  type QueryDocumentSnapshot,
-  type DocumentData,
-  type QueryConstraint,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useEffect, useState, useCallback, useRef } from "react";
 
 export type StockStatus = "in_stock" | "low_stock" | "out_of_stock" | "coming_soon";
 
 export type CategoryMedicine = {
   id: string;
   name: string;
-  brand?: string;
-  description?: string;
-  imageUrl?: string;
+  brand?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
   stockStatus?: StockStatus;
   available?: boolean;
-  sellingPrice?: number;
-  mrp?: number;
-  discount?: number;
-  categoryName?: string;
+  sellingPrice?: number | null;
+  mrp?: number | null;
+  discount?: number | null;
+  categoryName?: string | null;
   order?: number;
   prescriptionRequired?: boolean;
-  packInfo?: string;
+  packInfo?: string | null;
+  /** Quantity visible to the system — not shown raw to customers. */
   stockQuantity?: number;
   stockQty?: number;
   showInSpecialMedicines?: boolean;
@@ -59,69 +42,50 @@ export type CategoryMedicine = {
 const PAGE_SIZE = 50;
 
 export function useMedicinesByCategory(categoryName: string) {
-  const [medicines, setMedicines] = useState<CategoryMedicine[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [cursor, setCursor] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [medicines,    setMedicines]    = useState<CategoryMedicine[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [loadingMore,  setLoadingMore]  = useState(false);
+  const [hasMore,      setHasMore]      = useState(false);
+  const [page,         setPage]         = useState(1);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const fetchPage = useCallback(
-    async (
-      catName: string,
-      after: QueryDocumentSnapshot<DocumentData> | null
-    ) => {
-      if (!db || !catName) return;
+  /** Fetch a page for `catName`. `append=true` for subsequent pages. */
+  const fetchPage = useCallback(async (catName: string, pageNum: number, append: boolean) => {
+    if (!catName) return;
 
-      const isFirst = !after;
-      if (isFirst) setLoading(true);
-      else setLoadingMore(true);
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
 
-      try {
-        const constraints: QueryConstraint[] = [
-          where("categoryName", "==", catName),
-          orderBy("order"),
-          limit(PAGE_SIZE),
-          ...(after ? [startAfter(after)] : []),
-        ];
+    if (!append) setLoading(true);
+    else         setLoadingMore(true);
 
-        const snap = await getDocs(query(collection(db, "medicines"), ...constraints));
-        const valid = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() } as CategoryMedicine))
-          .filter((m) => typeof m.name === "string" && m.name.trim().length > 0);
+    try {
+      const params = new URLSearchParams({
+        page:  String(pageNum),
+        limit: String(PAGE_SIZE),
+        category: catName,
+      });
 
-        setMedicines((prev) => (isFirst ? valid : [...prev, ...valid]));
-        setCursor(snap.docs[snap.docs.length - 1] ?? null);
-        setHasMore(snap.docs.length === PAGE_SIZE);
-      } catch {
-        // Fall back to unordered query if Firestore index is missing
-        if (!after) {
-          try {
-            const snap = await getDocs(
-              query(
-                collection(db, "medicines"),
-                where("categoryName", "==", catName),
-                limit(PAGE_SIZE)
-              )
-            );
-            const valid = snap.docs
-              .map((d) => ({ id: d.id, ...d.data() } as CategoryMedicine))
-              .filter((m) => typeof m.name === "string" && m.name.trim().length > 0);
-            // Sort client-side on first fallback page
-            valid.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-            setMedicines(valid);
-            setCursor(snap.docs[snap.docs.length - 1] ?? null);
-            setHasMore(snap.docs.length === PAGE_SIZE);
-          } catch {
-            setHasMore(false);
-          }
-        }
-      } finally {
-        if (isFirst) setLoading(false);
-        else setLoadingMore(false);
-      }
-    },
-    []
-  );
+      const resp = await fetch(`/api/medicines?${params}`, { signal: ctrl.signal });
+      if (!resp.ok) throw new Error(`API error ${resp.status}`);
+
+      const json = await resp.json() as {
+        data: CategoryMedicine[];
+        hasMore: boolean;
+      };
+
+      setMedicines((prev) => append ? [...prev, ...json.data] : json.data);
+      setHasMore(json.hasMore);
+    } catch (err: unknown) {
+      if ((err as { name?: string }).name === "AbortError") return;
+      console.warn("[useMedicinesByCategory] fetch error:", err);
+      setHasMore(false);
+    } finally {
+      if (!append) setLoading(false);
+      else         setLoadingMore(false);
+    }
+  }, []);
 
   // Reset + fetch first page whenever category changes
   useEffect(() => {
@@ -129,20 +93,22 @@ export function useMedicinesByCategory(categoryName: string) {
       setMedicines([]);
       setLoading(false);
       setHasMore(false);
-      setCursor(null);
+      setPage(1);
       return;
     }
     setMedicines([]);
-    setCursor(null);
+    setPage(1);
     setHasMore(false);
-    fetchPage(categoryName, null);
+    fetchPage(categoryName, 1, false);
   }, [categoryName, fetchPage]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && !loading && hasMore && categoryName) {
-      fetchPage(categoryName, cursor);
+      const next = page + 1;
+      setPage(next);
+      fetchPage(categoryName, next, true);
     }
-  }, [loadingMore, loading, hasMore, categoryName, cursor, fetchPage]);
+  }, [loadingMore, loading, hasMore, categoryName, page, fetchPage]);
 
   return { medicines, loading, loadingMore, hasMore, loadMore };
 }

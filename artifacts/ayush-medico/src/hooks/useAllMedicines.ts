@@ -1,124 +1,98 @@
 /**
  * useAllMedicines
- * Cursor-based paginated fetch for the `medicines` Firestore collection
- * with NO category filter — used by the "All Medicines" view.
+ * Paginated fetch for the medicines catalogue from the PostgreSQL API.
  *
- * Why getDocs instead of onSnapshot:
- *   A browse page with potentially 5,000–10,000 medicines cannot hold a
- *   real-time listener over the entire collection without burning Firestore
- *   read quota on every write.  One-time pagination is the correct pattern
- *   at this scale.  Category-scoped views (useMedicinesByCategory) retain
- *   real-time behaviour because each category set is small.
+ * Replaces the previous Firestore implementation. The public API endpoint
+ * GET /api/medicines returns medicines ordered: in-stock first, then by name.
  *
  * Usage:
  *   const { medicines, initialLoading, loadingMore, hasMore, loadMore } =
- *     useAllMedicines();
+ *     useAllMedicines({ search, sort });
  */
 
-import { useEffect, useState, useCallback } from "react";
-import {
-  collection,
-  query,
-  limit,
-  startAfter,
-  getDocs,
-  orderBy,
-  type QueryDocumentSnapshot,
-  type DocumentData,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { CategoryMedicine } from "./useMedicinesByCategory";
 
-const PAGE_SIZE = 48;
-
-// ─────────────────────────────────────────────────────────────────────────────
+export interface UseAllMedicinesOptions {
+  search?: string;
+  sort?: "default" | "name" | "price-low" | "price-high";
+  category?: string;
+}
 
 export interface UseAllMedicinesResult {
   medicines: CategoryMedicine[];
-  /** True only during the very first page load */
   initialLoading: boolean;
-  /** True while a subsequent "load more" page is being fetched */
   loadingMore: boolean;
-  /** False once Firestore returns fewer docs than PAGE_SIZE */
   hasMore: boolean;
-  /** Fetch the next page and append to `medicines` */
   loadMore: () => void;
-  /** Total medicines loaded so far */
   totalLoaded: number;
 }
 
-export function useAllMedicines(): UseAllMedicinesResult {
+const PAGE_SIZE = 48;
+
+export function useAllMedicines(opts: UseAllMedicinesOptions = {}): UseAllMedicinesResult {
+  const { search = "", sort = "default", category = "" } = opts;
+
   const [medicines,      setMedicines]      = useState<CategoryMedicine[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore,    setLoadingMore]    = useState(false);
   const [hasMore,        setHasMore]        = useState(true);
-  const [cursor, setCursor] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [page,           setPage]           = useState(1);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Fetches one page; `after` === null means the first page.
-  const fetchPage = useCallback(
-    async (after: QueryDocumentSnapshot<DocumentData> | null) => {
-      if (!db) {
-        setInitialLoading(false);
-        return;
-      }
+  const fetchPage = useCallback(async (pageNum: number, append: boolean) => {
+    // Cancel any in-flight request
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
 
-      const isFirst = after === null;
-      isFirst ? setInitialLoading(true) : setLoadingMore(true);
+    if (!append) setInitialLoading(true);
+    else         setLoadingMore(true);
 
-      try {
-        // Order by `order` field (same convention as useMedicinesByCategory).
-        // Documents without `order` sort to 0 by Firestore.
-        const constraints = after
-          ? [orderBy("order"), limit(PAGE_SIZE), startAfter(after)]
-          : [orderBy("order"), limit(PAGE_SIZE)];
+    try {
+      const params = new URLSearchParams({
+        page:  String(pageNum),
+        limit: String(PAGE_SIZE),
+      });
+      if (search)   params.set("search",   search);
+      if (sort && sort !== "default") params.set("sort", sort);
+      if (category) params.set("category", category);
 
-        const snap = await getDocs(
-          query(collection(db, "medicines"), ...constraints)
-        );
+      const resp = await fetch(`/api/medicines?${params}`, { signal: ctrl.signal });
+      if (!resp.ok) throw new Error(`API error ${resp.status}`);
 
-        const valid = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() } as CategoryMedicine))
-          .filter((m) => typeof m?.name === "string" && m.name.trim().length > 0);
+      const json = await resp.json() as {
+        data: CategoryMedicine[];
+        total: number;
+        hasMore: boolean;
+      };
 
-        setMedicines((prev) => (isFirst ? valid : [...prev, ...valid]));
-        setCursor(snap.docs[snap.docs.length - 1] ?? null);
-        setHasMore(snap.docs.length === PAGE_SIZE);
-      } catch (err) {
-        // Surface in console; the UI gracefully shows whatever was loaded.
-        console.warn("[useAllMedicines] Firestore fetch error:", err);
-        // If Firestore rejects the compound query (e.g. missing index),
-        // fall back to an unordered fetch so the page still renders.
-        if (!after) {
-          try {
-            const snap = await getDocs(
-              query(collection(db, "medicines"), limit(PAGE_SIZE))
-            );
-            const valid = snap.docs
-              .map((d) => ({ id: d.id, ...d.data() } as CategoryMedicine))
-              .filter((m) => typeof m?.name === "string" && m.name.trim().length > 0);
-            setMedicines(valid);
-            setCursor(snap.docs[snap.docs.length - 1] ?? null);
-            setHasMore(snap.docs.length === PAGE_SIZE);
-          } catch {
-            setHasMore(false);
-          }
-        }
-      } finally {
-        isFirst ? setInitialLoading(false) : setLoadingMore(false);
-      }
-    },
-    [] // stable — no external deps
-  );
+      setMedicines((prev) => append ? [...prev, ...json.data] : json.data);
+      setHasMore(json.hasMore);
+    } catch (err: unknown) {
+      if ((err as { name?: string }).name === "AbortError") return;
+      console.warn("[useAllMedicines] fetch error:", err);
+      setHasMore(false);
+    } finally {
+      if (!append) setInitialLoading(false);
+      else         setLoadingMore(false);
+    }
+  }, [search, sort, category]);
 
-  // Fetch first page on mount.
+  // Reset and fetch first page when filters change
   useEffect(() => {
-    fetchPage(null);
+    setMedicines([]);
+    setPage(1);
+    setHasMore(true);
+    fetchPage(1, false);
   }, [fetchPage]);
 
   const loadMore = useCallback(() => {
-    if (!loadingMore && !initialLoading && hasMore) fetchPage(cursor);
-  }, [loadingMore, initialLoading, hasMore, cursor, fetchPage]);
+    if (loadingMore || initialLoading || !hasMore) return;
+    const next = page + 1;
+    setPage(next);
+    fetchPage(next, true);
+  }, [loadingMore, initialLoading, hasMore, page, fetchPage]);
 
   return {
     medicines,

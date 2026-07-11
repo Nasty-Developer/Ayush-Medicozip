@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { Sparkles, PackageCheck, PackageX, Clock, ChevronLeft, ChevronRight, ShoppingCart, Plus, Minus, PackageSearch } from "lucide-react";
-import { subscribeToCollection, subscribeToDoc, orderBy, where } from "@/lib/firestoreHelpers";
+import { subscribeToDoc } from "@/lib/firestoreHelpers";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { useCart } from "@/context/CartContext";
 import { useRequestMedicine } from "@/context/RequestMedicineContext";
@@ -253,33 +253,36 @@ export default function NewArrivals() {
   const [description, setDescription] = useState(DEFAULTS.description);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) { setLoading(false); return; }
-
-    const unsubMeds = subscribeToCollection(
-      "medicines",
-      [where("showInNewArrivals", "==", true)],
-      (docs) => {
-        const sorted = [...docs].sort((a, b) => {
-          const pa = stockPriority(a as unknown as Medicine);
-          const pb = stockPriority(b as unknown as Medicine);
+    // Fetch new-arrival medicines from the PostgreSQL API
+    let cancelled = false;
+    fetch("/api/medicines/new-arrivals?limit=20")
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((json: { data: Medicine[] }) => {
+        if (cancelled) return;
+        const sorted = [...json.data].sort((a, b) => {
+          const pa = stockPriority(a);
+          const pb = stockPriority(b);
           if (pa !== pb) return pa - pb;
-          return (Number(a.order) || 0) - (Number(b.order) || 0);
+          return (a.order ?? 0) - (b.order ?? 0);
         });
-        setItems(sorted as unknown as Medicine[]);
+        setItems(sorted);
         setLoading(false);
-      },
-      () => setLoading(false)
-    );
+      })
+      .catch(() => { if (!cancelled) setLoading(false); });
 
-    const unsubSettings = subscribeToDoc("settings", "homepage", (doc) => {
-      if (!doc) return;
-      if (doc.newArrivalsEnabled === false) setSectionEnabled(false);
-      else setSectionEnabled(true);
-      if (doc.newArrivalsTitle) setTitle(doc.newArrivalsTitle as string);
-      if (doc.newArrivalsDescription) setDescription(doc.newArrivalsDescription as string);
-    });
+    // Admin-configurable title/description/enabled still comes from Firestore settings
+    let unsubSettings: (() => void) | undefined;
+    if (isFirebaseConfigured) {
+      unsubSettings = subscribeToDoc("settings", "homepage", (doc) => {
+        if (!doc) return;
+        if (doc.newArrivalsEnabled === false) setSectionEnabled(false);
+        else setSectionEnabled(true);
+        if (doc.newArrivalsTitle) setTitle(doc.newArrivalsTitle as string);
+        if (doc.newArrivalsDescription) setDescription(doc.newArrivalsDescription as string);
+      });
+    }
 
-    return () => { unsubMeds(); unsubSettings(); };
+    return () => { cancelled = true; unsubSettings?.(); };
   }, []);
 
   if (!loading && !sectionEnabled) return null;

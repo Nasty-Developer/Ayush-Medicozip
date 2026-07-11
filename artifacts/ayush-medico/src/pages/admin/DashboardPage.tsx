@@ -79,28 +79,31 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!db) { setLoading(false); return; }
+    // Medicines + categories counts come from the PostgreSQL API.
+    // Inquiries, FAQs, testimonials, brands remain in Firestore.
+    const pgFetch = fetch("/api/categories")
+      .then((r) => r.ok ? r.json() as Promise<{ data: { count?: number }[] }> : { data: [] });
 
-    // Use getCountFromServer() — reads 0 document data, just returns a count.
-    // This replaces 6 full collection fetches that previously read 51k+ docs.
-    Promise.all([
-      getCountFromServer(collection(db, "medicines")),
+    const firestoreFetch = db ? Promise.all([
       getCountFromServer(collection(db, "inquiries")),
       getCountFromServer(query(collection(db, "inquiries"), where("status", "==", "new"))),
       getCountFromServer(collection(db, "faqs")),
       getCountFromServer(collection(db, "testimonials")),
-      getCountFromServer(collection(db, "categories")),
       getCountFromServer(collection(db, "brands")),
-    ])
-      .then(([meds, inq, newInq, faqs, tests, cats, brands]) => {
+    ]) : Promise.resolve(null);
+
+    Promise.all([pgFetch, firestoreFetch])
+      .then(([pgData, fsData]) => {
+        const cats = pgData.data ?? [];
+        const totalMeds = cats.reduce((sum, c) => sum + (c.count ?? 0), 0);
         setStats({
-          medicines:    meds.data().count,
-          inquiries:    inq.data().count,
-          newInquiries: newInq.data().count,
-          faqs:         faqs.data().count,
-          testimonials: tests.data().count,
-          categories:   cats.data().count,
-          brands:       brands.data().count,
+          medicines:    totalMeds,
+          categories:   cats.length,
+          inquiries:    fsData ? fsData[0].data().count : 0,
+          newInquiries: fsData ? fsData[1].data().count : 0,
+          faqs:         fsData ? fsData[2].data().count : 0,
+          testimonials: fsData ? fsData[3].data().count : 0,
+          brands:       fsData ? fsData[4].data().count : 0,
         });
       })
       .catch(console.error)
