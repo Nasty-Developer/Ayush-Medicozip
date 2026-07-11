@@ -12,11 +12,12 @@ import { useParams, Link } from "wouter";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShoppingCart, Plus, Minus, Tag,
-  PackageCheck, PackageX, Clock, ShieldCheck, Package,
+  PackageCheck, PackageX, Clock, ShieldCheck, Package, PackageSearch,
 } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useCart } from "@/context/CartContext";
+import { useRequestMedicine } from "@/context/RequestMedicineContext";
 import type { CategoryMedicine } from "@/hooks/useMedicinesByCategory";
 import { StockBadge, getStockStatus, MedicineSkeleton } from "@/components/medicines/MedicineCard";
 import { resolveMedicineImage } from "@/lib/medicineImage";
@@ -30,6 +31,7 @@ export default function MedicineDetailPage() {
   const [imgErr,   setImgErr]   = useState(false);
 
   const { addItem, items, updateQuantity, removeItem } = useCart();
+  const { triggerRequest } = useRequestMedicine();
 
   useEffect(() => {
     if (!id || !db) { setLoading(false); return; }
@@ -72,11 +74,12 @@ export default function MedicineDetailPage() {
     );
   }
 
-  const status   = getStockStatus(medicine);
-  const maxStock = medicine.stockQty ?? medicine.stockQuantity;
-  const cartItem = items.find((i) => i.medicineId === medicine.id);
-  const inCart   = !!cartItem;
-  const canAdd   = status === "in_stock" && !!medicine.sellingPrice;
+  const status      = getStockStatus(medicine);
+  const maxStock    = medicine.stockQty ?? medicine.stockQuantity;
+  const cartItem    = items.find((i) => i.medicineId === medicine.id);
+  const inCart      = !!cartItem;
+  const canAdd      = (status === "in_stock" || status === "low_stock") && !!medicine.sellingPrice;
+  const isUnavailable = status === "out_of_stock" || status === "coming_soon";
 
   const handleAdd = () => {
     if (!canAdd) return;
@@ -190,10 +193,10 @@ export default function MedicineDetailPage() {
             </div>
           ) : null}
 
-          {/* Stock info */}
-          {maxStock !== undefined && maxStock > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {maxStock} unit{maxStock !== 1 ? "s" : ""} in stock
+          {/* Stock info — availability label only, no raw numbers for customers */}
+          {status === "low_stock" && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+              🟡 Limited availability — order soon
             </p>
           )}
 
@@ -234,17 +237,22 @@ export default function MedicineDetailPage() {
               >
                 <ShoppingCart size={16} /> Add to Cart
               </button>
-            ) : (
-              <div className="w-full sm:w-auto inline-flex items-center justify-center gap-2
-                              px-8 h-11 rounded-xl text-sm font-medium
-                              bg-muted/50 text-muted-foreground cursor-not-allowed">
-                {status === "out_of_stock" ? (
-                  <><PackageX size={15} /> Out of Stock</>
-                ) : (
-                  <><Clock size={15} /> Coming Soon</>
-                )}
+            ) : isUnavailable ? (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {status === "out_of_stock" ? "Currently unavailable" : "Coming soon"}
+                </p>
+                <button
+                  onClick={() => triggerRequest(medicine.name, medicine.brand, medicine.categoryName)}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2
+                             px-8 h-11 rounded-xl text-sm font-semibold border border-dashed
+                             border-muted-foreground/50 bg-muted/30 text-muted-foreground
+                             hover:bg-muted/60 hover:text-foreground transition-all duration-200"
+                >
+                  <PackageSearch size={15} /> Request this Medicine
+                </button>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </motion.div>

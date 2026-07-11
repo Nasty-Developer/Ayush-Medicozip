@@ -1,0 +1,116 @@
+Before making any changes, inspect the existing Inventory Sync, Categories, Search, Medicine Cards and Product Listing logic.
+
+Do NOT create duplicate components or duplicate sorting logic.
+
+==================================================
+STOCK PRIORITY IMPROVEMENT
+==================================================
+
+The website should prioritize medicines that are currently available.
+
+IMPORTANT:
+Do NOT display the exact stock quantity to customers.
+
+Examples:
+❌ Stock: 27
+❌ Quantity: 154
+
+Instead display only:
+
+🟢 In Stock
+
+🟡 Limited Availability (optional)
+
+🔴 Out of Stock
+
+==================================================
+SORTING
+==================================================
+
+Everywhere products are listed, automatically sort them in this order:
+
+Priority 1:
+In Stock
+
+Priority 2:
+Limited Availability
+
+Priority 3:
+Out of Stock
+
+Apply this sorting to:
+
+• Categories
+• Search Results
+• Browse Medicines
+• New Medicines
+• Special Medicines
+• Related Medicines
+• Admin Preview (optional)
+
+Customers should always see purchasable products first.
+
+==================================================
+OUT OF STOCK
+==================================================
+
+Do NOT hide out of stock medicines.
+
+Keep them visible at the bottom.
+
+Replace Add to Cart with:
+
+Request Medicine
+
+Display:
+
+"Currently unavailable"
+
+This allows customers to still request unavailable medicines.
+
+==================================================
+INVENTORY SYNC
+==================================================
+
+When MediVision Sync runs:
+
+• Read the actual stock from STOCK.SDF.
+• Automatically update the availability status.
+• Re-sort products after every sync.
+
+If stock changes:
+
+Out of Stock
+↓
+
+In Stock
+
+The medicine should automatically move to the top of its category.
+
+If stock becomes zero:
+
+Automatically move it to the bottom.
+
+==================================================
+CUSTOMER EXPERIENCE
+==================================================
+
+Never expose internal inventory numbers.
+
+Customers should only see availability status.
+
+The pharmacy owner can continue seeing exact quantities inside the Admin Panel.
+
+==================================================
+VALIDATION
+==================================================
+
+After implementation verify:
+
+✓ Categories are sorted correctly.
+✓ Search results prioritize available medicines.
+✓ Add to Cart appears only for available medicines.
+✓ Request Medicine appears for unavailable medicines.
+✓ Sorting updates automatically after every MediVision inventory sync.
+
+Do not mark this task complete until all of the above have been verified.

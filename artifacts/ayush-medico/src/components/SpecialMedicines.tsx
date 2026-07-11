@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
-import { Award, PackageCheck, PackageX, Clock, ShieldCheck, ShoppingCart, Plus, Minus } from "lucide-react";
+import { Award, PackageCheck, PackageX, Clock, ShieldCheck, ShoppingCart, Plus, Minus, PackageSearch } from "lucide-react";
 import { subscribeToCollection, subscribeToDoc, where } from "@/lib/firestoreHelpers";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { useCart } from "@/context/CartContext";
+import { useRequestMedicine } from "@/context/RequestMedicineContext";
 import { resolveMedicineImage } from "@/lib/medicineImage";
 
 type StockStatus = "in_stock" | "out_of_stock" | "coming_soon";
@@ -30,6 +31,14 @@ type Medicine = {
 function getStockStatus(item: Medicine): StockStatus {
   if (item.stockStatus) return item.stockStatus;
   return item.available === false ? "out_of_stock" : "in_stock";
+}
+
+function stockPriority(item: Medicine): number {
+  switch (getStockStatus(item)) {
+    case "in_stock":     return 0;
+    case "out_of_stock": return 2;
+    default:             return 1;
+  }
 }
 
 function StockBadge({ status }: { status: StockStatus }) {
@@ -88,6 +97,7 @@ function ExclusiveCard({ item, index }: { item: Medicine; index: number }) {
   const cartItem = items.find((i) => i.medicineId === item.id);
   const inCart = !!cartItem;
   const canAdd = status === "in_stock" && !!item.sellingPrice;
+  const { triggerRequest } = useRequestMedicine();
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -215,14 +225,15 @@ function ExclusiveCard({ item, index }: { item: Medicine; index: number }) {
                 <ShoppingCart size={14} /> Add to Cart
               </motion.button>
             ) : (
-              <motion.div
-                key="unavail"
+              <motion.button
+                key="request"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="w-full flex items-center justify-center h-9 rounded-xl bg-muted/50 text-muted-foreground text-sm font-medium cursor-not-allowed"
+                onClick={(e) => { e.stopPropagation(); triggerRequest(item.name, item.brand, item.categoryName); }}
+                className="w-full flex items-center justify-center gap-1.5 h-9 rounded-xl text-xs font-semibold border border-dashed border-muted-foreground/40 bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all duration-200"
               >
-                {status === "out_of_stock" ? "Out of Stock" : "Unavailable"}
-              </motion.div>
+                <PackageSearch size={13} /> Request this Medicine
+              </motion.button>
             )}
           </AnimatePresence>
         </div>
@@ -252,7 +263,12 @@ export default function SpecialMedicines() {
       "medicines",
       [where("showInSpecialMedicines", "==", true)],
       (docs) => {
-        const sorted = [...docs].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+        const sorted = [...docs].sort((a, b) => {
+          const pa = stockPriority(a as unknown as Medicine);
+          const pb = stockPriority(b as unknown as Medicine);
+          if (pa !== pb) return pa - pb;
+          return (Number(a.order) || 0) - (Number(b.order) || 0);
+        });
         setItems(sorted as unknown as Medicine[]);
         setLoading(false);
       },
