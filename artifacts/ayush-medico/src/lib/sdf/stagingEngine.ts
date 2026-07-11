@@ -93,7 +93,7 @@ export async function buildSyncPreview(
   parsed: SdfParseResult,
   onProgress?: (msg: string) => void
 ): Promise<SyncPreview> {
-  onProgress?.("Loading existing Firestore data…");
+  onProgress?.("Preparing… loading existing Firestore data.");
 
   // Load existing data in parallel
   const [existingMedicines, existingCategories, existingBrands] =
@@ -103,7 +103,7 @@ export async function buildSyncPreview(
       getCollection("brands"),
     ]);
 
-  onProgress?.("Building lookup maps…");
+  onProgress?.("Preparing… building lookup maps.");
 
   // Build name → doc maps for quick lookup
   const existingMedMap = new Map<string, Record<string, unknown>>();

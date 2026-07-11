@@ -1,0 +1,62 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "6Chey3dboffdiV4vQx9VC"
+uri = "file://artifacts/ayush-medico/public/category-images/baby-care.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "gjwqBvK-jDVGTuFVKm_-W"
+uri = "file://artifacts/ayush-medico/public/category-images/skin-care.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "FxwnEtpY0vtsd5PVBN2y1"
+uri = "file://artifacts/ayush-medico/public/category-images/hair-care.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "XFDSp3jIK4y5KghgA9k6r"
+uri = "file://artifacts/ayush-medico/public/category-images/oral-care.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "FJWq97g1pIT9-unawVC9T"
+uri = "file://artifacts/ayush-medico/public/category-images/first-aid.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "0TFjESLPuGtUxi7m1A3s1"
+uri = "file://artifacts/ayush-medico/public/category-images/diabetes-care.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "QtPnjj5LCH_tayILRfN4E"
+uri = "file://artifacts/ayush-medico/public/category-images/personal-care.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "cb94XyMHe9MFUnr2FD--T"
+uri = "file://artifacts/ayush-medico/public/category-images/nutrition.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "0dPhR0EyZdg5oyeyJB27e"
+uri = "file://artifacts/ayush-medico/public/category-images/beverages.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "WVxc0aCsTWm9jYHTZIZ1s"
+uri = "file://artifacts/ayush-medico/public/category-images/food-nutrition.png"
+type = "image"
+title = "generated_image"

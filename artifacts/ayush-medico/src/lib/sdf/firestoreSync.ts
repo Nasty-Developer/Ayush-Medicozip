@@ -415,15 +415,16 @@ export async function executeSyncToFirestore(
   preview: SyncPreview,
   onProgress: ProgressCallback,
   options: SyncOptions = {}
-): Promise<{ created: number; updated: number; failed: number; errors: string[] }> {
+): Promise<{ created: number; updated: number; failed: number; errors: string[]; quotaExhausted: boolean }> {
   if (!db) {
-    return { created: 0, updated: 0, failed: 0, errors: ["Firebase not configured"] };
+    return { created: 0, updated: 0, failed: 0, errors: ["Firebase not configured"], quotaExhausted: false };
   }
 
   const batchSize = Math.min(500, Math.max(200, options.batchSize ?? DEFAULT_BATCH_SIZE));
   const errors: string[] = [];
 
   try {
+    onProgress({ message: "Preparing… creating categories and brands." });
     // 1. Categories first (medicines may need them to exist)
     await syncCategories(preview, onProgress);
 
@@ -433,16 +434,20 @@ export async function executeSyncToFirestore(
     // 3. Medicines — batched, throttled, retried, resumable.
     const result = await syncMedicines(preview, onProgress, batchSize);
 
-    if (result.failed > 0) {
+    if (result.quotaExhausted) {
       errors.push(
-        `${result.failed} medicine(s) could not be written after ${MAX_RETRIES} retries each — re-run the sync to retry just the remaining items.`
+        `Firestore write quota exhausted — ${result.created + result.updated} medicine(s) saved so far. Re-run the sync to continue automatically (already-written medicines will be skipped).`
+      );
+    } else if (result.failed > 0) {
+      errors.push(
+        `${result.failed} medicine(s) could not be written after ${MAX_RETRIES} retries — re-run the sync to retry just the remaining items.`
       );
     }
 
-    return { ...result, errors };
+    return { created: result.created, updated: result.updated, failed: result.failed, errors, quotaExhausted: result.quotaExhausted };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     errors.push(msg);
-    return { created: 0, updated: 0, failed: 0, errors };
+    return { created: 0, updated: 0, failed: 0, errors, quotaExhausted: false };
   }
 }

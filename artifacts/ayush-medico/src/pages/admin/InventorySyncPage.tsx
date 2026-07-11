@@ -424,6 +424,7 @@ export default function InventorySyncPage() {
     updated: number;
     failed: number;
     errors: string[];
+    quotaExhausted: boolean;
   } | null>(null);
 
   const handleFile = useCallback((key: SdfFileKey, file: File | null) => {
@@ -441,34 +442,34 @@ export default function InventorySyncPage() {
     if (!files.product || !files.stock) return;
 
     setPhase("parsing");
-    setProgress({ phase: "parsing", message: "Reading files…", processed: 0, total: 5, errors: [] });
+    setProgress({ phase: "parsing", message: "Parsing…", processed: 0, total: 6, errors: [] });
 
     try {
       // Read all uploaded files
       const readFile = async (f: File | undefined) =>
         f ? await readSdfLines(f) : [];
 
-      setProgress((p) => ({ ...p, message: "Reading PRODUCT.SDF…", processed: 1 }));
+      setProgress((p) => ({ ...p, message: "Parsing… reading PRODUCT.SDF", processed: 1 }));
       const productLines = await readSdfLines(files.product);
 
-      setProgress((p) => ({ ...p, message: "Reading STOCK.SDF…", processed: 2 }));
+      setProgress((p) => ({ ...p, message: "Parsing… reading STOCK.SDF", processed: 2 }));
       const stockLines = await readSdfLines(files.stock);
 
-      setProgress((p) => ({ ...p, message: "Reading master files…", processed: 3 }));
+      setProgress((p) => ({ ...p, message: "Parsing… reading master files", processed: 3 }));
       const [companyLines, categoryLines, drugLines] = await Promise.all([
         readFile(files.company),
         readFile(files.category),
         readFile(files.drug),
       ]);
 
-      setProgress((p) => ({ ...p, message: "Parsing SDF records…", processed: 4, total: 6 }));
+      setProgress((p) => ({ ...p, message: "Parsing… processing SDF records", processed: 4, total: 6 }));
       const parsed = await parseAllFiles(
         { product: productLines, stock: stockLines, company: companyLines, category: categoryLines, drug: drugLines },
         (msg, processed, total) =>
-          setProgress((p) => ({ ...p, message: msg, processed: 4 + (total > 0 ? processed / total : 0), total: 6 }))
+          setProgress((p) => ({ ...p, message: `Parsing… ${msg}`, processed: 4 + (total > 0 ? processed / total : 0), total: 6 }))
       );
 
-      setProgress({ phase: "staging", message: "Comparing with Firestore…", processed: 0, total: 0, errors: [] });
+      setProgress({ phase: "staging", message: "Preparing… comparing with Firestore", processed: 0, total: 0, errors: [] });
       const syncPreview = await buildSyncPreview(parsed, (msg) =>
         setProgress((p) => ({ ...p, message: msg }))
       );
@@ -486,8 +487,9 @@ export default function InventorySyncPage() {
   async function handleConfirmSync() {
     if (!preview) return;
 
+    const total = preview.medicines.toCreate + preview.medicines.toUpdate;
     setPhase("syncing");
-    setProgress({ phase: "syncing", message: "Starting sync…", processed: 0, total: preview.medicines.toCreate + preview.medicines.toUpdate, errors: [] });
+    setProgress({ phase: "syncing", message: "Preparing…", processed: 0, total, errors: [] });
 
     const result = await executeSyncToFirestore(preview, (p) =>
       setProgress((prev) => ({ ...prev, ...p, phase: "syncing" }))
@@ -497,9 +499,11 @@ export default function InventorySyncPage() {
     setPhase("done");
     setProgress({
       phase: "done",
-      message: `Sync complete: ${result.created} created, ${result.updated} updated${result.failed > 0 ? `, ${result.failed} failed` : ""}`,
+      message: result.quotaExhausted
+        ? `Quota reached: ${result.created + result.updated} saved. Re-run to continue.`
+        : `Sync complete: ${result.created} created, ${result.updated} updated${result.failed > 0 ? `, ${result.failed} failed` : ""}`,
       processed: result.created + result.updated,
-      total: result.created + result.updated + result.failed,
+      total,
       errors: result.errors,
     });
   }
@@ -642,11 +646,26 @@ export default function InventorySyncPage() {
       {/* Done */}
       {phase === "done" && syncResult && (
         <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-6">
-          <CheckCircle2 size={48} className="text-green-500 mx-auto" />
-          <div>
-            <h2 className="text-xl font-bold text-green-600">Sync Complete!</h2>
-            <p className="text-muted-foreground mt-1">Your Firestore inventory has been updated.</p>
-          </div>
+          {syncResult.quotaExhausted ? (
+            <>
+              <AlertCircle size={48} className="text-amber-500 mx-auto" />
+              <div>
+                <h2 className="text-xl font-bold text-amber-600">Quota Reached — Partially Synced</h2>
+                <p className="text-muted-foreground mt-1 max-w-lg mx-auto">
+                  Firestore's daily write quota was exhausted before all medicines could be saved.
+                  The sync stopped safely — no data was lost or duplicated.
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 size={48} className="text-green-500 mx-auto" />
+              <div>
+                <h2 className="text-xl font-bold text-green-600">Sync Complete!</h2>
+                <p className="text-muted-foreground mt-1">Your Firestore inventory has been updated.</p>
+              </div>
+            </>
+          )}
 
           <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto">
             <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 text-center">
@@ -665,7 +684,14 @@ export default function InventorySyncPage() {
             </div>
           </div>
 
-          {syncResult.errors.length > 0 && (
+          {syncResult.quotaExhausted && (
+            <div className="max-w-lg mx-auto text-left bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-400 space-y-1">
+              <p className="font-semibold flex items-center gap-1.5"><RefreshCw size={13} /> How to resume:</p>
+              <p>Re-run the sync tomorrow using the same SDF files. Already-written medicines will be automatically skipped — only the remaining ones will be uploaded.</p>
+            </div>
+          )}
+
+          {syncResult.errors.length > 0 && !syncResult.quotaExhausted && (
             <div className="max-w-lg mx-auto text-left flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-400">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <div className="space-y-1">
@@ -681,7 +707,7 @@ export default function InventorySyncPage() {
             className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors mx-auto"
           >
             <RefreshCw size={16} />
-            Start New Sync
+            {syncResult.quotaExhausted ? "Run Another Sync" : "Start New Sync"}
           </button>
         </div>
       )}
