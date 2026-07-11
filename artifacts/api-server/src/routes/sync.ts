@@ -1,347 +1,298 @@
 /**
- * Backend Inventory Sync Job
+ * Backend Inventory Sync — Production-Ready Architecture
  *
- * Accepts the staged diff from the frontend (after SDF parsing + Firestore comparison),
- * then writes medicines/categories/brands to Firestore in small batches with delays
- * to avoid hitting Firestore write quota limits.
+ * Flow:
+ *  1. Admin uploads raw SDF files via POST /api/sync/upload (multipart)
+ *  2. Server parses all files in-process (no browser involved)
+ *  3. Server writes to Firestore via REST API using the admin's ID token
+ *     (no service account needed — the token is already verified by requireAuth)
+ *  4. Frontend polls GET /api/sync/status every 2 seconds for live progress
  *
- * Architecture:
- *  - One sync job runs at a time (in-memory singleton).
- *  - Frontend POSTs staged data → backend processes in background.
- *  - Frontend polls GET /api/sync/status every few seconds for progress.
- *  - Batch size: 75 docs per commit (well below the 500 hard cap).
- *  - Inter-batch delay: 400–500ms (adaptive on quota errors).
- *  - Exponential backoff on quota errors: up to 5 retries per batch.
+ * Rate limiting:
+ *  - BATCH_SIZE medicines per commit (Firestore max is 500)
+ *  - BATCH_DELAY_MS pause between batches
+ *  - On RESOURCE_EXHAUSTED: wait QUOTA_WAIT_MS then retry the same batch
+ *  - After 3 consecutive quota failures: abort with a clear message
  *
- * Requires FIREBASE_SERVICE_ACCOUNT_JSON to be set.
+ * Resume behaviour:
+ *  - job.resumeFromBatch tracks last successful batch index
+ *  - If the server crashes mid-job the admin re-uploads and the write is
+ *    idempotent (sdf-{id} doc IDs with updateMask = safe to re-run)
  */
 
 import { Router, type Request, type Response } from "express";
+import multer from "multer";
 import { logger } from "../lib/logger";
 import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware";
-import { getFirestoreDb } from "../lib/firebaseAdmin";
+import { parseSdfBuffers } from "../lib/sdf/parser";
+import {
+  buildMedicineWrites,
+  buildCategoryWrite,
+  buildBrandWrite,
+  commitBatch,
+  QuotaExhaustedError,
+} from "../lib/firestoreRest";
 
 const router = Router();
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// ── Multer (in-memory storage) ────────────────────────────────────────────────
 
-export interface StagedMedicinePayload {
-  name: string;
-  brand: string;
-  genericName?: string;
-  packInfo?: string;
-  stockStatus: string;
-  available: boolean;
-  sellingPrice: number;
-  mrp: number;
-  discount: number;
-  categoryName: string;
-  prescriptionRequired: boolean;
-  stockQty: number;
-  sdfProductId: number;
-  existingDocId?: string;
-}
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB per file
+});
 
-interface SyncData {
-  medicines: {
-    creates: StagedMedicinePayload[];
-    updates: StagedMedicinePayload[];
-  };
-  categories: { name: string }[];
-  brands: { name: string }[];
-}
+const SDF_FIELDS = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+}).fields([
+  { name: "product_sdf", maxCount: 1 },
+  { name: "stock_sdf", maxCount: 1 },
+  { name: "company_sdf", maxCount: 1 },
+  { name: "category_sdf", maxCount: 1 },
+  { name: "drug_sdf", maxCount: 1 },
+]);
+
+void upload; // silence unused warning
+
+// ── Job state ─────────────────────────────────────────────────────────────────
+
+type JobPhase =
+  | "reading"
+  | "parsing"
+  | "categories"
+  | "brands"
+  | "medicines"
+  | "done";
 
 export interface SyncJob {
   id: string;
   status: "running" | "done" | "cancelled" | "error";
-  phase: "categories" | "brands" | "medicines" | "done";
-  created: number;
-  updated: number;
-  failed: number;
+  phase: JobPhase;
+  message: string;
   total: number;
   processed: number;
   currentBatch: number;
   totalBatches: number;
-  message: string;
+  written: number;
   errors: string[];
   quotaExhausted: boolean;
   cancelRequested: boolean;
+  resumeFromBatch: number;
+  consecutiveQuotaFailures: number;
   startedAt: number;
 }
 
-// ── In-memory job state ────────────────────────────────────────────────────────
-
 let currentJob: SyncJob | null = null;
 
-function makeJob(total: number): SyncJob {
+function makeJob(): SyncJob {
   return {
     id: `sync_${Date.now()}`,
     status: "running",
-    phase: "categories",
-    created: 0,
-    updated: 0,
-    failed: 0,
-    total,
+    phase: "reading",
+    message: "Reading uploaded files…",
+    total: 0,
     processed: 0,
     currentBatch: 0,
     totalBatches: 0,
-    message: "Starting…",
+    written: 0,
     errors: [],
     quotaExhausted: false,
     cancelRequested: false,
+    resumeFromBatch: 0,
+    consecutiveQuotaFailures: 0,
     startedAt: Date.now(),
   };
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const BATCH_SIZE = 75;
-const BASE_DELAY_MS = 400;
-const MAX_DELAY_MS = 12000;
-const MAX_RETRIES = 5;
-const MAX_CONSECUTIVE_QUOTA_FAILURES = 3;
+const BATCH_SIZE = 50;
+const BATCH_DELAY_MS = 800;
+const QUOTA_WAIT_SECONDS = [90, 180, 300];
+const MAX_QUOTA_FAILURES = 3;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function isQuotaError(err: unknown): boolean {
-  const code = (err as { code?: string })?.code ?? "";
-  const msg = String(err);
-  return code === "resource-exhausted" || /RESOURCE_EXHAUSTED/i.test(msg);
-}
-
 function chunks<T>(arr: T[], size: number): T[][] {
-  const result: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) result.push(arr.slice(i, i + size));
-  return result;
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
-function slugify(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
+// ── Background sync job ───────────────────────────────────────────────────────
 
-// ── Background sync ────────────────────────────────────────────────────────────
-
-async function runSyncJob(job: SyncJob, data: SyncData): Promise<void> {
-  const firestore = getFirestoreDb();
-  if (!firestore) {
+async function runSyncJob(
+  job: SyncJob,
+  buffers: {
+    product: Buffer;
+    stock: Buffer;
+    company?: Buffer;
+    category?: Buffer;
+    drug?: Buffer;
+  },
+  idToken: string
+): Promise<void> {
+  const projectId = process.env["VITE_FIREBASE_PROJECT_ID"] ?? "";
+  if (!projectId) {
     job.status = "error";
-    job.message =
-      "Backend sync requires FIREBASE_SERVICE_ACCOUNT_JSON. " +
-      "Add your Firebase service account JSON as this environment secret and restart the API server.";
+    job.message = "VITE_FIREBASE_PROJECT_ID is not configured.";
     job.errors.push(job.message);
     return;
   }
 
   try {
-    // ── Phase 1: Categories ───────────────────────────────────────────────────
-    if (data.categories.length > 0) {
+    // ── Phase 1: Parse ───────────────────────────────────────────────────────
+    job.phase = "parsing";
+    job.message = "Parsing SDF files…";
+
+    const parseResult = parseSdfBuffers(buffers);
+
+    const { medicines, allCategoryNames, allBrandNames, stats } = parseResult;
+
+    job.total = medicines.length;
+    job.message = `Parsed ${medicines.length.toLocaleString()} products (${stats.stock.toLocaleString()} stock records). Preparing upload…`;
+
+    logger.info(
+      { products: stats.products, stock: stats.stock },
+      "SDF parse complete"
+    );
+
+    // ── Phase 2: Categories ──────────────────────────────────────────────────
+    if (allCategoryNames.length > 0 && !job.cancelRequested) {
       job.phase = "categories";
-      job.message = `Creating ${data.categories.length} new categories…`;
+      job.message = `Writing ${allCategoryNames.length} categories…`;
 
-      for (const cat of data.categories) {
+      const catWrites = allCategoryNames.map((n) =>
+        buildCategoryWrite(n, projectId)
+      );
+      const catChunks = chunks(catWrites, 50);
+
+      for (const chunk of catChunks) {
         if (job.cancelRequested) break;
         try {
-          const ref = firestore.collection("categories").doc(`cat-${slugify(cat.name)}`);
-          await ref.set(
-            {
-              name: cat.name,
-              icon: "💊",
-              description: "",
-              color: "primary",
-              order: 99,
-              enabled: true,
-              slug: slugify(cat.name),
-              updatedAt: new Date(),
-            },
-            { merge: true }
-          );
+          await commitBatch(chunk, idToken, projectId);
         } catch (err) {
-          logger.warn({ err }, `Failed to create category: ${cat.name}`);
+          logger.warn({ err }, "Category batch failed (non-fatal)");
         }
-        await sleep(50);
+        await sleep(300);
       }
     }
 
-    if (job.cancelRequested) {
-      job.status = "cancelled";
-      job.message = "Sync cancelled by admin.";
-      return;
-    }
-
-    // ── Phase 2: Brands ───────────────────────────────────────────────────────
-    if (data.brands.length > 0) {
+    // ── Phase 3: Brands ──────────────────────────────────────────────────────
+    if (allBrandNames.length > 0 && !job.cancelRequested) {
       job.phase = "brands";
-      job.message = `Creating ${data.brands.length} new brands…`;
+      job.message = `Writing ${allBrandNames.length} brands…`;
 
-      for (const brand of data.brands) {
+      const brandWrites = allBrandNames.map((n) =>
+        buildBrandWrite(n, projectId)
+      );
+      const brandChunks = chunks(brandWrites, 50);
+
+      for (const chunk of brandChunks) {
         if (job.cancelRequested) break;
         try {
-          const ref = firestore.collection("brands").doc(`brand-${slugify(brand.name)}`);
-          await ref.set(
-            {
-              name: brand.name,
-              logoUrl: "",
-              description: "",
-              website: "",
-              order: 99,
-              enabled: true,
-              updatedAt: new Date(),
-            },
-            { merge: true }
-          );
+          await commitBatch(chunk, idToken, projectId);
         } catch (err) {
-          logger.warn({ err }, `Failed to create brand: ${brand.name}`);
+          logger.warn({ err }, "Brand batch failed (non-fatal)");
         }
-        await sleep(50);
+        await sleep(300);
       }
     }
 
     if (job.cancelRequested) {
       job.status = "cancelled";
-      job.message = "Sync cancelled by admin.";
+      job.message = `Sync cancelled. ${job.written.toLocaleString()} medicines written.`;
       return;
     }
 
-    // ── Phase 3: Medicines ────────────────────────────────────────────────────
+    // ── Phase 4: Medicines ───────────────────────────────────────────────────
     job.phase = "medicines";
+    const medChunks = chunks(medicines, BATCH_SIZE);
+    job.totalBatches = medChunks.length;
 
-    type MedicineOp =
-      | { kind: "create"; medicine: StagedMedicinePayload }
-      | { kind: "update"; medicine: StagedMedicinePayload };
-
-    const ops: MedicineOp[] = [
-      ...(data.medicines.creates ?? []).map(
-        (m): MedicineOp => ({ kind: "create", medicine: m })
-      ),
-      ...(data.medicines.updates ?? []).map(
-        (m): MedicineOp => ({ kind: "update", medicine: m })
-      ),
-    ];
-
-    const allChunks = chunks(ops, BATCH_SIZE);
-    job.totalBatches = allChunks.length;
-    job.total = ops.length;
-
-    let adaptiveDelay = BASE_DELAY_MS;
-    let consecutiveQuotaFailures = 0;
-
-    for (let i = 0; i < allChunks.length; i++) {
+    for (let i = job.resumeFromBatch; i < medChunks.length; i++) {
       if (job.cancelRequested) {
         job.status = "cancelled";
-        job.message = `Sync cancelled after batch ${i}/${allChunks.length}. ${job.processed} medicines saved.`;
+        job.message = `Sync cancelled at batch ${i + 1}/${job.totalBatches}. ${job.written.toLocaleString()} medicines written.`;
         return;
       }
 
-      const chunkOps = allChunks[i];
       job.currentBatch = i + 1;
-      job.message = `Writing batch ${i + 1}/${allChunks.length} (${job.processed}/${job.total} done)…`;
+      job.message = `Uploading batch ${i + 1}/${job.totalBatches} (${job.written.toLocaleString()}/${job.total.toLocaleString()} done)…`;
 
-      let batchOk = false;
-      let attempt = 0;
-      let batchHitQuota = false;
+      const batchWrites = buildMedicineWrites(medChunks[i]!, projectId);
 
-      while (!batchOk && attempt < MAX_RETRIES) {
+      // Retry loop with quota backoff
+      let committed = false;
+      while (!committed) {
         try {
-          const batch = firestore.batch();
-
-          for (const op of chunkOps) {
-            const m = op.medicine;
-            const docId = `sdf-${m.sdfProductId}`;
-            const ref = firestore.collection("medicines").doc(docId);
-
-            const baseData = {
-              name: m.name,
-              brand: m.brand ?? "",
-              description: m.genericName ?? m.packInfo ?? "",
-              stockStatus: m.stockStatus,
-              available: m.available,
-              sellingPrice: m.sellingPrice,
-              mrp: m.mrp,
-              discount: m.discount,
-              categoryName: m.categoryName ?? "",
-              order: 99,
-              prescriptionRequired: m.prescriptionRequired ?? false,
-              stockQty: m.stockQty ?? 0,
-              packInfo: m.packInfo ?? "",
-              sdfProductId: m.sdfProductId,
-              updatedAt: new Date(),
-            };
-
-            if (op.kind === "create") {
-              batch.set(
-                ref,
-                {
-                  ...baseData,
-                  imageUrl: "",
-                  showInNewArrivals: false,
-                  showInSpecialMedicines: false,
-                  featured: false,
-                  createdAt: new Date(),
-                },
-                { merge: true }
-              );
-            } else {
-              batch.set(ref, baseData, { merge: true });
-            }
-          }
-
-          await batch.commit();
-          batchOk = true;
-          consecutiveQuotaFailures = 0;
-          // Relax delay after successful batch
-          adaptiveDelay = Math.max(BASE_DELAY_MS, Math.round(adaptiveDelay * 0.85));
-
-          for (const op of chunkOps) {
-            if (op.kind === "create") job.created++;
-            else job.updated++;
-          }
-          job.processed = job.created + job.updated;
+          await commitBatch(batchWrites, idToken, projectId);
+          committed = true;
+          job.consecutiveQuotaFailures = 0;
+          job.resumeFromBatch = i + 1;
+          job.written += medChunks[i]!.length;
+          job.processed = job.written;
         } catch (err) {
-          attempt++;
-          if (isQuotaError(err)) batchHitQuota = true;
+          if (err instanceof QuotaExhaustedError) {
+            job.consecutiveQuotaFailures++;
 
-          if (attempt < MAX_RETRIES) {
-            const delay = Math.min(1500 * 2 ** (attempt - 1), 30000);
-            job.message = `Quota hit on batch ${i + 1}/${allChunks.length} — retry ${attempt}/${MAX_RETRIES} in ${Math.round(delay / 1000)}s…`;
-            logger.warn({ err, attempt }, `Sync batch ${i + 1} failed, retrying`);
-            await sleep(delay);
+            if (job.consecutiveQuotaFailures > MAX_QUOTA_FAILURES) {
+              const remaining = job.total - job.written;
+              job.quotaExhausted = true;
+              job.status = "done";
+              job.phase = "done";
+              job.message =
+                `Firestore quota exhausted after ${job.consecutiveQuotaFailures} retries. ` +
+                `${job.written.toLocaleString()} medicines saved, ${remaining.toLocaleString()} remaining. ` +
+                `Re-run sync tomorrow or upgrade to Blaze plan to continue.`;
+              job.errors.push(job.message);
+              logger.warn(job.message);
+              return;
+            }
+
+            const waitSec =
+              QUOTA_WAIT_SECONDS[job.consecutiveQuotaFailures - 1] ?? 300;
+            job.message =
+              `Firestore quota hit — waiting ${waitSec}s before retrying batch ${i + 1}/${job.totalBatches}… ` +
+              `(${job.written.toLocaleString()}/${job.total.toLocaleString()} saved so far)`;
+            logger.warn(
+              { batch: i + 1, waitSec, failures: job.consecutiveQuotaFailures },
+              "Quota hit, waiting"
+            );
+            await sleep(waitSec * 1000);
           } else {
-            logger.error({ err }, `Sync batch ${i + 1} failed after ${MAX_RETRIES} retries`);
+            // Non-quota error: log and skip this batch
+            const msg = err instanceof Error ? err.message : String(err);
+            logger.error({ err, batch: i + 1 }, "Batch write failed");
+            job.errors.push(`Batch ${i + 1}: ${msg}`);
+            committed = true; // Skip and continue
           }
         }
       }
 
-      if (!batchOk) {
-        job.failed += chunkOps.length;
-        if (batchHitQuota) {
-          consecutiveQuotaFailures++;
-          adaptiveDelay = Math.min(MAX_DELAY_MS, adaptiveDelay * 2);
-        }
-      }
-
-      if (consecutiveQuotaFailures >= MAX_CONSECUTIVE_QUOTA_FAILURES) {
-        job.quotaExhausted = true;
-        const remaining = job.total - job.processed;
-        job.message = `Firestore write quota exhausted after batch ${i + 1}/${allChunks.length}. ${job.processed} saved, ${remaining} remaining. Re-run sync to continue — already-written medicines are skipped.`;
-        job.errors.push(job.message);
-        break;
-      }
-
-      await sleep(adaptiveDelay);
+      // Breathing room between batches to avoid sustained quota pressure
+      await sleep(BATCH_DELAY_MS);
     }
 
+    // ── Done ─────────────────────────────────────────────────────────────────
     job.status = "done";
     job.phase = "done";
-
-    if (!job.quotaExhausted && job.failed === 0) {
-      job.message = `Sync complete! ${job.created} created, ${job.updated} updated.`;
-    } else if (!job.quotaExhausted && job.failed > 0) {
-      const msg = `${job.failed} medicines failed after ${MAX_RETRIES} retries. Re-run to retry.`;
-      job.errors.push(msg);
-      job.message = `Sync done with ${job.failed} failures. ${job.created} created, ${job.updated} updated.`;
+    const skipped = job.total - job.written;
+    if (job.errors.length === 0) {
+      job.message = `Completed. ${job.written.toLocaleString()} medicines written successfully.`;
+    } else {
+      job.message =
+        `Completed with ${job.errors.length} batch error(s). ` +
+        `${job.written.toLocaleString()} written, ${skipped.toLocaleString()} skipped.`;
     }
+
+    logger.info(
+      { written: job.written, errors: job.errors.length },
+      "Sync job finished"
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error({ err }, "Sync job crashed");
@@ -351,22 +302,47 @@ async function runSyncJob(job: SyncJob, data: SyncData): Promise<void> {
   }
 }
 
-// ── Routes ─────────────────────────────────────────────────────────────────────
+// ── Routes ────────────────────────────────────────────────────────────────────
 
-/** GET /api/sync/status — poll this for live progress */
-router.get("/status", requireAuth, requireAdminEmail, (_req: Request, res: Response): void => {
-  if (!currentJob) {
-    res.json({ running: false, job: null });
-    return;
-  }
-  res.json({ running: currentJob.status === "running", job: currentJob });
-});
-
-/** POST /api/sync/start — submit staged diff, starts background job */
-router.post(
-  "/start",
+/**
+ * GET /api/sync/status
+ * Poll every 2 seconds from the frontend for live progress.
+ */
+router.get(
+  "/status",
   requireAuth,
   requireAdminEmail,
+  (_req: Request, res: Response): void => {
+    if (!currentJob) {
+      res.json({ running: false, job: null });
+      return;
+    }
+    res.json({
+      running: currentJob.status === "running",
+      job: currentJob,
+    });
+  }
+);
+
+/**
+ * POST /api/sync/upload
+ * Accepts multipart/form-data with fields:
+ *   product_sdf  (required) — PRODUCT.SDF buffer
+ *   stock_sdf    (required) — STOCK.SDF buffer
+ *   company_sdf  (optional)
+ *   category_sdf (optional)
+ *   drug_sdf     (optional)
+ *
+ * Returns 202 immediately; the actual sync runs in the background.
+ * Poll /api/sync/status for progress.
+ */
+router.post(
+  "/upload",
+  requireAuth,
+  requireAdminEmail,
+  (req: Request, res: Response, next) => {
+    SDF_FIELDS(req, res, next);
+  },
   async (req: Request, res: Response): Promise<void> => {
     if (currentJob && currentJob.status === "running") {
       res.status(409).json({
@@ -376,44 +352,66 @@ router.post(
       return;
     }
 
-    const firestore = getFirestoreDb();
-    if (!firestore) {
-      res.status(503).json({
-        error:
-          "Backend sync requires FIREBASE_SERVICE_ACCOUNT_JSON. " +
-          "Add your Firebase service account JSON as an environment secret (ask admin to configure it).",
-        code: "no_service_account",
+    const files = req.files as Record<string, Express.Multer.File[]> | undefined;
+    const productFile = files?.["product_sdf"]?.[0];
+    const stockFile = files?.["stock_sdf"]?.[0];
+
+    if (!productFile || !stockFile) {
+      res.status(400).json({
+        error: "PRODUCT.SDF and STOCK.SDF are required.",
+        code: "missing_files",
       });
       return;
     }
 
-    const data = req.body as SyncData;
-    if (!data?.medicines) {
-      res.status(400).json({ error: "Invalid sync payload — missing medicines field." });
+    // Extract raw ID token — already verified by requireAuth middleware
+    const rawToken = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+    if (!rawToken) {
+      res.status(401).json({ error: "Missing authorization token." });
       return;
     }
 
-    const total =
-      (data.medicines.creates?.length ?? 0) + (data.medicines.updates?.length ?? 0);
-    currentJob = makeJob(total);
+    const job = makeJob();
+    currentJob = job;
 
-    // Fire-and-forget background job
-    runSyncJob(currentJob, data).catch((err) => {
+    logger.info(
+      {
+        product: productFile.size,
+        stock: stockFile.size,
+      },
+      "Starting backend sync job"
+    );
+
+    // Fire-and-forget
+    runSyncJob(
+      job,
+      {
+        product: productFile.buffer,
+        stock: stockFile.buffer,
+        company: files?.["company_sdf"]?.[0]?.buffer,
+        category: files?.["category_sdf"]?.[0]?.buffer,
+        drug: files?.["drug_sdf"]?.[0]?.buffer,
+      },
+      rawToken
+    ).catch((err) => {
       logger.error({ err }, "Sync job crashed unexpectedly");
       if (currentJob) {
         currentJob.status = "error";
-        currentJob.message = err instanceof Error ? err.message : String(err);
+        currentJob.message =
+          err instanceof Error ? err.message : "Unknown error";
       }
     });
 
     res.status(202).json({
-      jobId: currentJob.id,
-      message: `Sync started — ${total} medicines to process in backend.`,
+      jobId: job.id,
+      message: `Sync started — ${productFile.size.toLocaleString()} byte product file received.`,
     });
   }
 );
 
-/** DELETE /api/sync/cancel — request cancellation of running job */
+/**
+ * DELETE /api/sync/cancel
+ */
 router.delete(
   "/cancel",
   requireAuth,
@@ -424,7 +422,26 @@ router.delete(
       return;
     }
     currentJob.cancelRequested = true;
-    res.json({ message: "Cancellation requested — job will stop after current batch." });
+    res.json({
+      message: "Cancellation requested — job will stop after current batch.",
+    });
+  }
+);
+
+/**
+ * POST /api/sync/start — legacy JSON endpoint
+ * Kept for backwards compatibility; redirects callers to use /upload instead.
+ */
+router.post(
+  "/start",
+  requireAuth,
+  requireAdminEmail,
+  (_req: Request, res: Response): void => {
+    res.status(400).json({
+      error:
+        "This endpoint is deprecated. Upload raw SDF files to POST /api/sync/upload instead.",
+      code: "use_upload_endpoint",
+    });
   }
 );
 
