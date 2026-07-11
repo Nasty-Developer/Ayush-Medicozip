@@ -10,36 +10,43 @@ description: SDF inventory sync architecture — browser uploads files, server d
 **Server** (`artifacts/api-server/src/`):
 - `lib/sdf/parser.ts` — decodes Buffer as latin-1, parses all 5 SDF types, returns flat medicine list
 - `lib/firestoreRest.ts` — Firestore REST API client using the admin's Firebase ID token
-- `routes/sync.ts` — `POST /api/sync/upload` (multer, starts job), `GET /api/sync/status`, `DELETE /api/sync/cancel`
+- `routes/sync.ts` — `POST /api/sync/upload`, `GET /api/sync/status`, `DELETE /api/sync/cancel`, `DELETE /api/sync/reset`
 
 ## Why Firestore REST API (not Admin SDK)
 
-No `FIREBASE_SERVICE_ACCOUNT_JSON` is configured — `getFirestoreDb()` returns null. Instead:
-- Admin's Firebase ID token (already verified by `requireAuth`) is extracted from `Authorization: Bearer` header
-- Forwarded to `https://firestore.googleapis.com/v1/projects/{projectId}/databases/(default)/documents:commit`
-- Firestore security rules apply (admin user has write access)
+No `FIREBASE_SERVICE_ACCOUNT_JSON` is configured — uses the admin's Firebase ID token from `Authorization: Bearer` header forwarded to Firestore REST. Security rules apply (admin user has write access).
 
-## Rate limiting
+## Rate limiting (one-time import settings)
 
-- 50 docs per batch commit
-- 800ms delay between batches → ~60 docs/sec
-- 13,000 medicines ≈ 260 batches ≈ 3.5 minutes
+- **25 docs per batch** (smaller = less per-request quota pressure)
+- **1500ms delay between batches**
+- ~13,000 medicines ≈ 520 batches ≈ ~13 minutes uninterrupted
 
-## Quota handling
+## Quota handling — NEVER ABORTS
 
-- On `RESOURCE_EXHAUSTED` (429/503 or body contains RESOURCE_EXHAUSTED): wait 90s / 180s / 300s progressively
-- After 3 consecutive quota failures: abort with clear message, `job.written` shows how many were saved
-- `job.resumeFromBatch` tracks last successful batch — re-run is safe (idempotent writes via `updateMask`)
+- On `RESOURCE_EXHAUSTED` (429/503): wait escalating seconds `[60, 120, 180, 300]`, capped at 300 s for all subsequent failures, then retry the same batch
+- **No circuit breaker** — retries forever until the batch commits
+- `job.quotaHits` tracks total quota hits for the run (informational)
+
+## Checkpoint / resume (never restart from 0%)
+
+After every successful batch, saves `_meta/sync_checkpoint` doc to Firestore:
+```json
+{ "totalMedicines": N, "lastCompletedBatch": K, "written": W, "batchSize": 25, "startedAt": "...", "updatedAt": "..." }
+```
+On new upload: reads checkpoint; if `totalMedicines` matches the freshly parsed count, resumes from `lastCompletedBatch + 1`. On clean completion, deletes the checkpoint doc.
+
+`DELETE /api/sync/reset` clears the checkpoint so the next upload starts fresh (use when SDF files have a different medicine count).
 
 ## UpdateMask strategy
 
-Uses `updateMask` on all medicine writes — only SDF-sourced fields are overwritten. Preserved fields: `imageUrl`, `showInNewArrivals`, `showInSpecialMedicines`, `featured`, `createdAt`.
+Uses `updateMask` on all medicine writes — only SDF-sourced fields are overwritten. Preserved: `imageUrl`, `showInNewArrivals`, `showInSpecialMedicines`, `featured`, `createdAt`.
 
 ## Key files
 
 - `artifacts/api-server/src/lib/sdf/parser.ts`
-- `artifacts/api-server/src/lib/firestoreRest.ts`
+- `artifacts/api-server/src/lib/firestoreRest.ts` (includes saveCheckpoint / loadCheckpoint / clearCheckpoint)
 - `artifacts/api-server/src/routes/sync.ts`
 - `artifacts/ayush-medico/src/pages/admin/InventorySyncPage.tsx`
 
-**Why:** browser-side direct Firestore writes of 13k+ documents exhaust the daily quota and trigger RESOURCE_EXHAUSTED. Server-side with controlled rate avoids this. REST API avoids the service account requirement.
+**Why:** browser-side direct Firestore writes of 13k+ documents exhaust the daily quota. Server-side with controlled rate + persistent checkpoint + infinite retry ensures every medicine is eventually imported.

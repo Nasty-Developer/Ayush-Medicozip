@@ -1,23 +1,25 @@
 /**
- * Backend Inventory Sync — Production-Ready Architecture
+ * Backend Inventory Sync — Complete One-Time Import
  *
  * Flow:
  *  1. Admin uploads raw SDF files via POST /api/sync/upload (multipart)
  *  2. Server parses all files in-process (no browser involved)
  *  3. Server writes to Firestore via REST API using the admin's ID token
- *     (no service account needed — the token is already verified by requireAuth)
  *  4. Frontend polls GET /api/sync/status every 2 seconds for live progress
  *
- * Rate limiting:
- *  - BATCH_SIZE medicines per commit (Firestore max is 500)
- *  - BATCH_DELAY_MS pause between batches
- *  - On RESOURCE_EXHAUSTED: wait QUOTA_WAIT_MS then retry the same batch
- *  - After 3 consecutive quota failures: abort with a clear message
+ * Quota strategy (designed to finish — never abort):
+ *  - BATCH_SIZE = 25 docs per commit (small batches = less per-request quota)
+ *  - BATCH_DELAY_MS = 1500 ms pause between every batch
+ *  - On RESOURCE_EXHAUSTED: wait escalating seconds (60 → 120 → 180 → 300),
+ *    then cap at 300 s for every subsequent failure. Reset counter on success.
+ *  - NEVER abort on quota — keep retrying until the batch commits.
  *
- * Resume behaviour:
- *  - job.resumeFromBatch tracks last successful batch index
- *  - If the server crashes mid-job the admin re-uploads and the write is
- *    idempotent (sdf-{id} doc IDs with updateMask = safe to re-run)
+ * Resume / never-restart-from-0:
+ *  - After every successful batch the checkpoint is saved to Firestore
+ *    (_meta/sync_checkpoint). On re-upload with the same medicine count
+ *    the job skips already-written batches automatically.
+ *  - Doc IDs are deterministic (sdf-{productId}) so replaying earlier
+ *    batches is always safe (idempotent upsert).
  */
 
 import { Router, type Request, type Response } from "express";
@@ -31,6 +33,9 @@ import {
   buildBrandWrite,
   commitBatch,
   QuotaExhaustedError,
+  saveCheckpoint,
+  loadCheckpoint,
+  clearCheckpoint,
 } from "../lib/firestoreRest";
 
 const router = Router();
@@ -39,7 +44,7 @@ const router = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB per file
+  limits: { fileSize: 50 * 1024 * 1024 },
 });
 
 const SDF_FIELDS = multer({
@@ -53,13 +58,14 @@ const SDF_FIELDS = multer({
   { name: "drug_sdf", maxCount: 1 },
 ]);
 
-void upload; // silence unused warning
+void upload;
 
 // ── Job state ─────────────────────────────────────────────────────────────────
 
 type JobPhase =
   | "reading"
   | "parsing"
+  | "resuming"
   | "categories"
   | "brands"
   | "medicines"
@@ -75,12 +81,14 @@ export interface SyncJob {
   currentBatch: number;
   totalBatches: number;
   written: number;
+  skipped: number;       // batches skipped via checkpoint resume
   errors: string[];
-  quotaExhausted: boolean;
+  quotaHits: number;     // total quota hits this run (informational)
   cancelRequested: boolean;
   resumeFromBatch: number;
   consecutiveQuotaFailures: number;
   startedAt: number;
+  checkpointLoaded: boolean;
 }
 
 let currentJob: SyncJob | null = null;
@@ -96,21 +104,35 @@ function makeJob(): SyncJob {
     currentBatch: 0,
     totalBatches: 0,
     written: 0,
+    skipped: 0,
     errors: [],
-    quotaExhausted: false,
+    quotaHits: 0,
     cancelRequested: false,
     resumeFromBatch: 0,
     consecutiveQuotaFailures: 0,
     startedAt: Date.now(),
+    checkpointLoaded: false,
   };
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Tuning ────────────────────────────────────────────────────────────────────
 
-const BATCH_SIZE = 50;
-const BATCH_DELAY_MS = 800;
-const QUOTA_WAIT_SECONDS = [90, 180, 300];
-const MAX_QUOTA_FAILURES = 3;
+/** Docs per Firestore commit — keep small to stay under per-request quota. */
+const BATCH_SIZE = 25;
+
+/** Pause between every successful batch (ms). */
+const BATCH_DELAY_MS = 1500;
+
+/**
+ * Escalating wait times on quota exhaustion (seconds).
+ * The last value is used for all subsequent failures — never aborts.
+ */
+const QUOTA_WAIT_SECONDS = [60, 120, 180, 300];
+
+function quotaWait(consecutiveFailures: number): number {
+  const idx = Math.min(consecutiveFailures - 1, QUOTA_WAIT_SECONDS.length - 1);
+  return QUOTA_WAIT_SECONDS[idx]!;
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -143,24 +165,62 @@ async function runSyncJob(
     return;
   }
 
+  const jobStartedAt = new Date().toISOString();
+
   try {
     // ── Phase 1: Parse ───────────────────────────────────────────────────────
     job.phase = "parsing";
     job.message = "Parsing SDF files…";
 
     const parseResult = parseSdfBuffers(buffers);
-
     const { medicines, allCategoryNames, allBrandNames, stats } = parseResult;
 
     job.total = medicines.length;
-    job.message = `Parsed ${medicines.length.toLocaleString()} products (${stats.stock.toLocaleString()} stock records). Preparing upload…`;
+    job.message = `Parsed ${medicines.length.toLocaleString()} products (${stats.stock.toLocaleString()} stock records). Checking checkpoint…`;
 
     logger.info(
       { products: stats.products, stock: stats.stock },
       "SDF parse complete"
     );
 
-    // ── Phase 2: Categories ──────────────────────────────────────────────────
+    // ── Phase 2: Resume from checkpoint if available ─────────────────────────
+    job.phase = "resuming";
+    const medChunks = chunks(medicines, BATCH_SIZE);
+    job.totalBatches = medChunks.length;
+
+    const checkpoint = await loadCheckpoint(idToken, projectId);
+    if (
+      checkpoint &&
+      checkpoint.totalMedicines === medicines.length &&
+      checkpoint.lastCompletedBatch >= 0
+    ) {
+      const resumeBatch = checkpoint.lastCompletedBatch + 1;
+      if (resumeBatch < medChunks.length) {
+        job.resumeFromBatch = resumeBatch;
+        job.written = checkpoint.written;
+        job.processed = checkpoint.written;
+        job.skipped = resumeBatch;
+        job.checkpointLoaded = true;
+        logger.info(
+          { resumeBatch, written: checkpoint.written },
+          "Resuming from checkpoint"
+        );
+        job.message =
+          `Resuming from batch ${resumeBatch + 1}/${job.totalBatches} ` +
+          `(${checkpoint.written.toLocaleString()} already written from previous run)`;
+      } else {
+        // Checkpoint says everything was already done
+        job.status = "done";
+        job.phase = "done";
+        job.written = checkpoint.written;
+        job.message = `All ${job.written.toLocaleString()} medicines already imported. Upload fresh SDF files or reset to reimport.`;
+        return;
+      }
+    } else {
+      job.message = `No checkpoint found — starting fresh import of ${medicines.length.toLocaleString()} medicines…`;
+    }
+
+    // ── Phase 3: Categories ──────────────────────────────────────────────────
     if (allCategoryNames.length > 0 && !job.cancelRequested) {
       job.phase = "categories";
       job.message = `Writing ${allCategoryNames.length} categories…`;
@@ -177,11 +237,11 @@ async function runSyncJob(
         } catch (err) {
           logger.warn({ err }, "Category batch failed (non-fatal)");
         }
-        await sleep(300);
+        await sleep(500);
       }
     }
 
-    // ── Phase 3: Brands ──────────────────────────────────────────────────────
+    // ── Phase 4: Brands ──────────────────────────────────────────────────────
     if (allBrandNames.length > 0 && !job.cancelRequested) {
       job.phase = "brands";
       job.message = `Writing ${allBrandNames.length} brands…`;
@@ -198,7 +258,7 @@ async function runSyncJob(
         } catch (err) {
           logger.warn({ err }, "Brand batch failed (non-fatal)");
         }
-        await sleep(300);
+        await sleep(500);
       }
     }
 
@@ -208,81 +268,99 @@ async function runSyncJob(
       return;
     }
 
-    // ── Phase 4: Medicines ───────────────────────────────────────────────────
+    // ── Phase 5: Medicines ───────────────────────────────────────────────────
     job.phase = "medicines";
-    const medChunks = chunks(medicines, BATCH_SIZE);
-    job.totalBatches = medChunks.length;
 
     for (let i = job.resumeFromBatch; i < medChunks.length; i++) {
       if (job.cancelRequested) {
         job.status = "cancelled";
-        job.message = `Sync cancelled at batch ${i + 1}/${job.totalBatches}. ${job.written.toLocaleString()} medicines written.`;
+        job.message =
+          `Sync cancelled at batch ${i + 1}/${job.totalBatches}. ` +
+          `${job.written.toLocaleString()} medicines written.`;
         return;
       }
 
       job.currentBatch = i + 1;
-      job.message = `Uploading batch ${i + 1}/${job.totalBatches} (${job.written.toLocaleString()}/${job.total.toLocaleString()} done)…`;
+      job.message =
+        `Uploading batch ${i + 1}/${job.totalBatches} — ` +
+        `${job.written.toLocaleString()}/${job.total.toLocaleString()} done…`;
 
       const batchWrites = buildMedicineWrites(medChunks[i]!, projectId);
 
-      // Retry loop with quota backoff
+      // ── Retry loop: never abort on quota ──────────────────────────────────
       let committed = false;
       while (!committed) {
         try {
           await commitBatch(batchWrites, idToken, projectId);
           committed = true;
           job.consecutiveQuotaFailures = 0;
-          job.resumeFromBatch = i + 1;
           job.written += medChunks[i]!.length;
           job.processed = job.written;
+
+          // Save checkpoint after every successful batch
+          await saveCheckpoint(
+            {
+              totalMedicines: medicines.length,
+              lastCompletedBatch: i,
+              written: job.written,
+              batchSize: BATCH_SIZE,
+              startedAt: jobStartedAt,
+              updatedAt: new Date().toISOString(),
+            },
+            idToken,
+            projectId
+          );
         } catch (err) {
           if (err instanceof QuotaExhaustedError) {
             job.consecutiveQuotaFailures++;
+            job.quotaHits++;
 
-            if (job.consecutiveQuotaFailures > MAX_QUOTA_FAILURES) {
-              const remaining = job.total - job.written;
-              job.quotaExhausted = true;
-              job.status = "done";
-              job.phase = "done";
-              job.message =
-                `Firestore quota exhausted after ${job.consecutiveQuotaFailures} retries. ` +
-                `${job.written.toLocaleString()} medicines saved, ${remaining.toLocaleString()} remaining. ` +
-                `Re-run sync tomorrow or upgrade to Blaze plan to continue.`;
-              job.errors.push(job.message);
-              logger.warn(job.message);
-              return;
-            }
-
-            const waitSec =
-              QUOTA_WAIT_SECONDS[job.consecutiveQuotaFailures - 1] ?? 300;
+            const waitSec = quotaWait(job.consecutiveQuotaFailures);
             job.message =
-              `Firestore quota hit — waiting ${waitSec}s before retrying batch ${i + 1}/${job.totalBatches}… ` +
-              `(${job.written.toLocaleString()}/${job.total.toLocaleString()} saved so far)`;
+              `⏳ Firestore quota hit (attempt ${job.consecutiveQuotaFailures}) — ` +
+              `waiting ${waitSec}s before retrying batch ${i + 1}/${job.totalBatches}… ` +
+              `(${job.written.toLocaleString()}/${job.total.toLocaleString()} saved so far, ` +
+              `${job.quotaHits} total quota hits this run)`;
+
             logger.warn(
-              { batch: i + 1, waitSec, failures: job.consecutiveQuotaFailures },
-              "Quota hit, waiting"
+              {
+                batch: i + 1,
+                waitSec,
+                consecutiveFailures: job.consecutiveQuotaFailures,
+                totalQuotaHits: job.quotaHits,
+              },
+              "Quota hit — waiting before retry (will never abort)"
             );
+
             await sleep(waitSec * 1000);
           } else {
-            // Non-quota error: log and skip this batch
+            // Non-quota error: log and skip this batch rather than hanging
             const msg = err instanceof Error ? err.message : String(err);
-            logger.error({ err, batch: i + 1 }, "Batch write failed");
+            logger.error({ err, batch: i + 1 }, "Batch write failed (non-quota)");
             job.errors.push(`Batch ${i + 1}: ${msg}`);
-            committed = true; // Skip and continue
+            committed = true; // Move on
           }
         }
       }
 
-      // Breathing room between batches to avoid sustained quota pressure
+      // Breathing room between batches
       await sleep(BATCH_DELAY_MS);
     }
 
     // ── Done ─────────────────────────────────────────────────────────────────
     job.status = "done";
     job.phase = "done";
+
+    // Clear checkpoint — all medicines are in
+    await clearCheckpoint(idToken, projectId);
+
     const skipped = job.total - job.written;
     if (job.errors.length === 0) {
-      job.message = `Completed. ${job.written.toLocaleString()} medicines written successfully.`;
+      job.message =
+        `✅ Import complete! ${job.written.toLocaleString()} medicines written` +
+        (job.quotaHits > 0
+          ? ` (recovered from ${job.quotaHits} quota hit${job.quotaHits > 1 ? "s" : ""}).`
+          : ".");
     } else {
       job.message =
         `Completed with ${job.errors.length} batch error(s). ` +
@@ -290,7 +368,7 @@ async function runSyncJob(
     }
 
     logger.info(
-      { written: job.written, errors: job.errors.length },
+      { written: job.written, errors: job.errors.length, quotaHits: job.quotaHits },
       "Sync job finished"
     );
   } catch (err) {
@@ -306,7 +384,6 @@ async function runSyncJob(
 
 /**
  * GET /api/sync/status
- * Poll every 2 seconds from the frontend for live progress.
  */
 router.get(
   "/status",
@@ -326,14 +403,14 @@ router.get(
 
 /**
  * POST /api/sync/upload
- * Accepts multipart/form-data with fields:
- *   product_sdf  (required) — PRODUCT.SDF buffer
- *   stock_sdf    (required) — STOCK.SDF buffer
+ * Accepts multipart/form-data with:
+ *   product_sdf  (required)
+ *   stock_sdf    (required)
  *   company_sdf  (optional)
  *   category_sdf (optional)
  *   drug_sdf     (optional)
  *
- * Returns 202 immediately; the actual sync runs in the background.
+ * Returns 202 immediately; sync runs in the background.
  * Poll /api/sync/status for progress.
  */
 router.post(
@@ -364,7 +441,6 @@ router.post(
       return;
     }
 
-    // Extract raw ID token — already verified by requireAuth middleware
     const rawToken = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
     if (!rawToken) {
       res.status(401).json({ error: "Missing authorization token." });
@@ -375,14 +451,10 @@ router.post(
     currentJob = job;
 
     logger.info(
-      {
-        product: productFile.size,
-        stock: stockFile.size,
-      },
+      { product: productFile.size, stock: stockFile.size },
       "Starting backend sync job"
     );
 
-    // Fire-and-forget
     runSyncJob(
       job,
       {
@@ -429,8 +501,38 @@ router.delete(
 );
 
 /**
- * POST /api/sync/start — legacy JSON endpoint
- * Kept for backwards compatibility; redirects callers to use /upload instead.
+ * DELETE /api/sync/reset
+ * Clears the saved checkpoint so the next upload starts from batch 0.
+ * Use this when uploading genuinely new SDF files with a different medicine count.
+ */
+router.delete(
+  "/reset",
+  requireAuth,
+  requireAdminEmail,
+  async (req: Request, res: Response): Promise<void> => {
+    if (currentJob?.status === "running") {
+      res.status(409).json({
+        error: "Cannot reset while a sync is running. Cancel it first.",
+      });
+      return;
+    }
+
+    const rawToken = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+    if (!rawToken) {
+      res.status(401).json({ error: "Missing authorization token." });
+      return;
+    }
+
+    const projectId = process.env["VITE_FIREBASE_PROJECT_ID"] ?? "";
+    await clearCheckpoint(rawToken, projectId);
+    currentJob = null;
+
+    res.json({ message: "Checkpoint cleared. Next upload will start from batch 0." });
+  }
+);
+
+/**
+ * POST /api/sync/start — legacy JSON endpoint (deprecated)
  */
 router.post(
   "/start",

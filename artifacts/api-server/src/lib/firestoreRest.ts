@@ -186,3 +186,104 @@ export async function commitBatch(
 
   throw new Error(`Firestore commit failed (${resp.status}): ${body.slice(0, 300)}`);
 }
+
+// ── Checkpoint helpers ────────────────────────────────────────────────────────
+
+export interface SyncCheckpoint {
+  totalMedicines: number;
+  lastCompletedBatch: number;  // index of last successfully written batch
+  written: number;
+  batchSize: number;
+  startedAt: string;
+  updatedAt: string;
+}
+
+const CHECKPOINT_COLLECTION = "_meta";
+const CHECKPOINT_DOC_ID = "sync_checkpoint";
+
+function firestoreBaseUrl(projectId: string): string {
+  return `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
+}
+
+/** Persist checkpoint so a re-upload can skip already-written batches. */
+export async function saveCheckpoint(
+  data: SyncCheckpoint,
+  idToken: string,
+  projectId: string
+): Promise<void> {
+  const docPath = `${CHECKPOINT_COLLECTION}/${CHECKPOINT_DOC_ID}`;
+  const url = `${firestoreBaseUrl(projectId)}/${docPath}?updateMask.fieldPaths=totalMedicines&updateMask.fieldPaths=lastCompletedBatch&updateMask.fieldPaths=written&updateMask.fieldPaths=batchSize&updateMask.fieldPaths=startedAt&updateMask.fieldPaths=updatedAt`;
+
+  await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fields: toFsFields(data as unknown as Record<string, unknown>),
+    }),
+  });
+  // Non-fatal: if checkpoint write fails, sync still continues
+}
+
+/** Read checkpoint — returns null if not found or unreadable. */
+export async function loadCheckpoint(
+  idToken: string,
+  projectId: string
+): Promise<SyncCheckpoint | null> {
+  const docPath = `${CHECKPOINT_COLLECTION}/${CHECKPOINT_DOC_ID}`;
+  const url = `${firestoreBaseUrl(projectId)}/${docPath}`;
+
+  try {
+    const resp = await fetch(url, {
+      headers: { Authorization: `Bearer ${idToken}` },
+    });
+
+    if (resp.status === 404) return null;
+    if (!resp.ok) return null;
+
+    const doc = (await resp.json()) as {
+      fields?: Record<string, Record<string, unknown>>;
+    };
+    const f = doc.fields;
+    if (!f) return null;
+
+    function str(k: string): string {
+      return String((f![k] as { stringValue?: unknown })?.stringValue ?? "");
+    }
+    function num(k: string): number {
+      const v = f![k];
+      if (!v) return 0;
+      const iv = (v as { integerValue?: unknown }).integerValue;
+      if (iv !== undefined) return Number(iv);
+      const dv = (v as { doubleValue?: unknown }).doubleValue;
+      if (dv !== undefined) return Number(dv);
+      return 0;
+    }
+
+    return {
+      totalMedicines: num("totalMedicines"),
+      lastCompletedBatch: num("lastCompletedBatch"),
+      written: num("written"),
+      batchSize: num("batchSize"),
+      startedAt: str("startedAt"),
+      updatedAt: str("updatedAt"),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Delete the checkpoint (called on successful completion). */
+export async function clearCheckpoint(
+  idToken: string,
+  projectId: string
+): Promise<void> {
+  const docPath = `${CHECKPOINT_COLLECTION}/${CHECKPOINT_DOC_ID}`;
+  const url = `${firestoreBaseUrl(projectId)}/${docPath}`;
+  await fetch(url, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${idToken}` },
+  }).catch(() => {/* non-fatal */});
+}
