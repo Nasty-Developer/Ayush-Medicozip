@@ -29,7 +29,7 @@ import {
 import { db } from "@/lib/firebase";
 import type { CategoryMedicine } from "./useMedicinesByCategory";
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 48;
 
 // ─────────────────────────────────────────────────────────────────────────────
 

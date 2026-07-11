@@ -10,16 +10,16 @@
 import { useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, CreditCard, ClipboardCheck, Check, AlertCircle, Loader2, ShoppingCart, ArrowLeft } from "lucide-react";
+import { MapPin, CreditCard, ClipboardCheck, Check, AlertCircle, Loader2, ShoppingCart, ArrowLeft, FileText } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { useAddresses } from "@/hooks/useAddresses";
 import AddressList from "@/components/customer/AddressList";
 import AddressForm from "@/components/customer/AddressForm";
 import PaymentSelector from "@/components/customer/PaymentSelector";
+import PrescriptionUpload from "@/components/customer/PrescriptionUpload";
 import { createOrder, generateNewOrderId, type OrderAddress } from "@/lib/orderService";
 import { queueNotification } from "@/lib/notificationService";
-import { canCustomerCancel } from "@/lib/orderStatus";
 import type { PaymentMethod } from "@/lib/orderService";
 import type { CustomerAddress } from "@/lib/addressService";
 import SignInModal from "@/components/customer/SignInModal";
@@ -52,6 +52,10 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
 
+  // Stable orderId placeholder for the PrescriptionUpload path (temp id before Firestore).
+  // Stored in state so it stays constant across re-renders.
+  const [tempOrderId] = useState(() => `temp-${user?.uid?.slice(-6) ?? "guest"}-${Date.now()}`);
+
   // Redirect if cart empty
   if (items.length === 0 && !placing) {
     navigate("/cart");
@@ -79,15 +83,15 @@ export default function CheckoutPage() {
   }
 
   const currentStepIndex = STEPS.findIndex((s) => s.id === step);
+  const prescriptionRequired = summary.requiresPrescription;
+  const prescriptionReady = !prescriptionRequired || !!prescriptionUrl;
 
   const handleAddressSelect = (addr: CustomerAddress) => {
     setSelectedAddress(addr);
   };
 
-  const handleAddressAdded = (addressId: string) => {
+  const handleAddressAdded = (_addressId: string) => {
     setShowAddressForm(false);
-    // The address list auto-updates via Firestore subscription.
-    // We can select it once `addresses` updates, but we'll let the user pick it.
   };
 
   const handleAddressContinue = () => {
@@ -108,12 +112,20 @@ export default function CheckoutPage() {
       setError("Please enter the UPI transaction ID / UTR.");
       return;
     }
+    if (prescriptionRequired && !prescriptionUrl) {
+      setError("Please upload your prescription to continue. It is required for one or more medicines in your cart.");
+      return;
+    }
     setError(null);
     setStep("review");
   };
 
   const handlePlaceOrder = async () => {
     if (!user || !selectedAddress || !paymentMethod) return;
+    if (prescriptionRequired && !prescriptionUrl) {
+      setError("Please upload your prescription before placing the order.");
+      return;
+    }
     setPlacing(true);
     setError(null);
 
@@ -135,8 +147,6 @@ export default function CheckoutPage() {
         lat: selectedAddress.lat,
         lng: selectedAddress.lng,
       };
-
-      const prescriptionRequired = summary.requiresPrescription;
 
       const docId = await createOrder({
         orderId,
@@ -165,7 +175,7 @@ export default function CheckoutPage() {
         },
         payment: {
           method: paymentMethod,
-          status: paymentMethod === "cod" ? "pending" : "pending",
+          status: "pending",
           upiTransactionId: paymentMethod === "upi" ? upiTxnId.trim() : null,
         },
         prescription: {
@@ -176,12 +186,10 @@ export default function CheckoutPage() {
         delivery: {
           status: "not-assigned",
         },
-        // COD orders start at "pending", UPI orders wait for payment verification
         status: "pending",
         source: "website",
       });
 
-      // Queue notifications (placeholder)
       await queueNotification({
         orderId,
         orderDocId: docId,
@@ -303,18 +311,25 @@ export default function CheckoutPage() {
                     />
                   </div>
 
-                  {/* Prescription upload (if required) */}
-                  {summary.requiresPrescription && (
+                  {/* Prescription upload — mandatory when any cart item requires Rx */}
+                  {prescriptionRequired && (
                     <div className="p-5 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
-                      <h3 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
-                        <AlertCircle size={14} className="text-amber-600" /> Prescription Required
+                      <h3 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
+                        <FileText size={14} className="text-amber-600" /> Prescription Required
+                        <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200">
+                          MANDATORY
+                        </span>
                       </h3>
-                      <p className="text-xs text-muted-foreground mb-3">
-                        One or more items need a valid prescription. You can upload it now or WhatsApp it to us at +91 98332 73838 after placing the order.
+                      <p className="text-xs text-muted-foreground mb-4">
+                        One or more items in your cart require a valid prescription from a licensed doctor. Please upload it to proceed.
                       </p>
-                      <p className="text-xs text-muted-foreground italic">
-                        Prescription upload coming soon — please WhatsApp your prescription after ordering.
-                      </p>
+                      <PrescriptionUpload
+                        userId={user.uid}
+                        orderId={tempOrderId}
+                        onUploadComplete={(url) => setPrescriptionUrl(url)}
+                        onClear={() => setPrescriptionUrl(null)}
+                        uploadedUrl={prescriptionUrl}
+                      />
                     </div>
                   )}
 
@@ -329,10 +344,13 @@ export default function CheckoutPage() {
                     </button>
                     <button
                       onClick={handlePaymentContinue}
+                      disabled={prescriptionRequired && !prescriptionUrl}
                       className="flex-1 py-3.5 rounded-2xl bg-primary text-white font-bold text-sm
-                                 hover:bg-primary/90 transition-colors"
+                                 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      Review Order
+                      {prescriptionRequired && !prescriptionUrl
+                        ? "Upload Prescription to Continue"
+                        : "Review Order"}
                     </button>
                   </div>
                 </motion.div>
@@ -366,12 +384,27 @@ export default function CheckoutPage() {
                     )}
                   </div>
 
+                  {/* Prescription confirmation */}
+                  {prescriptionRequired && prescriptionUrl && (
+                    <div className="p-4 rounded-2xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10">
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Prescription</p>
+                      <p className="text-sm font-semibold text-green-700 dark:text-green-400 flex items-center gap-1.5">
+                        <Check size={14} /> Uploaded — pending pharmacist review
+                      </p>
+                    </div>
+                  )}
+
                   {/* Items */}
                   <div className="p-4 rounded-2xl border border-border bg-card space-y-2">
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Items ({items.length})</p>
                     {items.map((item) => (
                       <div key={item.medicineId} className="flex justify-between items-center text-sm">
-                        <span className="text-foreground line-clamp-1 flex-1">{item.medicineName} <span className="text-muted-foreground">×{item.quantity}</span></span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-foreground line-clamp-1">{item.medicineName} <span className="text-muted-foreground">×{item.quantity}</span></span>
+                          {item.prescriptionRequired && (
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">Rx Required</span>
+                          )}
+                        </div>
                         <span className="font-semibold text-foreground ml-2">₹{(item.unitPrice * item.quantity).toLocaleString("en-IN")}</span>
                       </div>
                     ))}
@@ -388,7 +421,7 @@ export default function CheckoutPage() {
                     </button>
                     <button
                       onClick={handlePlaceOrder}
-                      disabled={placing}
+                      disabled={placing || !prescriptionReady}
                       className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl
                                  bg-primary text-white font-bold text-sm hover:bg-primary/90
                                  disabled:opacity-60 transition-colors shadow-lg shadow-primary/20"
@@ -430,6 +463,13 @@ export default function CheckoutPage() {
                 <span>Total</span>
                 <span>₹{summary.grandTotal.toLocaleString("en-IN")}</span>
               </div>
+              {prescriptionRequired && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                    <FileText size={11} /> Prescription required
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

@@ -1,0 +1,236 @@
+Before implementing any new features, perform a complete project audit and fix every existing issue.
+
+Do NOT assume anything is working just because the project builds successfully.
+
+Inspect the entire project architecture and reuse the existing codebase. Do not create duplicate components, duplicate services or duplicate Firestore logic.
+
+==================================================
+1. INVENTORY SYNC
+==================================================
+
+The MediVision Inventory Sync is not completing successfully.
+
+Investigate why the sync gets stuck.
+
+Fix:
+
+- Firestore quota issues
+- Batch processing
+- Retry logic
+- Resume logic
+- Progress calculation
+- Missing medicines
+- Duplicate detection
+
+Ensure every valid medicine is imported successfully.
+
+==================================================
+2. MEDICINE IMPORT
+==================================================
+
+Many imported medicines are not appearing on the website.
+
+Verify:
+
+• PRODUCT.SDF
+• STOCK.SDF
+• COMPANY.SDF
+• CATEGORY.SDF
+• DRUG.SDF
+
+Generate a validation report showing:
+
+- Total records found
+- Parsed successfully
+- Imported successfully
+- Skipped records (with reason)
+- Medicines visible on website
+
+Every valid medicine should become searchable and visible.
+
+==================================================
+3. STOCK PRIORITY
+==================================================
+
+Always display medicines in this order:
+
+1. In Stock
+2. Limited Availability
+3. Out of Stock
+
+Apply this everywhere:
+
+- Categories
+- Search
+- Browse Medicines
+- Related Medicines
+- Featured Medicines
+
+Never show exact stock quantity to customers.
+
+==================================================
+4. REQUEST MEDICINE
+==================================================
+
+Fix the Request Medicine button.
+
+It should:
+
+- Save request
+- Show in Admin Panel
+- Work correctly
+- Display confirmation
+
+==================================================
+5. ORDER FLOW
+==================================================
+
+Fix the complete ordering workflow.
+
+Customer:
+
+Add to Cart
+
+↓
+
+Checkout
+
+↓
+
+Place Order
+
+↓
+
+Firestore
+
+↓
+
+Admin Panel
+
+↓
+
+Customer Website
+
+Everything should work end-to-end.
+
+==================================================
+6. ADMIN ORDER MANAGEMENT
+==================================================
+
+Admin must be able to:
+
+✓ Accept
+✓ Reject
+✓ Cancel
+✓ Preparing
+✓ Ready
+✓ Out for Delivery
+✓ Delivered
+
+Website status must update immediately.
+
+==================================================
+7. WEBSITE NOTIFICATIONS
+==================================================
+
+Customer should always see live order status inside "My Orders".
+
+==================================================
+8. WHATSAPP WORKFLOW
+==================================================
+
+For now, do NOT use WhatsApp Business API.
+
+Instead add manual Admin buttons:
+
+• Send WhatsApp Confirmation
+• Send Payment Request
+• Send Ready Notification
+• Send Delivery Notification
+• Send Cancellation Message
+
+Each button should open WhatsApp with a pre-filled message for the customer's number.
+
+Design the architecture so WhatsApp Business API can be integrated later without changing the Admin UI.
+
+==================================================
+9. PRESCRIPTION LOGIC
+==================================================
+
+Prescription medicines:
+
+Require prescription upload before checkout.
+
+General products such as:
+
+- Soap
+- Toothpaste
+- Shampoo
+- Cosmetics
+- Baby Care
+- Food
+- Nutrition
+
+Should NOT require a prescription.
+
+==================================================
+10. CATEGORY IMAGES
+==================================================
+
+Replace repetitive medicine placeholder images.
+
+Use one premium category placeholder per category:
+
+General
+Food
+Cosmetics
+Baby Care
+Personal Care
+Medical Devices
+Ayurvedic
+Medicines
+
+Reuse those images for all imported products in that category.
+
+==================================================
+11. PERFORMANCE
+==================================================
+
+The website has become slow.
+
+Optimize:
+
+- Categories
+- Admin Dashboard
+- Search
+- Medicine loading
+
+Use pagination, lazy loading and optimized Firestore queries.
+
+==================================================
+12. FINAL TESTING
+==================================================
+
+Do NOT stop after the build passes.
+
+Generate a fresh Replit Preview.
+
+Manually verify:
+
+✓ Homepage
+✓ Categories
+✓ Search
+✓ Add to Cart
+✓ Checkout
+✓ Orders
+✓ Admin Dashboard
+✓ Inventory Sync
+✓ Request Medicine
+✓ Stock sorting
+✓ Category images
+✓ Mobile responsiveness
+✓ Desktop responsiveness
+
+Fix every issue that you find.
+
+Do NOT mark the task complete until you have personally verified everything inside the Preview and confirmed that the website is fully working.

@@ -56,7 +56,7 @@ export type CategoryMedicine = {
   featured?: boolean;
 };
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50;
 
 export function useMedicinesByCategory(categoryName: string) {
   const [medicines, setMedicines] = useState<CategoryMedicine[]>([]);

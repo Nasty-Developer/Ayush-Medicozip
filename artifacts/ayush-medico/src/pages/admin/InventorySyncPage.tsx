@@ -10,8 +10,12 @@ import {
   Upload, FileText, CheckCircle2, AlertCircle, RefreshCw,
   Eye, Zap, Package, Building2, Tag, Pill, BarChart3,
   ChevronDown, ChevronUp, Loader2, X, Info, Server, Monitor,
+  Activity, TriangleAlert,
 } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import {
+  collection, query, where, getDocs, getCountFromServer,
+} from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { readSdfLines } from "@/lib/sdf/sdfReader";
 import { parseAllFiles } from "@/lib/sdf/stagingEngine";
 import { buildSyncPreview } from "@/lib/sdf/stagingEngine";
@@ -399,6 +403,240 @@ function ProgressBar({ progress }: { progress: SyncProgress }) {
             {progress.retries ? ` · ${progress.retries} retr${progress.retries === 1 ? "y" : "ies"}` : ""}
           </span>
           {eta && <span>{eta}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Inventory Diagnostics Panel ───────────────────────────────────────────────
+// Reads Firestore directly to produce a medicine count report — no SDF files
+// needed. Helps identify why medicines appear "missing" from the website.
+
+type DiagCategoryRow = { name: string; count: number; slug?: string };
+
+interface DiagReport {
+  total: number;
+  inStock: number;
+  outOfStock: number;
+  categories: DiagCategoryRow[];
+  emptyCategoryCount: number;
+  runAt: Date;
+}
+
+function DiagnosticsPanel() {
+  const [running, setRunning]   = useState(false);
+  const [report, setReport]     = useState<DiagReport | null>(null);
+  const [error, setError]       = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [showAll, setShowAll]   = useState(false);
+
+  async function runDiagnostics() {
+    if (!db) { setError("Firestore not initialised."); return; }
+    setRunning(true);
+    setError(null);
+    try {
+      // Total medicines
+      const totalSnap = await getCountFromServer(collection(db, "medicines"));
+      const total = totalSnap.data().count;
+
+      // In-stock count
+      const inStockSnap = await getCountFromServer(
+        query(collection(db, "medicines"), where("stockStatus", "in", ["in_stock", "low_stock"]))
+      );
+      const inStock = inStockSnap.data().count;
+
+      // Categories from the `categories` collection
+      const catSnap = await getDocs(collection(db, "categories"));
+      const categoryNames: { name: string; slug?: string }[] = catSnap.docs.map((d) => ({
+        name:  d.data().name as string,
+        slug:  d.data().slug as string | undefined,
+      }));
+
+      // Count medicines for each category (getCountFromServer = 1 read per category)
+      const rows: DiagCategoryRow[] = await Promise.all(
+        categoryNames.map(async (cat) => {
+          const snap = await getCountFromServer(
+            query(collection(db, "medicines"), where("categoryName", "==", cat.name))
+          );
+          return { name: cat.name, count: snap.data().count, slug: cat.slug };
+        })
+      );
+
+      rows.sort((a, b) => b.count - a.count);
+
+      setReport({
+        total,
+        inStock,
+        outOfStock: total - inStock,
+        categories: rows,
+        emptyCategoryCount: rows.filter((r) => r.count === 0).length,
+        runAt: new Date(),
+      });
+    } catch (err) {
+      setError((err as Error).message ?? "Diagnostics failed.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  const displayRows = report
+    ? (showAll ? report.categories : report.categories.slice(0, 20))
+    : [];
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      {/* Header */}
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-muted/30 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <Activity size={16} className="text-primary" />
+          <span className="font-semibold text-foreground">Inventory Diagnostics</span>
+          <span className="text-xs text-muted-foreground font-normal">
+            — check why medicines may be missing from the website
+          </span>
+        </div>
+        {expanded ? <ChevronUp size={15} className="text-muted-foreground flex-shrink-0" /> : <ChevronDown size={15} className="text-muted-foreground flex-shrink-0" />}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border px-6 pb-6 pt-4 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Queries Firestore directly (no SDF files required). Shows how many medicines are in each category
+            so you can spot categories with zero medicines — a common cause of "missing" products.
+          </p>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={runDiagnostics}
+              disabled={running}
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium
+                         hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+            >
+              {running ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
+              {running ? "Running…" : "Run Diagnostics"}
+            </button>
+            {report && (
+              <p className="text-xs text-muted-foreground">
+                Last run: {report.runAt.toLocaleTimeString("en-IN")}
+              </p>
+            )}
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/5 border border-destructive/20 rounded-xl p-3">
+              <AlertCircle size={14} className="flex-shrink-0" /> {error}
+            </div>
+          )}
+
+          {report && (
+            <div className="space-y-4">
+              {/* Summary stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-center">
+                  <p className="text-2xl font-bold text-primary">{report.total.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Total Medicines</p>
+                </div>
+                <div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-center">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{report.inStock.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">In Stock</p>
+                </div>
+                <div className="p-3 rounded-xl bg-muted border border-border text-center">
+                  <p className="text-2xl font-bold text-muted-foreground">{report.outOfStock.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Out of Stock</p>
+                </div>
+                <div className={`p-3 rounded-xl border text-center ${
+                  report.emptyCategoryCount > 0
+                    ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                    : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                }`}>
+                  <p className={`text-2xl font-bold ${report.emptyCategoryCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>
+                    {report.emptyCategoryCount}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Empty Categories</p>
+                </div>
+              </div>
+
+              {/* Category breakdown */}
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Tag size={11} /> Medicines per Category
+                  {report.emptyCategoryCount > 0 && (
+                    <span className="ml-1 flex items-center gap-1 text-amber-600 dark:text-amber-400 font-normal normal-case">
+                      <TriangleAlert size={11} />
+                      {report.emptyCategoryCount} categor{report.emptyCategoryCount === 1 ? "y" : "ies"} with 0 medicines — check categoryName case or re-run sync
+                    </span>
+                  )}
+                </p>
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Category</th>
+                        <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Count</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Bar</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayRows.map((row, i) => {
+                        const maxCount = report.categories[0]?.count ?? 1;
+                        const pct = maxCount > 0 ? (row.count / maxCount) * 100 : 0;
+                        const isEmpty = row.count === 0;
+                        return (
+                          <tr key={i} className={`border-t border-border/50 ${isEmpty ? "bg-amber-50/50 dark:bg-amber-900/10" : ""}`}>
+                            <td className="px-3 py-2 font-medium text-foreground">{row.name}</td>
+                            <td className={`px-3 py-2 text-right font-bold ${isEmpty ? "text-destructive" : "text-foreground"}`}>
+                              {row.count.toLocaleString()}
+                            </td>
+                            <td className="px-3 py-2 w-32">
+                              <div className="h-1.5 bg-border rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${isEmpty ? "bg-destructive" : "bg-primary"}`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
+                              {isEmpty ? (
+                                <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold">
+                                  <TriangleAlert size={10} /> Missing
+                                </span>
+                              ) : (
+                                <span className="text-green-600 dark:text-green-400">OK</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {report.categories.length > 20 && (
+                  <button
+                    onClick={() => setShowAll((v) => !v)}
+                    className="mt-2 text-xs text-primary hover:underline"
+                  >
+                    {showAll ? "Show fewer" : `Show all ${report.categories.length} categories`}
+                  </button>
+                )}
+              </div>
+
+              {/* Tips for missing medicines */}
+              {report.emptyCategoryCount > 0 && (
+                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-300 space-y-2">
+                  <p className="font-semibold flex items-center gap-1.5"><AlertCircle size={14} /> Why might a category show 0 medicines?</p>
+                  <ul className="list-disc ml-4 space-y-1 text-xs">
+                    <li>The SDF sync was interrupted by quota exhaustion before that category was reached.</li>
+                    <li>The category name in SDF (e.g. <code className="bg-amber-100 dark:bg-amber-900 px-1 rounded">ANTIBIOTICS</code>) doesn't match what's on the website — the medicines exist but under a different <code className="bg-amber-100 dark:bg-amber-900 px-1 rounded">categoryName</code>.</li>
+                    <li>The medicines for that category haven't been synced yet — run a fresh SDF sync to fill them in.</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -871,6 +1109,9 @@ export default function InventorySyncPage() {
           </button>
         </div>
       )}
+
+      {/* Diagnostics — always visible */}
+      <DiagnosticsPanel />
     </div>
   );
 }
