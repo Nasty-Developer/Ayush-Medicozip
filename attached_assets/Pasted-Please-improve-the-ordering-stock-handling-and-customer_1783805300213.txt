@@ -1,0 +1,248 @@
+Please improve the ordering, stock handling and customer order workflow.
+
+==================================================
+1. STOCK PRIORITY
+==================================================
+
+Always prioritize medicines that are available.
+
+Sort medicines everywhere in this order:
+
+1. In Stock
+2. Low Stock
+3. Out of Stock
+
+Apply this to:
+
+- Categories page
+- Search results
+- Related medicines
+- Browse medicines
+- Featured medicines
+- Admin preview
+
+Do NOT show out-of-stock medicines at the top.
+
+==================================================
+2. REQUEST MEDICINE
+==================================================
+
+The "Request Medicine" button is currently not working.
+
+Fix it completely.
+
+When clicked:
+
+- Open a medicine request form.
+- Allow customer to enter:
+  - Name
+  - Phone
+  - Address (optional)
+  - Notes
+  - Prescription upload (optional)
+
+Save the request in Firestore.
+
+Show it in the Admin Panel.
+
+Send a WhatsApp message to the pharmacy automatically.
+
+Show success confirmation to the customer.
+
+==================================================
+3. ADD TO CART / PLACE ORDER
+==================================================
+
+The ordering flow is not working correctly.
+
+Fix the complete workflow.
+
+Customer Flow:
+
+Add to Cart
+↓
+
+Checkout
+
+↓
+
+Place Order
+
+↓
+
+Save order to Firestore
+
+↓
+
+Show order inside Admin Panel
+
+↓
+
+Send WhatsApp notification to pharmacy
+
+↓
+
+Show confirmation to customer
+
+==================================================
+4. ADMIN ORDER MANAGEMENT
+==================================================
+
+Inside the Admin Panel, the pharmacy should be able to:
+
+- Accept Order
+- Reject Order
+- Cancel Order
+- Ready for Pickup
+- Out for Delivery
+- Delivered
+
+Every status update must automatically update Firestore.
+
+==================================================
+5. CUSTOMER ORDER TRACKING
+==================================================
+
+Customers should be able to see live order status inside "My Orders".
+
+Example:
+
+Order Received ✅
+
+Accepted by Pharmacy ✅
+
+Preparing Order ✅
+
+Ready for Pickup ✅
+
+Out for Delivery 🚚
+
+Delivered ✅
+
+==================================================
+6. WHATSAPP NOTIFICATIONS
+==================================================
+
+Whenever the pharmacy changes the order status:
+
+Automatically send a WhatsApp message.
+
+Examples:
+
+Order Accepted
+
+"Your order #123 has been accepted by Ayush Medico."
+
+Preparing
+
+"We are preparing your medicines."
+
+Out for Delivery
+
+"Your medicines are on the way."
+
+Delivered
+
+"Your order has been delivered."
+
+Rejected
+
+"Unfortunately this order could not be fulfilled."
+
+Cancelled
+
+"Your order has been cancelled."
+
+==================================================
+7. WEBSITE NOTIFICATIONS
+==================================================
+
+Customers should also receive the same updates inside the website.
+
+Show notification badges.
+
+Show status timeline.
+
+Update in real time.
+
+==================================================
+8. ADMIN DASHBOARD
+==================================================
+
+Add filters:
+
+Pending
+
+Accepted
+
+Rejected
+
+Preparing
+
+Out for Delivery
+
+Delivered
+
+Cancelled
+
+==================================================
+9. PERFORMANCE
+==================================================
+
+Do not refresh the entire page after every update.
+
+Update only the affected order using realtime Firestore listeners.
+
+==================================================
+10. FINAL
+==================================================
+
+Test the complete workflow end-to-end:
+
+Customer places order
+
+↓
+
+Firestore saves order
+
+↓
+
+Admin receives it
+
+↓
+
+Admin accepts it
+
+↓
+
+Customer sees Accepted
+
+↓
+
+WhatsApp message is sent
+
+↓
+
+Admin marks Out for Delivery
+
+↓
+
+Customer sees update
+
+↓
+
+WhatsApp sent
+
+↓
+
+Admin marks Delivered
+
+↓
+
+Customer sees Delivered
+
+↓
+
+WhatsApp sent
+
+Do not mark this task complete until every step above is fully working.
