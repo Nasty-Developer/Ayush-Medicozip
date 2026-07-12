@@ -1,0 +1,115 @@
+Before making any more changes, perform a complete dependency audit of Firebase/Firestore.
+
+IMPORTANT:
+Do NOT delete Firestore code yet.
+
+First inspect the entire codebase and determine exactly what is still using Firebase.
+
+====================================================
+FIREBASE / FIRESTORE AUDIT
+====================================================
+
+Search the entire project and list every place where Firebase is still being used.
+
+Examples:
+
+• Authentication
+• Firestore
+• Firebase Storage
+• Cloud Functions
+• Orders
+• Cart
+• Wishlist
+• Inquiry
+• Request Medicine
+• Dashboard
+• Notifications
+• Testimonials
+• Settings
+• Admin Panel
+• Homepage
+• Search
+• Categories
+• Medicines
+
+For each module, tell me:
+
+1. Is it still using Firestore?
+2. Is it using SQL?
+3. Is it using both?
+4. Is it safe to migrate?
+5. Is it safe to remove Firestore?
+6. What dependencies will break if Firestore is removed?
+
+====================================================
+QUOTA ISSUE
+====================================================
+
+Firestore quota has been exceeded.
+
+Investigate exactly which collections or queries are causing the excessive reads and writes.
+
+Identify:
+
+• Which pages generate the most Firestore reads.
+• Which listeners remain active.
+• Which components continuously re-query Firestore.
+• Which APIs still depend on Firestore.
+
+====================================================
+MEDICINE CATALOGUE
+====================================================
+
+We have already migrated the medicine catalogue to SQL.
+
+Verify that:
+
+• Medicines
+• Categories
+• Companies
+• Drug Groups
+• Stock
+
+NO LONGER READ FROM FIRESTORE.
+
+If any page still reads medicines from Firestore, migrate it completely to SQL.
+
+====================================================
+BROKEN FEATURES
+====================================================
+
+The following are currently not working correctly:
+
+• Orders
+• Inquiry
+• Request Medicine
+• Dashboard statistics
+
+Determine whether these features still depend on Firestore.
+
+If they do, explain whether:
+
+A. They should remain on Firestore.
+
+OR
+
+B. They should also be migrated to SQL.
+
+====================================================
+FINAL REPORT
+====================================================
+
+Generate a detailed report.
+
+Include:
+
+• Every Firestore collection still in use.
+• Every SQL table in use.
+• Which modules should remain on Firebase.
+• Which modules should move to SQL.
+• Which Firestore code can safely be removed.
+• Which Firestore code must remain.
+• What is causing the quota issue.
+• A recommended production architecture.
+
+DO NOT remove or migrate anything until the audit is complete and the report has been generated.
