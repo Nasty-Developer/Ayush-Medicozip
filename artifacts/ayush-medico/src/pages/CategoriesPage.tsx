@@ -10,8 +10,8 @@
  *    the entire medicines collection (done in hook, not here).
  */
 
-import { useMemo, useRef, useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearch, useLocation } from "wouter";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
   Tag, Loader2, Search, X, SlidersHorizontal,
@@ -143,7 +143,33 @@ export default function CategoriesPage() {
     totalLoaded,
   } = useAllMedicines();
 
-  const [selectedCatName, setSelectedCatName] = useState<"all" | string>("all");
+  // ── URL-driven filter state — survives browser back navigation ────────────
+  const rawSearch    = useSearch();
+  const [, navigate] = useLocation();
+  const _usp         = new URLSearchParams(rawSearch);
+  const selectedCatName = _usp.get("cat") ?? "all";
+  const search          = _usp.get("q")   ?? "";
+  const sort            = (_usp.get("sort") ?? "default") as SortOption;
+
+  const setSelectedCatName = (cat: string) => {
+    const p = new URLSearchParams(rawSearch);
+    if (cat === "all") { p.delete("cat"); } else { p.set("cat", cat); }
+    p.delete("q"); // clear search when switching category
+    const qs = p.toString();
+    navigate(`/categories${qs ? `?${qs}` : ""}`, { replace: true });
+  };
+  const setSearch = (q: string) => {
+    const p = new URLSearchParams(rawSearch);
+    if (!q) p.delete("q"); else p.set("q", q);
+    const qs = p.toString();
+    navigate(`/categories${qs ? `?${qs}` : ""}`, { replace: true });
+  };
+  const setSort = (s: SortOption) => {
+    const p = new URLSearchParams(rawSearch);
+    if (s === "default") p.delete("sort"); else p.set("sort", s);
+    const qs = p.toString();
+    navigate(`/categories${qs ? `?${qs}` : ""}`, { replace: true });
+  };
 
   const medicineCounts = useMedicineCounts();
 
@@ -155,10 +181,6 @@ export default function CategoriesPage() {
     hasMore: catHasMore,
     loadMore: catLoadMore,
   } = useMedicinesByCategory(catQueryName);
-
-  // ── UI state ──────────────────────────────────────────────────────────────
-  const [search, setSearch] = useState("");
-  const [sort,   setSort]   = useState<SortOption>("default");
 
   // Debounce search — avoid filtering on every keystroke
   const debouncedSearch = useDebounce(search, 300);
@@ -197,6 +219,30 @@ export default function CategoriesPage() {
 
   const selectedColors = selectedCategory ? getCategoryColors(selectedCategory.color) : null;
 
+  // ── Scroll position save / restore ────────────────────────────────────────
+  const BROWSE_SCROLL_KEY  = "browse_scroll";
+  const scrollRestoredRef  = useRef(false);
+
+  // Save scroll when the user navigates away (component unmounts)
+  useEffect(() => {
+    return () => {
+      sessionStorage.setItem(BROWSE_SCROLL_KEY, String(window.scrollY));
+    };
+  }, []);
+
+  // Restore scroll once the first batch of medicines has rendered
+  useEffect(() => {
+    if (scrollRestoredRef.current || activeInitLoading || activeMedicines.length === 0) return;
+    const saved = sessionStorage.getItem(BROWSE_SCROLL_KEY);
+    if (!saved) return;
+    scrollRestoredRef.current = true;
+    sessionStorage.removeItem(BROWSE_SCROLL_KEY);
+    // Double rAF ensures the DOM has fully painted before we scroll
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => window.scrollTo(0, parseInt(saved, 10)))
+    );
+  }, [activeInitLoading, activeMedicines.length]);
+
   return (
     <section className="pt-28 pb-24 lg:pt-32 lg:pb-32 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -234,7 +280,7 @@ export default function CategoriesPage() {
           <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
             <CategoryPill
               selected={selectedCatName === "all"}
-              onClick={() => { setSelectedCatName("all"); setSearch(""); }}
+              onClick={() => setSelectedCatName("all")}
             >
               <Package size={13} />
               All Medicines
@@ -254,7 +300,7 @@ export default function CategoriesPage() {
                   key={cat.id}
                   selected={isSel}
                   gradient={isSel ? colors.gradient : undefined}
-                  onClick={() => { setSelectedCatName(cat.name); setSearch(""); }}
+                  onClick={() => setSelectedCatName(cat.name)}
                 >
                   <span role="img" aria-hidden="true" className="text-sm leading-none">
                     {cat.icon || "💊"}
@@ -460,7 +506,7 @@ export default function CategoriesPage() {
                 return (
                   <button
                     key={cat.id}
-                    onClick={() => { setSelectedCatName(cat.name); setSearch(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                    onClick={() => { setSelectedCatName(cat.name); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                     className={`group flex flex-col items-center gap-2 p-4 rounded-xl
                                 border border-border bg-gradient-to-br ${colors.light}
                                 hover:border-primary/30 hover:shadow-md transition-all duration-200 text-center`}

@@ -7,8 +7,8 @@
  *  - Search is debounced 300ms — no filtering on every keystroke.
  */
 
-import { useMemo, useState } from "react";
-import { useParams, Link } from "wouter";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, Link, useSearch, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, Home, Package, Loader2,
@@ -31,9 +31,27 @@ export default function CategoryDetailPage() {
   const slug   = params.slug ?? "";
 
   const { categories, loading: categoriesLoading } = useCategories(false);
-  const [search,     setSearch]     = useState("");
-  const [sort,       setSort]       = useState<SortOption>("default");
   const [filterOpen, setFilterOpen] = useState(false);
+
+  // ── URL-driven filter state — survives browser back navigation ────────────
+  const rawSearch    = useSearch();
+  const [, navigate] = useLocation();
+  const usp          = new URLSearchParams(rawSearch);
+  const search       = usp.get("q") ?? "";
+  const sort         = (usp.get("sort") ?? "default") as SortOption;
+
+  const setSearch = (q: string) => {
+    const p = new URLSearchParams(rawSearch);
+    if (!q) p.delete("q"); else p.set("q", q);
+    const qs = p.toString();
+    navigate(`/category/${slug}${qs ? `?${qs}` : ""}`, { replace: true });
+  };
+  const setSort = (s: SortOption) => {
+    const p = new URLSearchParams(rawSearch);
+    if (s === "default") p.delete("sort"); else p.set("sort", s);
+    const qs = p.toString();
+    navigate(`/category/${slug}${qs ? `?${qs}` : ""}`, { replace: true });
+  };
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -67,6 +85,28 @@ export default function CategoryDetailPage() {
     });
     return sorted;
   }, [medicines, debouncedSearch, sort]);
+
+  // ── Scroll position save / restore ────────────────────────────────────────
+  const CAT_SCROLL_KEY    = `cat_scroll_${slug}`;
+  const scrollRestoredRef = useRef(false);
+
+  // Save scroll when the user navigates away (component unmounts)
+  useEffect(() => {
+    const key = CAT_SCROLL_KEY;
+    return () => { sessionStorage.setItem(key, String(window.scrollY)); };
+  }, [CAT_SCROLL_KEY]);
+
+  // Restore scroll once the first batch of medicines has rendered
+  useEffect(() => {
+    if (scrollRestoredRef.current || medicinesLoading || medicines.length === 0) return;
+    const saved = sessionStorage.getItem(CAT_SCROLL_KEY);
+    if (!saved) return;
+    scrollRestoredRef.current = true;
+    sessionStorage.removeItem(CAT_SCROLL_KEY);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => window.scrollTo(0, parseInt(saved, 10)))
+    );
+  }, [medicinesLoading, medicines.length, CAT_SCROLL_KEY]);
 
   if (categoriesLoading) {
     return (

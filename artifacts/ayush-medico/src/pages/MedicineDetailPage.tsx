@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShoppingCart, Plus, Minus, Tag,
@@ -17,6 +17,33 @@ import { useRequestMedicine } from "@/context/RequestMedicineContext";
 import type { CategoryMedicine } from "@/hooks/useMedicinesByCategory";
 import { StockBadge, getStockStatus, MedicineSkeleton } from "@/components/medicines/MedicineCard";
 import { resolveMedicineImage } from "@/lib/medicineImage";
+
+/** Navigate back — uses browser history when available, falls back to /categories. */
+function GoBack({ children, className, primary }: { children: React.ReactNode; className?: string; primary?: boolean }) {
+  const [, navigate] = useLocation();
+  const handleClick = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigate("/categories");
+    }
+  };
+  if (primary) {
+    return (
+      <button
+        onClick={handleClick}
+        className={className}
+      >
+        {children}
+      </button>
+    );
+  }
+  return (
+    <button onClick={handleClick} className={className}>
+      {children}
+    </button>
+  );
+}
 
 export default function MedicineDetailPage() {
   const params = useParams<{ id: string }>();
@@ -63,13 +90,13 @@ export default function MedicineDetailPage() {
         <p className="text-muted-foreground mb-6">
           This medicine may have been removed or is no longer available.
         </p>
-        <Link
-          href="/categories"
+        <GoBack
+          primary
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
                      bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
         >
           <ArrowLeft size={15} /> Browse Medicines
-        </Link>
+        </GoBack>
       </main>
     );
   }
@@ -109,13 +136,12 @@ export default function MedicineDetailPage() {
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
       {/* Back link */}
-      <Link
-        href="/categories"
+      <GoBack
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground
                    hover:text-primary transition-colors mb-6"
       >
         <ArrowLeft size={14} /> Back to Browse
-      </Link>
+      </GoBack>
 
       <motion.div
         initial={{ opacity: 0, y: 16 }}
