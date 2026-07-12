@@ -11,14 +11,20 @@ import {
   Package, MapPin, CreditCard, Truck, AlertCircle, Loader2,
   ChevronLeft, CheckCircle2, Clock, XCircle, PhoneCall,
 } from "lucide-react";
-import { subscribeToOrder, updateOrderStatus, updateOrderFields, type Order } from "@/lib/orderService";
+import { subscribeToOrder, updateOrderStatus, type Order } from "@/lib/orderService";
 import {
-  ORDER_STATUS_PIPELINE, ORDER_STATUS_LABELS, ORDER_NEGATIVE_STATUSES,
+  ORDER_STATUS_PIPELINE, ORDER_STATUS_LABELS,
   canCustomerCancel, getOrderPipelineIndex, isNegativeOrderStatus,
   type OrderStatus,
 } from "@/lib/orderStatus";
 import { queueNotification } from "@/lib/notificationService";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import {
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+  reportRazorpayFailure,
+} from "@/lib/paymentService";
+import { loadRazorpayScript, type RazorpaySuccessResponse } from "@/lib/razorpayCheckout";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -31,6 +37,8 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [payNowLoading, setPayNowLoading] = useState(false);
+  const [payNowError, setPayNowError] = useState<string | null>(null);
 
   const docId = params?.docId ?? "";
 
@@ -43,6 +51,55 @@ export default function OrderDetailPage() {
     );
     return unsub;
   }, [docId]);
+
+  const handlePayNow = async () => {
+    if (!order || !user) return;
+    setPayNowLoading(true);
+    setPayNowError(null);
+    try {
+      const rzpData = await createRazorpayOrder({ orderDbId: docId });
+      await loadRazorpayScript();
+      const rzp = new window.Razorpay({
+        key: rzpData.keyId,
+        amount: rzpData.amount,
+        currency: rzpData.currency,
+        order_id: rzpData.razorpayOrderId,
+        name: "Ayush Medico",
+        description: `Order ${order.orderId}`,
+        prefill: {
+          name: user.displayName ?? undefined,
+          email: user.email ?? undefined,
+          contact: order.address?.mobileNumber,
+        },
+        theme: { color: "#2F8F6D" },
+        handler: async (response: RazorpaySuccessResponse) => {
+          try {
+            await verifyRazorpayPayment({
+              orderDbId: docId,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            // subscribeToOrder will automatically refresh the UI
+            setPayNowLoading(false);
+          } catch {
+            setPayNowError("Payment received but verification failed. Please contact us at +91 98332 73838.");
+            setPayNowLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: async () => {
+            try { await reportRazorpayFailure(docId); } catch { /* non-critical */ }
+            setPayNowLoading(false);
+          },
+        },
+      });
+      rzp.open();
+    } catch (err) {
+      setPayNowError("Could not open payment gateway. Please try again or call us.");
+      setPayNowLoading(false);
+    }
+  };
 
   const handleCancel = async () => {
     if (!order || !user) return;
@@ -254,7 +311,7 @@ export default function OrderDetailPage() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
                 <span className={`font-semibold capitalize ${
-                  order.payment.status === "verified" || order.payment.status === "completed"
+                  ["paid", "verified", "completed"].includes(order.payment.status)
                     ? "text-green-600 dark:text-green-400"
                     : order.payment.status === "failed"
                     ? "text-destructive"
@@ -271,6 +328,38 @@ export default function OrderDetailPage() {
               )}
             </div>
           </div>
+
+          {/* ── Razorpay Pay Now panel ── */}
+          {order.status === "payment-pending" && order.payment.method === "razorpay" && (
+            <div className="p-5 rounded-2xl border border-primary/30 bg-primary/5">
+              <h2 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
+                <CreditCard size={14} className="text-primary" /> Complete Your Payment
+              </h2>
+              <p className="text-xs text-muted-foreground mb-4">
+                Your order is saved. Complete the payment of{" "}
+                <strong className="text-foreground">₹{order.pricing.grandTotal.toLocaleString("en-IN")}</strong>{" "}
+                via Razorpay to confirm your order.
+              </p>
+              {payNowError && <p className="text-xs text-destructive mb-3">{payNowError}</p>}
+              <button
+                onClick={handlePayNow}
+                disabled={payNowLoading}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl
+                           bg-primary text-white font-bold text-sm hover:bg-primary/90
+                           disabled:opacity-60 transition-colors shadow-md shadow-primary/20"
+              >
+                {payNowLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <CreditCard size={16} />
+                )}
+                {payNowLoading ? "Opening Razorpay…" : `Pay ₹${order.pricing.grandTotal.toLocaleString("en-IN")} Now`}
+              </button>
+              <p className="text-[10px] text-muted-foreground text-center mt-2">
+                Secure payment via Razorpay · 256-bit SSL
+              </p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-col gap-3">

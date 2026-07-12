@@ -11,7 +11,7 @@ import type { OrderStatus } from "./orderStatus";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type PaymentMethod = "upi" | "cod" | "razorpay" | "wallet";
-export type PaymentStatus = "pending" | "verified" | "failed" | "refunded" | "completed";
+export type PaymentStatus = "pending" | "paid" | "verified" | "failed" | "refunded" | "completed";
 
 export type DeliveryStatus =
   | "not-assigned"

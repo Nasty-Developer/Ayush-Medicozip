@@ -27,7 +27,7 @@ import {
   type OrderStatus,
 } from "@/lib/orderStatus";
 import { queueNotification } from "@/lib/notificationService";
-import { verifyUpiPayment } from "@/lib/paymentService";
+import { verifyUpiPayment, createRazorpayPaymentLink } from "@/lib/paymentService";
 import { assignDeliveryPartner } from "@/lib/deliveryService";
 import type { Timestamp } from "@/lib/orderService";
 import { useEffect } from "react";
@@ -290,6 +290,7 @@ function OrderCard({ order, expanded, onToggle }: {
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
 
   const wa = buildWaMessages(order);
   const customerPhone = order.address?.mobileNumber ?? order.customerPhone;
@@ -326,6 +327,20 @@ function OrderCard({ order, expanded, onToggle }: {
           event, channels: ["whatsapp"],
         });
       }
+    });
+  };
+
+  const handleSendPaymentRequest = async () => {
+    await action("payment-request", async () => {
+      const { url } = await createRazorpayPaymentLink(order.id);
+      setPaymentLink(url);
+      // Pre-fill WhatsApp with the payment link
+      const msg =
+        `💳 *Payment Request — Ayush Medico*\n\nHi ${order.customerName || "there"}! Please complete payment for order *#${order.orderId}*.\n\n` +
+        `*Amount: ₹${order.pricing.grandTotal.toLocaleString("en-IN")}*\n\n` +
+        `🔗 *Pay securely here:* ${url}\n\n` +
+        `_This link is valid for 24 hours. Queries: +91 98332 73838_`;
+      openWa(customerPhone, msg);
     });
   };
 
@@ -486,7 +501,7 @@ function OrderCard({ order, expanded, onToggle }: {
                     {order.payment.method === "cod" ? "Cash on Delivery" : order.payment.method.toUpperCase()}
                   </p>
                   <p className={`text-xs font-semibold capitalize mt-0.5 ${
-                    order.payment.status === "verified" || order.payment.status === "completed"
+                    ["paid", "verified", "completed"].includes(order.payment.status)
                       ? "text-green-600 dark:text-green-400"
                       : order.payment.status === "failed" ? "text-destructive"
                       : "text-amber-600 dark:text-amber-400"
@@ -585,6 +600,37 @@ function OrderCard({ order, expanded, onToggle }: {
               {actionError && <p className="text-xs text-destructive">{actionError}</p>}
 
               <div className="flex flex-wrap gap-2">
+
+                {/* Razorpay — Send Payment Request */}
+                {order.payment.method === "razorpay" &&
+                 (order.payment.status === "pending" || order.payment.status === "failed") &&
+                 order.status === "payment-pending" && (
+                  <div className="w-full space-y-2">
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-400">
+                      <CreditCard size={13} />
+                      <span>Razorpay payment pending — send a secure payment link to the customer.</span>
+                    </div>
+                    {paymentLink && (
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-muted border border-border text-xs">
+                        <span className="text-muted-foreground flex-1 truncate">🔗 {paymentLink}</span>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(paymentLink)}
+                          className="text-primary hover:underline font-semibold flex-shrink-0"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                    <ActionBtn
+                      label={paymentLink ? "Send Link Again (WhatsApp)" : "Send Payment Request"}
+                      icon={<Send size={12} />}
+                      loading={actionLoading === "payment-request"}
+                      onClick={handleSendPaymentRequest}
+                      color="blue"
+                    />
+                  </div>
+                )}
+
                 {/* UPI payment verification */}
                 {order.payment.method === "upi" && order.payment.status === "pending" && (
                   <div className="w-full flex gap-2">
@@ -690,7 +736,10 @@ function OrderCard({ order, expanded, onToggle }: {
                   <div className="flex flex-wrap gap-2">
                     <WaBtn label="Send Confirmation"    onClick={() => openWa(customerPhone, wa.confirmation)} />
                     {order.payment.method === "upi" && order.payment.status === "pending" && (
-                      <WaBtn label="Send Payment Request"  onClick={() => openWa(customerPhone, wa.paymentRequest)} color="orange" />
+                      <WaBtn label="Send Payment Request" onClick={() => openWa(customerPhone, wa.paymentRequest)} color="orange" />
+                    )}
+                    {order.payment.method === "razorpay" && order.status === "payment-pending" && (
+                      <WaBtn label="Send Payment Request" onClick={handleSendPaymentRequest} color="orange" />
                     )}
                     {["payment-verified", "preparing"].includes(order.status) && (
                       <WaBtn label="Order Being Prepared"  onClick={() => openWa(customerPhone, wa.preparing)} />

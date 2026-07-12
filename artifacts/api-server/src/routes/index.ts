@@ -14,6 +14,7 @@ import testimonialsRouter from "./testimonials"; // /api/testimonials — replac
 import faqsRouter      from "./faqs";        // /api/faqs — replaces Firestore "faqs" collection
 import notificationsRouter from "./notifications"; // /api/notifications — order event log + WhatsApp dispatch
 import settingsRouter from "./settings";           // /api/settings — site-wide key/value config (replaces Firestore "settings" collection)
+import paymentRouter from "./payment";             // /api/payment  — Razorpay create/verify/failure/send-request (TEST MODE)
 
 const router: IRouter = Router();
 
@@ -37,5 +38,6 @@ router.use("/testimonials", testimonialsRouter);
 router.use("/faqs",      faqsRouter);
 router.use("/notifications", notificationsRouter);
 router.use("/settings",     settingsRouter);
+router.use("/payment",      paymentRouter);
 
 export default router;

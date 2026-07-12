@@ -1,16 +1,18 @@
 // CheckoutPage — Multi-step checkout flow.
 // Steps: 1. Address  →  2. Payment  →  3. Review & Confirm
 //
-// On confirmation:
-//   • Writes to Firestore `orders` collection
-//   • Queues notification placeholders
-//   • Clears cart
-//   • Navigates to /order-confirmation/:docId
+// Payment methods:
+//   Razorpay  — opens checkout modal; order created first, payment verified via backend HMAC
+//   UPI       — manual payment; admin verifies UTR in admin panel
+//   COD       — no online payment; admin confirms on delivery
 
 import { useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, CreditCard, ClipboardCheck, Check, AlertCircle, Loader2, ShoppingCart, ArrowLeft, FileText } from "lucide-react";
+import {
+  MapPin, CreditCard, ClipboardCheck, Check, AlertCircle,
+  Loader2, ShoppingCart, ArrowLeft, FileText,
+} from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { useAddresses } from "@/hooks/useAddresses";
@@ -20,6 +22,12 @@ import PaymentSelector from "@/components/customer/PaymentSelector";
 import PrescriptionUpload from "@/components/customer/PrescriptionUpload";
 import { createOrder, generateNewOrderId, type OrderAddress } from "@/lib/orderService";
 import { queueNotification } from "@/lib/notificationService";
+import {
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+  reportRazorpayFailure,
+} from "@/lib/paymentService";
+import { loadRazorpayScript, type RazorpaySuccessResponse } from "@/lib/razorpayCheckout";
 import type { PaymentMethod } from "@/lib/orderService";
 import type { CustomerAddress } from "@/lib/addressService";
 import SignInModal from "@/components/customer/SignInModal";
@@ -29,9 +37,9 @@ import SignInModal from "@/components/customer/SignInModal";
 type Step = "address" | "payment" | "review";
 
 const STEPS: { id: Step; label: string; icon: typeof MapPin }[] = [
-  { id: "address",  label: "Address",  icon: MapPin },
-  { id: "payment",  label: "Payment",  icon: CreditCard },
-  { id: "review",   label: "Review",   icon: ClipboardCheck },
+  { id: "address", label: "Address", icon: MapPin },
+  { id: "payment", label: "Payment", icon: CreditCard },
+  { id: "review",  label: "Review",  icon: ClipboardCheck },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -52,17 +60,15 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
 
-  // Stable orderId placeholder for the PrescriptionUpload path (temp id before Firestore).
-  // Stored in state so it stays constant across re-renders.
-  const [tempOrderId] = useState(() => `temp-${user?.uid?.slice(-6) ?? "guest"}-${Date.now()}`);
+  const [tempOrderId] = useState(
+    () => `temp-${user?.uid?.slice(-6) ?? "guest"}-${Date.now()}`
+  );
 
-  // Redirect if cart empty
   if (items.length === 0 && !placing) {
     navigate("/cart");
     return null;
   }
 
-  // Prompt login if needed
   if (!user) {
     return (
       <div className="min-h-screen pt-28 pb-20 flex flex-col items-center justify-center gap-5 px-4">
@@ -86,35 +92,22 @@ export default function CheckoutPage() {
   const prescriptionRequired = summary.requiresPrescription;
   const prescriptionReady = !prescriptionRequired || !!prescriptionUrl;
 
-  const handleAddressSelect = (addr: CustomerAddress) => {
-    setSelectedAddress(addr);
-  };
-
-  const handleAddressAdded = (_addressId: string) => {
-    setShowAddressForm(false);
-  };
+  const handleAddressSelect = (addr: CustomerAddress) => setSelectedAddress(addr);
+  const handleAddressAdded = () => setShowAddressForm(false);
 
   const handleAddressContinue = () => {
-    if (!selectedAddress) {
-      setError("Please select or add a delivery address.");
-      return;
-    }
+    if (!selectedAddress) { setError("Please select or add a delivery address."); return; }
     setError(null);
     setStep("payment");
   };
 
   const handlePaymentContinue = () => {
-    if (!paymentMethod) {
-      setError("Please select a payment method.");
-      return;
-    }
+    if (!paymentMethod) { setError("Please select a payment method."); return; }
     if (paymentMethod === "upi" && !upiTxnId.trim()) {
-      setError("Please enter the UPI transaction ID / UTR.");
-      return;
+      setError("Please enter the UPI transaction ID / UTR."); return;
     }
     if (prescriptionRequired && !prescriptionUrl) {
-      setError("Please upload your prescription to continue. It is required for one or more medicines in your cart.");
-      return;
+      setError("Please upload your prescription to continue."); return;
     }
     setError(null);
     setStep("review");
@@ -123,8 +116,7 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async () => {
     if (!user || !selectedAddress || !paymentMethod) return;
     if (prescriptionRequired && !prescriptionUrl) {
-      setError("Please upload your prescription before placing the order.");
-      return;
+      setError("Please upload your prescription before placing the order."); return;
     }
     setPlacing(true);
     setError(null);
@@ -147,6 +139,10 @@ export default function CheckoutPage() {
         lat: selectedAddress.lat,
         lng: selectedAddress.lng,
       };
+
+      // For Razorpay, create the order with "payment-pending" so the customer
+      // can see it while the modal is open or if they close and retry later.
+      const initialStatus = paymentMethod === "razorpay" ? "payment-pending" : "pending";
 
       const docId = await createOrder({
         orderId,
@@ -183,13 +179,77 @@ export default function CheckoutPage() {
           url: prescriptionUrl,
           verified: false,
         },
-        delivery: {
-          status: "not-assigned",
-        },
-        status: "pending",
+        delivery: { status: "not-assigned" },
+        status: initialStatus,
         source: "website",
       });
 
+      // ── Razorpay checkout ─────────────────────────────────────────────────
+      if (paymentMethod === "razorpay") {
+        let rzpData: Awaited<ReturnType<typeof createRazorpayOrder>>;
+        try {
+          rzpData = await createRazorpayOrder({ orderDbId: docId });
+        } catch {
+          setError("Could not open payment gateway. Your order is saved — you can pay from My Orders.");
+          setPlacing(false);
+          return;
+        }
+
+        await loadRazorpayScript();
+
+        const rzp = new window.Razorpay({
+          key: rzpData.keyId,
+          amount: rzpData.amount,
+          currency: rzpData.currency,
+          order_id: rzpData.razorpayOrderId,
+          name: "Ayush Medico",
+          description: `Order ${orderId}`,
+          prefill: {
+            name: user.displayName ?? undefined,
+            email: user.email ?? undefined,
+            contact: selectedAddress.mobileNumber,
+          },
+          theme: { color: "#2F8F6D" },
+
+          handler: async (response: RazorpaySuccessResponse) => {
+            // Payment captured — verify signature on backend
+            try {
+              await verifyRazorpayPayment({
+                orderDbId: docId,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              });
+              clearCart();
+              navigate(`/order-confirmation/${docId}`);
+            } catch {
+              setError(
+                "Payment received, but verification failed. Please contact us at +91 98332 73838 with your order ID."
+              );
+              setPlacing(false);
+            }
+          },
+
+          modal: {
+            ondismiss: async () => {
+              // Customer closed the modal — record failure so order shows
+              // "Payment Pending" with a retry button in My Orders / Order Detail.
+              try {
+                await reportRazorpayFailure(docId);
+              } catch {
+                // non-critical — order is already payment-pending in DB
+              }
+              navigate(`/order/${docId}`);
+              setPlacing(false);
+            },
+          },
+        });
+
+        rzp.open();
+        return; // Don't clear cart or navigate here — handled by handler / ondismiss
+      }
+
+      // ── Non-Razorpay: notify + confirm ────────────────────────────────────
       await queueNotification({
         orderId,
         orderDocId: docId,
@@ -215,7 +275,6 @@ export default function CheckoutPage() {
     <div className="min-h-screen pt-28 pb-20 bg-background">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Back link */}
         <button
           onClick={() => navigate("/cart")}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6 transition-colors"
@@ -263,16 +322,12 @@ export default function CheckoutPage() {
                     <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                       <MapPin size={16} className="text-primary" /> Delivery Address
                     </h2>
-
                     {loadingAddresses ? (
                       <div className="flex justify-center py-8">
                         <Loader2 size={24} className="animate-spin text-primary" />
                       </div>
                     ) : showAddressForm ? (
-                      <AddressForm
-                        onSuccess={handleAddressAdded}
-                        onCancel={() => setShowAddressForm(false)}
-                      />
+                      <AddressForm onSuccess={handleAddressAdded} onCancel={() => setShowAddressForm(false)} />
                     ) : (
                       <AddressList
                         addresses={addresses}
@@ -282,7 +337,6 @@ export default function CheckoutPage() {
                       />
                     )}
                   </div>
-
                   {error && <p className="text-sm text-destructive">{error}</p>}
                   <button
                     onClick={handleAddressContinue}
@@ -311,7 +365,6 @@ export default function CheckoutPage() {
                     />
                   </div>
 
-                  {/* Prescription upload — mandatory when any cart item requires Rx */}
                   {prescriptionRequired && (
                     <div className="p-5 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
                       <h3 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
@@ -321,7 +374,7 @@ export default function CheckoutPage() {
                         </span>
                       </h3>
                       <p className="text-xs text-muted-foreground mb-4">
-                        One or more items in your cart require a valid prescription from a licensed doctor. Please upload it to proceed.
+                        One or more items require a valid prescription. Please upload it to proceed.
                       </p>
                       <PrescriptionUpload
                         userId={user.uid}
@@ -337,8 +390,7 @@ export default function CheckoutPage() {
                   <div className="flex gap-3">
                     <button
                       onClick={() => { setStep("address"); setError(null); }}
-                      className="flex-1 py-3 rounded-2xl border border-border text-sm font-semibold
-                                 text-foreground hover:bg-muted/40 transition-colors"
+                      className="flex-1 py-3 rounded-2xl border border-border text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors"
                     >
                       Back
                     </button>
@@ -348,9 +400,7 @@ export default function CheckoutPage() {
                       className="flex-1 py-3.5 rounded-2xl bg-primary text-white font-bold text-sm
                                  hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      {prescriptionRequired && !prescriptionUrl
-                        ? "Upload Prescription to Continue"
-                        : "Review Order"}
+                      {prescriptionRequired && !prescriptionUrl ? "Upload Prescription to Continue" : "Review Order"}
                     </button>
                   </div>
                 </motion.div>
@@ -359,7 +409,6 @@ export default function CheckoutPage() {
               {/* ── Step 3: Review ── */}
               {step === "review" && (
                 <motion.div key="review" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} className="space-y-4">
-                  {/* Address summary */}
                   <div className="p-4 rounded-2xl border border-border bg-card">
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Delivery To</p>
                     {selectedAddress && (
@@ -373,18 +422,27 @@ export default function CheckoutPage() {
                     )}
                   </div>
 
-                  {/* Payment summary */}
                   <div className="p-4 rounded-2xl border border-border bg-card">
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Payment</p>
                     <p className="text-sm font-semibold text-foreground">
-                      {paymentMethod === "upi" ? "UPI" : paymentMethod === "cod" ? "Cash on Delivery" : paymentMethod}
+                      {paymentMethod === "razorpay"
+                        ? "Card / Net Banking / UPI (Razorpay)"
+                        : paymentMethod === "upi"
+                        ? "UPI (Direct to Store)"
+                        : paymentMethod === "cod"
+                        ? "Cash on Delivery"
+                        : paymentMethod}
                     </p>
                     {paymentMethod === "upi" && upiTxnId && (
                       <p className="text-xs text-muted-foreground mt-0.5">Transaction ID: {upiTxnId}</p>
                     )}
+                    {paymentMethod === "razorpay" && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        You'll be redirected to the secure Razorpay checkout after confirming.
+                      </p>
+                    )}
                   </div>
 
-                  {/* Prescription confirmation */}
                   {prescriptionRequired && prescriptionUrl && (
                     <div className="p-4 rounded-2xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10">
                       <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Prescription</p>
@@ -394,7 +452,6 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  {/* Items */}
                   <div className="p-4 rounded-2xl border border-border bg-card space-y-2">
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Items ({items.length})</p>
                     {items.map((item) => (
@@ -411,11 +468,11 @@ export default function CheckoutPage() {
                   </div>
 
                   {error && <p className="text-sm text-destructive">{error}</p>}
+
                   <div className="flex gap-3">
                     <button
                       onClick={() => { setStep("payment"); setError(null); }}
-                      className="flex-1 py-3 rounded-2xl border border-border text-sm font-semibold
-                                 text-foreground hover:bg-muted/40 transition-colors"
+                      className="flex-1 py-3 rounded-2xl border border-border text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors"
                     >
                       Back
                     </button>
@@ -427,12 +484,15 @@ export default function CheckoutPage() {
                                  disabled:opacity-60 transition-colors shadow-lg shadow-primary/20"
                     >
                       {placing ? <Loader2 size={16} className="animate-spin" /> : null}
-                      {placing ? "Placing Order…" : "Place Order"}
+                      {placing
+                        ? paymentMethod === "razorpay" ? "Opening Payment…" : "Placing Order…"
+                        : paymentMethod === "razorpay"
+                        ? "Proceed to Pay ₹" + summary.grandTotal.toLocaleString("en-IN")
+                        : "Place Order"}
                     </button>
                   </div>
                 </motion.div>
               )}
-
             </AnimatePresence>
           </div>
 
@@ -449,9 +509,7 @@ export default function CheckoutPage() {
                     <span className="text-foreground ml-2 font-medium">₹{(item.unitPrice * item.quantity).toLocaleString("en-IN")}</span>
                   </div>
                 ))}
-                {items.length > 3 && (
-                  <p className="text-xs text-muted-foreground">+{items.length - 3} more items</p>
-                )}
+                {items.length > 3 && <p className="text-xs text-muted-foreground">+{items.length - 3} more items</p>}
               </div>
               <div className="border-t border-border pt-3 space-y-1.5 text-sm text-muted-foreground">
                 <div className="flex justify-between"><span>Subtotal</span><span>₹{summary.subtotal.toLocaleString("en-IN")}</span></div>
@@ -468,6 +526,13 @@ export default function CheckoutPage() {
                   <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
                     <FileText size={11} /> Prescription required
                   </p>
+                </div>
+              )}
+              {paymentMethod === "razorpay" && (
+                <div className="mt-3 pt-3 border-t border-border flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">Secured by</span>
+                  <span className="text-[10px] font-bold text-[#072654]">Razorpay</span>
+                  <span className="text-[10px] text-muted-foreground">· 256-bit SSL</span>
                 </div>
               )}
             </div>

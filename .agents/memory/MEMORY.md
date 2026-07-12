@@ -17,3 +17,4 @@
 - [Ayush Medico PostgreSQL migration](ayush-medico-pg-migration.md) — full medicine catalogue in PostgreSQL; SDF sync writes to PG; frontend reads from /api/medicines,/api/categories; admin categories CRUD via /api/admin/categories.
 - [Ayush Medico admin dashboard data sources](ayush-medico-admin-dashboard.md) — dashboard uses /api/admin/stats for PG counts; Firestore only for inquiries/FAQs/testimonials; BrandsPage shows PG companies; schema must be pushed before first use (pnpm --filter @workspace/db run push).
 - [Ayush Medico fresh-env DB setup](ayush-medico-fresh-env-setup.md) — on a new Replit environment, DB tables don't exist until schema is pushed; data is empty until inventory sync runs; both must happen before dashboard shows real counts.
+- [Razorpay integration](razorpay-integration.md) — TEST MODE; HMAC verify on backend; Key ID safe for frontend; Key Secret in Replit Secrets; /api/payment routes; swap keys only to go live.

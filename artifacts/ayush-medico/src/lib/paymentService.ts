@@ -1,20 +1,15 @@
-// Payment Service — Architecture for payment processing.
+// Payment Service — Razorpay (TEST MODE) + UPI (manual) + COD.
 //
-// Currently supports UPI (manual verification) and COD.
-// Razorpay and Wallet are defined architecturally but not yet integrated.
-//
-// Payment state now lives on the SQL `orders.payment` JSONB column
-// (via /api/orders/:id/payment) instead of a separate Firestore "payments"
-// collection — there was never a real consumer of that separate collection
-// besides this file, so the standalone payment-record CRUD was dropped in
-// favor of updating the order directly, which is what verifyUpiPayment
-// already did as the source of truth.
-//
-// Future integration point for Razorpay:
-//   1. Create Razorpay order via API server: POST /api/payments/razorpay/create
-//   2. Open Razorpay checkout SDK in browser
-//   3. On success, verify signature via API server: POST /api/payments/razorpay/verify
-//   4. Call updateOrderPayment() to mark verified
+// Architecture:
+//   Razorpay:
+//     1. POST /api/payment/create-razorpay-order  → get Razorpay order ID
+//     2. Open Razorpay checkout modal (browser SDK)
+//     3. On success → POST /api/payment/verify     → HMAC verification, DB updated
+//     4. On failure → POST /api/payment/failure    → DB marks payment-pending
+//   UPI (manual):
+//     Admin manually verifies UTR → POST /api/orders/:id/payment { status: "verified" }
+//   COD:
+//     No payment action needed at order time.
 
 import { authFetchJson } from "./apiAuth";
 import type { PaymentMethod, PaymentStatus, OrderPayment } from "./orderService";
@@ -34,9 +29,16 @@ export type PaymentMethodConfig = {
 
 export const PAYMENT_METHODS: PaymentMethodConfig[] = [
   {
+    method: "razorpay",
+    label: "Card / Net Banking / UPI",
+    description: "Credit/Debit Card, Net Banking, or any UPI app — powered by Razorpay",
+    icon: "💳",
+    available: true,
+  },
+  {
     method: "upi",
-    label: "UPI",
-    description: "Pay via Google Pay, PhonePe, Paytm or any UPI app",
+    label: "UPI (Direct to Store)",
+    description: "Pay directly to our UPI ID and share transaction ID",
     icon: "📱",
     available: true,
   },
@@ -46,14 +48,6 @@ export const PAYMENT_METHODS: PaymentMethodConfig[] = [
     description: "Pay in cash when your order arrives",
     icon: "💵",
     available: true,
-  },
-  {
-    method: "razorpay",
-    label: "Card / Net Banking",
-    description: "Credit/Debit Card, Net Banking via Razorpay",
-    icon: "💳",
-    available: false,
-    unavailableReason: "Coming soon",
   },
   {
     method: "wallet",
@@ -72,9 +66,6 @@ export const STORE_UPI_NAME = "Ayush Medico";
 
 // ─── UPI verification (admin-side) ───────────────────────────────────────────
 // Admin manually enters the UPI transaction ID shown by the customer.
-// `paymentDocId` is kept in the signature for call-site compatibility but is
-// unused now that there is no separate payments table — the order's
-// `payment` JSONB column is the single source of truth.
 
 export async function verifyUpiPayment(
   _paymentDocId: string | null,
@@ -91,27 +82,50 @@ export async function verifyUpiPayment(
   });
 }
 
-// ─── Razorpay (future) ────────────────────────────────────────────────────────
-// FUTURE integration:
-// export async function createRazorpayOrder(amount: number): Promise<{ id: string; amount: number }> {
-//   const res = await fetch("/api/payments/razorpay/create", {
-//     method: "POST",
-//     body: JSON.stringify({ amount }),
-//     headers: { "Content-Type": "application/json" },
-//   });
-//   return res.json();
-// }
-//
-// export async function verifyRazorpayPayment(params: {
-//   razorpayOrderId: string;
-//   razorpayPaymentId: string;
-//   razorpaySignature: string;
-// }): Promise<boolean> {
-//   const res = await fetch("/api/payments/razorpay/verify", {
-//     method: "POST",
-//     body: JSON.stringify(params),
-//     headers: { "Content-Type": "application/json" },
-//   });
-//   const { verified } = await res.json();
-//   return verified;
-// }
+// ─── Razorpay API helpers ─────────────────────────────────────────────────────
+
+export type RazorpayOrderResponse = {
+  razorpayOrderId: string;
+  amount: number;       // in paise
+  currency: string;
+  keyId: string;        // Razorpay key_id — safe to use in browser
+};
+
+/** Creates a Razorpay order on the backend and returns the checkout params. */
+export async function createRazorpayOrder(params: {
+  orderDbId: string;
+}): Promise<RazorpayOrderResponse> {
+  return authFetchJson<RazorpayOrderResponse>("/api/payment/create-razorpay-order", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/** Verifies the Razorpay HMAC signature on the backend and marks the order paid. */
+export async function verifyRazorpayPayment(params: {
+  orderDbId: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}): Promise<void> {
+  await authFetchJson("/api/payment/verify", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/** Records a failed/dismissed Razorpay payment. Order stays at payment-pending. */
+export async function reportRazorpayFailure(orderDbId: string): Promise<void> {
+  await authFetchJson("/api/payment/failure", {
+    method: "POST",
+    body: JSON.stringify({ orderDbId }),
+  });
+}
+
+/** Admin: creates a Razorpay Payment Link for a specific order. Returns { url }. */
+export async function createRazorpayPaymentLink(orderDbId: string): Promise<{ url: string; linkId: string }> {
+  return authFetchJson("/api/payment/send-request", {
+    method: "POST",
+    body: JSON.stringify({ orderDbId }),
+  });
+}
