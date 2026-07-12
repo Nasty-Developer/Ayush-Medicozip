@@ -24,7 +24,7 @@ import {
   verifyRazorpayPayment,
   reportRazorpayFailure,
 } from "@/lib/paymentService";
-import { loadRazorpayScript, type RazorpaySuccessResponse } from "@/lib/razorpayCheckout";
+import { loadRazorpayScript, normalizePhone, type RazorpaySuccessResponse } from "@/lib/razorpayCheckout";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -69,9 +69,12 @@ export default function OrderDetailPage() {
         prefill: {
           name: user.displayName ?? undefined,
           email: user.email ?? undefined,
-          contact: order.address?.mobileNumber,
+          contact: normalizePhone(order.address?.mobileNumber),
         },
         theme: { color: "#2F8F6D" },
+        retry: { enabled: true, max_count: 4 },
+        send_sms_hash: true,
+        remember_customer: false,
         handler: async (response: RazorpaySuccessResponse) => {
           try {
             await verifyRazorpayPayment({

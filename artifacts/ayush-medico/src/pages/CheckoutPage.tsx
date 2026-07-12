@@ -25,7 +25,7 @@ import {
   verifyRazorpayPayment,
   reportRazorpayFailure,
 } from "@/lib/paymentService";
-import { loadRazorpayScript, type RazorpaySuccessResponse } from "@/lib/razorpayCheckout";
+import { loadRazorpayScript, normalizePhone, type RazorpaySuccessResponse } from "@/lib/razorpayCheckout";
 import type { CustomerAddress } from "@/lib/addressService";
 import SignInModal from "@/components/customer/SignInModal";
 
@@ -202,9 +202,25 @@ export default function CheckoutPage() {
         prefill: {
           name: user.displayName ?? undefined,
           email: user.email ?? undefined,
-          contact: selectedAddress.mobileNumber,
+          // Normalise to 10-digit Indian mobile — Razorpay uses this to detect
+          // which UPI apps are installed on the customer's device.
+          contact: normalizePhone(selectedAddress.mobileNumber),
         },
         theme: { color: "#2F8F6D" },
+
+        // Keep all payment methods open — no `method` or `config.display.hide` set.
+        // Cards, Net Banking, UPI Collect, UPI Intent, Wallets, EMI all visible.
+
+        // Retry within modal: if a payment fails the customer stays inside the
+        // Razorpay modal and can try a different method instead of being sent back
+        // to the order page with a failed status.
+        retry: { enabled: true, max_count: 4 },
+
+        // Android: allow Razorpay to read the bank SMS OTP automatically.
+        send_sms_hash: true,
+
+        // Pharmacy app — don't save payment method for future checkouts.
+        remember_customer: false,
 
         handler: async (response: RazorpaySuccessResponse) => {
           try {
