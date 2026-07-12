@@ -35,4 +35,12 @@ The medicine catalog comes from exactly two sources:
 
 There is no third-party medicine lookup API (previously OpenFDA was explored and has been fully removed).
 
+## Fresh environment setup
+
+On a newly imported/cloned environment the Postgres database starts empty — no tables, no data. To get a fully working app:
+1. `pnpm install` (installs all workspace deps)
+2. `pnpm --filter @workspace/db run push` (creates tables from the Drizzle schema)
+3. Restart both workflows
+4. Sign in as an admin user and use the Admin Panel's inventory sync (MediVision Gold SDF upload) to populate categories/medicines — sample `.SDF` files are in `attached_assets/`. Without this step the site runs but the catalog is empty (0 products/categories).
+
 ## User preferences
