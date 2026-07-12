@@ -338,6 +338,28 @@ async function runImport(
 
     job.report.stockRecords = stockValues.length;
 
+    // ── 7. Clean up orphaned categories ──────────────────────────────────────
+    // Delete categories that have no medicines — these are leftover raw SDF
+    // category names from before the normalizer was applied (e.g. "Allopathic",
+    // "General"). After a fresh sync all valid categories have medicines; any
+    // zero-count categories are stale and safe to remove.
+    job.phase   = "done";
+    job.message = "Cleaning up orphaned categories…";
+    try {
+      const emptyCats = await db.execute(
+        sql`DELETE FROM categories WHERE id NOT IN (
+          SELECT DISTINCT category_id FROM medicines WHERE category_id IS NOT NULL
+        ) RETURNING id, name`
+      );
+      const deletedNames = (emptyCats.rows as { name: string }[]).map((r) => r.name);
+      if (deletedNames.length) {
+        logger.info({ deleted: deletedNames }, "Removed orphaned categories after sync");
+      }
+    } catch (cleanupErr) {
+      // Non-fatal: cleanup failure does not abort the import
+      logger.warn({ cleanupErr }, "Category cleanup failed (non-fatal)");
+    }
+
     // ── Done ──────────────────────────────────────────────────────────────────
     job.report.durationMs = Date.now() - t0;
     job.report.skipped    = medicines.length - job.report.medicines;

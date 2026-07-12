@@ -425,6 +425,16 @@ export default function MedicinesPage() {
     if (res.ok) load(search, page);
   };
 
+  const handleStockStatus = async (med: AdminMedicine, stockStatus: StockStatus) => {
+    if (stockStatus === med.stockStatus) return;
+    const res = await adminFetch(`/api/admin/medicines/${med.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ stockStatus }),
+    });
+    if (res.ok) load(search, page);
+    else toast({ variant: "destructive", title: "Failed to update stock status" });
+  };
+
   const catFilterOptions = useMemo(() => (
     ["All", ...categories.map((c) => c.name).sort()]
   ), [categories]);
@@ -552,12 +562,21 @@ export default function MedicinesPage() {
                         ) : <span className="text-muted-foreground text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cls}`}>
-                          {icon} {label}
-                        </span>
-                        {med.stockQty > 0 && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5">Qty: {med.stockQty}</p>
-                        )}
+                        <div className="flex flex-col items-center gap-1">
+                          <select
+                            value={med.stockStatus}
+                            onChange={(e) => handleStockStatus(med, e.target.value as StockStatus)}
+                            className={`text-xs font-semibold rounded-full px-2.5 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 ${cls}`}
+                            title="Change stock status"
+                          >
+                            <option value="in_stock">In Stock</option>
+                            <option value="low_stock">Low Stock</option>
+                            <option value="out_of_stock">Out of Stock</option>
+                          </select>
+                          {med.stockQty > 0 && (
+                            <p className="text-[10px] text-muted-foreground">Qty: {med.stockQty}</p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">

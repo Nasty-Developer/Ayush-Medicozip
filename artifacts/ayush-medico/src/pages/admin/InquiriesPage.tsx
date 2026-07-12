@@ -6,9 +6,7 @@ import {
   Download, Search, Trash2, Eye, RefreshCw,
   WifiOff, ChevronDown, Filter, Ban, Hash, RotateCcw,
 } from "lucide-react";
-import {
-  subscribeToCollection, updateDocument, deleteDocument, orderBy
-} from "@/lib/firestoreHelpers";
+import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -423,52 +421,86 @@ export default function InquiriesPage() {
   const prevPendingRef = useRef(-1);
   const initialLoadDone = useRef(false);
 
-  useEffect(() => {
-    const unsub = subscribeToCollection(
-      "inquiries",
-      [orderBy("createdAt", "desc")],
-      (docs) => {
-        // Exclude medicine-request type — those belong in MedicineRequestsPage
-        const data = (docs as Inquiry[]).filter((d) => d.type !== "medicine-request");
-        const pendingCount = data.filter((d) => normalizeStatus(d.status) === "pending").length;
+  // Normalize PG row → UI Inquiry type
+  const normalizeRow = (row: Record<string, unknown>): Inquiry => ({
+    ...row,
+    id: String(row.id),
+    createdAt: row.createdAt
+      ? { seconds: Math.floor(new Date(row.createdAt as string).getTime() / 1000) }
+      : undefined,
+  } as Inquiry);
 
-        if (initialLoadDone.current && pendingCount > prevPendingRef.current && prevPendingRef.current >= 0) {
-          playChime();
-          toast({ title: "🔔 New Inquiry", description: "A new inquiry just arrived!" });
-        }
+  const loadInquiries = useCallback(async () => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch("/api/inquiries?type=inquiry", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Fetch failed");
+      const { data } = await res.json() as { data: Record<string, unknown>[] };
+      const normalized = (data ?? []).map(normalizeRow);
+      const pendingCount = normalized.filter((d) => normalizeStatus(d.status) === "pending").length;
 
-        prevPendingRef.current = pendingCount;
-        initialLoadDone.current = true;
-        setInquiries(data);
-        setLoading(false);
-        setError(false);
+      if (initialLoadDone.current && pendingCount > prevPendingRef.current && prevPendingRef.current >= 0) {
+        playChime();
+        toast({ title: "🔔 New Inquiry", description: "A new inquiry just arrived!" });
+      }
 
-        setSelected((prev) => {
-          if (!prev) return null;
-          return data.find((d) => d.id === prev.id) ?? null;
-        });
-      },
-      () => { setLoading(false); setError(true); }
-    );
-    return unsub;
+      prevPendingRef.current = pendingCount;
+      initialLoadDone.current = true;
+      setInquiries(normalized);
+      setLoading(false);
+      setError(false);
+
+      setSelected((prev) => {
+        if (!prev) return null;
+        return normalized.find((d) => d.id === prev.id) ?? null;
+      });
+    } catch {
+      setLoading(false);
+      setError(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    loadInquiries();
+    const interval = setInterval(loadInquiries, 30_000);
+    return () => clearInterval(interval);
+  }, [loadInquiries]);
 
   const handleUpdateStatus = useCallback(async (inquiry: Inquiry, status: InquiryStatus) => {
     try {
-      await updateDocument("inquiries", inquiry.id, { status });
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch(`/api/inquiries/${inquiry.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error("Update failed");
+      await loadInquiries();
     } catch {
       toast({ variant: "destructive", title: "Failed to update status" });
     }
-  }, []);
+  }, [loadInquiries]);
 
   const handleDelete = useCallback(async (inquiry: Inquiry) => {
     try {
-      await deleteDocument("inquiries", inquiry.id);
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch(`/api/inquiries/${inquiry.id}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Delete failed");
       toast({ title: "Inquiry deleted" });
+      await loadInquiries();
     } catch {
       toast({ variant: "destructive", title: "Failed to delete inquiry" });
     }
-  }, []);
+  }, [loadInquiries]);
 
   // ── Stats ────────────────────────────────────────────────────────────────
   const total       = inquiries.length;
@@ -540,7 +572,7 @@ export default function InquiriesPage() {
           <div className="flex-1">
             <p className="text-sm font-semibold text-destructive">Could not load inquiries</p>
             <p className="text-xs text-destructive/70 mt-0.5">
-              Check your Firestore rules — publish the rules from <code className="bg-destructive/10 px-1 rounded">firestore.rules</code> in Firebase Console.
+              Failed to load inquiries from the API server. Check that the API server is running.
             </p>
           </div>
           <button onClick={() => window.location.reload()}

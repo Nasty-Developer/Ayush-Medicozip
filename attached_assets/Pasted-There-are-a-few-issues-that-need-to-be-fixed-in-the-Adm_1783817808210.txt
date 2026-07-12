@@ -1,0 +1,89 @@
+There are a few issues that need to be fixed in the Admin Panel and Catalogue.
+
+=========================================
+1. CATEGORIES ARE EMPTY
+=========================================
+
+The medicines have already been imported successfully (51,232+ medicines).
+
+However, the Categories page is still showing empty or incorrect data.
+
+Please audit the Categories module.
+
+Requirements:
+
+• Display every imported category correctly.
+• Show the actual medicine count for each category.
+• Clicking a category should display all medicines belonging to that category.
+• Do not show empty categories if medicines exist.
+• Ensure categories are loaded from the SQL database, not any old Firestore source.
+• Verify category mapping for all imported medicines.
+
+=========================================
+2. ADMIN STOCK MANAGEMENT
+=========================================
+
+The admin should be able to manually manage stock status from the Admin Panel.
+
+On every medicine record, add quick stock controls.
+
+Example:
+
+🟢 In Stock
+🟡 Low Stock
+🔴 Out of Stock
+
+Provide buttons or a dropdown to change the status instantly.
+
+Example:
+
+[ In Stock ]
+[ Low Stock ]
+[ Out of Stock ]
+
+When the admin changes the stock status:
+
+• Update the SQL database.
+• Update the customer website immediately.
+• Update search results.
+• Update category pages.
+• Update product details.
+
+=========================================
+3. INVENTORY PRIORITY
+=========================================
+
+On the customer website:
+
+• In Stock medicines should always appear first.
+• Low Stock medicines should appear after In Stock.
+• Out of Stock medicines should appear last.
+
+Do not display exact stock quantities to customers.
+
+Customers should only see:
+
+🟢 In Stock
+🟡 Low Stock
+🔴 Out of Stock
+
+=========================================
+4. FUTURE MEDIVISION SYNC
+=========================================
+
+If MediVision sync updates the stock later, the manual admin status should also update accordingly.
+
+Keep the manual stock controls compatible with future automatic inventory synchronization.
+
+=========================================
+5. TEST EVERYTHING
+=========================================
+
+Verify that:
+
+✓ Categories display correctly.
+✓ Medicines appear inside every category.
+✓ Medicine counts are correct.
+✓ Admin can change stock status.
+✓ Customer website updates immediately after the change.
+✓ Search reflects the updated stock status.

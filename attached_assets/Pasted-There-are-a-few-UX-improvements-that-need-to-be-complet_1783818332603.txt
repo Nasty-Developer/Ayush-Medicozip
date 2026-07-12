@@ -1,0 +1,91 @@
+There are a few UX improvements that need to be completed before production.
+
+====================================================
+1. RESTORE PWA INSTALL BUTTON
+====================================================
+
+Previously the website displayed a prominent button like:
+
+📱 Install App in 5 Seconds
+
+This button is now missing.
+
+Please investigate why.
+
+Requirements:
+
+• Verify the PWA configuration.
+• Verify the manifest.json.
+• Verify the service worker registration.
+• Verify the install prompt handling.
+• Restore the Install App button.
+
+The button should only appear if installation is supported.
+
+When clicked, it should trigger the browser's native PWA installation prompt.
+
+After installation, hide the button automatically.
+
+====================================================
+2. ADD "EXPLORE ALL MEDICINES" BUTTON
+====================================================
+
+On the Homepage Hero section, add a premium primary CTA:
+
+💊 Explore All Medicines
+
+This button should navigate directly to:
+
+/categories
+
+or
+
+the complete medicine catalogue.
+
+Use the existing website design language.
+
+Desktop:
+Place it alongside the existing action buttons.
+
+Mobile:
+Keep it easily accessible without cluttering the layout.
+
+====================================================
+3. HOMEPAGE CTA LAYOUT
+====================================================
+
+Suggested order:
+
+📞 Call Now
+📍 Get Directions
+💬 WhatsApp
+💊 Explore All Medicines
+📱 Install App
+
+Keep the layout clean, balanced and responsive.
+
+====================================================
+4. VERIFY PWA
+====================================================
+
+Test:
+
+✓ Install button appears when eligible.
+✓ Install works on Android.
+✓ Install works on desktop Chrome.
+✓ Service Worker registers correctly.
+✓ Offline page works.
+✓ Manifest icons load correctly.
+✓ App opens in standalone mode after installation.
+
+====================================================
+5. FINAL QA
+====================================================
+
+Before marking complete, verify:
+
+✓ Explore All Medicines button works.
+✓ Install App button works.
+✓ No console errors.
+✓ Mobile responsiveness remains excellent.
+✓ Lighthouse PWA checks pass.

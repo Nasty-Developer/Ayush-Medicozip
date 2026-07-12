@@ -287,7 +287,10 @@ export function parseSdfBuffers(files: {
     const prescriptionRequired = isPrescriptionRequired(product);
     const packInfo = formatPackInfo(product.packUnit, product.packQty);
 
-    if (product.categoryName) seenCategories.add(product.categoryName);
+    // Store the NORMALIZED category name so the DB receives "General Medicines",
+    // "Cosmetics", etc. — exactly matching what medicines.categoryName will be.
+    const normalizedCat = normalizeCategory(product.categoryName, product.name, product.companyName);
+    seenCategories.add(normalizedCat);
     if (product.companyName) seenBrands.add(product.companyName);
 
     medicines.push({

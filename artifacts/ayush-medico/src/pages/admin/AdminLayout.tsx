@@ -8,7 +8,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeToCollection, where } from "@/lib/firestoreHelpers";
 import DashboardPage from "./DashboardPage";
 import MedicinesPage from "./MedicinesPage";
 import CategoriesPage from "./CategoriesPage";
@@ -268,28 +267,27 @@ export default function AdminLayout() {
   const [newInquiries, setNewInquiries] = useState(0);
   const [pendingRequests, setPendingRequests] = useState(0);
 
-  // Real-time badge: pending inquiries
+  // Poll PostgreSQL inquiry counts for sidebar badges (replaces Firestore subscription)
   useEffect(() => {
     if (!user) return;
-    const unsub = subscribeToCollection(
-      "inquiries",
-      [where("status", "in", ["pending", "new"])],
-      (docs) => setNewInquiries(docs.length),
-      () => setNewInquiries(0)
-    );
-    return unsub;
-  }, [user]);
-
-  // Real-time badge: pending medicine requests (stored in "inquiries" with type="medicine-request")
-  useEffect(() => {
-    if (!user) return;
-    const unsub = subscribeToCollection(
-      "inquiries",
-      [where("type", "==", "medicine-request")],
-      (docs) => setPendingRequests(docs.filter((d: Record<string, unknown>) => d.status === "pending").length),
-      () => setPendingRequests(0)
-    );
-    return unsub;
+    let cancelled = false;
+    const fetchCounts = async () => {
+      try {
+        const token = await user.getIdToken?.();
+        const res = await fetch("/api/inquiries/counts", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as { newInquiries: number; pendingRequests: number };
+        setNewInquiries(data.newInquiries ?? 0);
+        setPendingRequests(data.pendingRequests ?? 0);
+      } catch {
+        // silently ignore — badges are non-critical
+      }
+    };
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30_000); // refresh every 30s
+    return () => { cancelled = true; clearInterval(interval); };
   }, [user]);
 
   if (loading) {

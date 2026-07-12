@@ -34,11 +34,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useRequestMedicine } from "@/context/RequestMedicineContext";
-import { addDocument, updateDocument } from "@/lib/firestoreHelpers";
 import { uploadPrescription, uploadRequestMedicinePhoto } from "@/lib/storageHelpers";
-import { isFirebaseConfigured } from "@/lib/firebase";
 import { checkDeliveryEligibility, STORE_LOCATION_LABEL } from "@/lib/deliveryZone";
-import { generateOrderId } from "@/lib/orderId";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import SignInModal from "@/components/customer/SignInModal";
 
@@ -145,20 +142,22 @@ export default function RequestMedicine() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerUser]);
 
-  // ── Save to Firestore ────────────────────────────────────────────────────────
-  // Writes to the "inquiries" collection (which has allow create: if true in
-  // Firebase Console) with type:"medicine-request" to separate from general
-  // inquiries. Returns immediately — prescription upload is fire-and-forget.
-  const saveToFirestore = async (
+  // ── Generate a local request ID (no Firestore needed) ───────────────────────
+  function generateRequestId(): string {
+    const now = new Date();
+    const datePart = now.toISOString().slice(0, 10).replace(/-/g, "");
+    const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `REQ-${datePart}-${rand}`;
+  }
+
+  // ── Save to PostgreSQL via REST API ──────────────────────────────────────────
+  // Replaces the old Firestore "inquiries" collection write.
+  // Prescription / photo files still upload to Firebase Storage (separate quota).
+  const saveToAPI = async (
     values: RequestFormValues,
     source: Source,
   ): Promise<string> => {
-    if (!isFirebaseConfigured) {
-      throw new Error(
-        "Firebase is not configured. Set VITE_FIREBASE_* environment variables.",
-      );
-    }
-    const requestId = await generateOrderId();
+    const requestId = generateRequestId();
     const fileToUpload = prescriptionFile; // capture before state clears
     const photoToUpload = medicinePhotoFile;
     const fullAddress = [
@@ -171,80 +170,67 @@ export default function RequestMedicine() {
       .join(", ");
     const eligibleAtSubmit = checkDeliveryEligibility(values.pincode).status === "eligible";
 
-    const docId = await addDocument("inquiries", {
-      type: "medicine-request", // differentiates from general inquiries
-      requestId,
-      customerName: values.customerName,
-      mobileNumber: values.mobileNumber,
-      whatsappNumber: values.whatsappSameAsMobile
-        ? values.mobileNumber
-        : values.whatsappNumber || values.mobileNumber,
-      houseNumber: values.houseNumber,
-      street: values.street,
-      landmark: values.landmark || "",
-      pincode: values.pincode,
-      fullAddress,
-      deliveryInstructions: values.deliveryInstructions || "",
-      deliveryEligible: eligibleAtSubmit,
-      medicineName: values.medicineName,
-      medicineStrength: values.medicineStrength || "",
-      medicineBrand: values.medicineBrand || "",
-      quantity: values.quantity,
-      notes: values.notes || "",
-      hasPrescription: !!fileToUpload,
-      prescriptionUrl: null,
-      prescriptionUploadStatus: fileToUpload ? "pending" : null,
-      medicinePhotoUrl: null,
-      medicinePhotoUploadStatus: photoToUpload ? "pending" : null,
-      medicinePrice: null,
-      deliveryCharge: null,
-      discount: null,
-      grandTotal: null,
-      paymentStatus: "not-applicable",
-      source,
-      status: "new",
-      // Optional customer-account link — only set when the customer is
-      // signed in at submit time. Anonymous submission still works exactly
-      // as before; these fields are simply omitted for guests. This is what
-      // lets "My Orders" find this request later via customerUid.
-      ...(customerUser
-        ? { customerUid: customerUser.uid, customerEmail: customerUser.email || null }
-        : {}),
+    const res = await fetch("/api/inquiries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "medicine-request",
+        inquiryId: requestId,
+        customerName: values.customerName,
+        mobileNumber: values.mobileNumber,
+        whatsappNumber: values.whatsappSameAsMobile
+          ? values.mobileNumber
+          : values.whatsappNumber || values.mobileNumber,
+        houseNumber: values.houseNumber,
+        street: values.street,
+        landmark: values.landmark || "",
+        pincode: values.pincode,
+        fullAddress,
+        deliveryInstructions: values.deliveryInstructions || "",
+        deliveryEligible: eligibleAtSubmit,
+        medicineName: values.medicineName,
+        medicineStrength: values.medicineStrength || "",
+        medicineBrand: values.medicineBrand || "",
+        quantity: values.quantity,
+        notes: values.notes || "",
+        hasPrescription: !!fileToUpload,
+        source,
+        status: "new",
+      }),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(err.error ?? "Failed to submit request");
+    }
 
     // Fire-and-forget uploads — never blocks channel launch
+    // Prescription/photo files upload to Firebase Storage (separate quota from Firestore)
+    // then patch the URL back to PG via REST
     if (fileToUpload) {
       void (async () => {
         try {
-          const url = await uploadPrescription(fileToUpload, docId);
-          await updateDocument("inquiries", docId, {
-            prescriptionUrl: url,
-            prescriptionUploadStatus: "uploaded",
+          const url = await uploadPrescription(fileToUpload, requestId);
+          await fetch(`/api/inquiries/${requestId}/prescription`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prescriptionUrl: url, hasPrescription: true }),
           });
         } catch (uploadErr) {
-          console.error(
-            "[RequestMedicine] Prescription upload failed:",
-            uploadErr,
-          );
-          void updateDocument("inquiries", docId, {
-            prescriptionUploadStatus: "failed",
-          }).catch(() => {});
+          console.error("[RequestMedicine] Prescription upload failed:", uploadErr);
         }
       })();
     }
     if (photoToUpload) {
       void (async () => {
         try {
-          const url = await uploadRequestMedicinePhoto(photoToUpload, docId);
-          await updateDocument("inquiries", docId, {
-            medicinePhotoUrl: url,
-            medicinePhotoUploadStatus: "uploaded",
+          const url = await uploadRequestMedicinePhoto(photoToUpload, requestId);
+          await fetch(`/api/inquiries/${requestId}/prescription`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ medicinePhotoUrl: url }),
           });
         } catch (uploadErr) {
           console.error("[RequestMedicine] Medicine photo upload failed:", uploadErr);
-          void updateDocument("inquiries", docId, {
-            medicinePhotoUploadStatus: "failed",
-          }).catch(() => {});
         }
       })();
     }
@@ -337,7 +323,7 @@ export default function RequestMedicine() {
     }
     setSubmitting("send");
     try {
-      const reqId = await saveToFirestore(values, "website");
+      const reqId = await saveToAPI(values, "website");
       setLastRequestId(reqId);
       toast({
         title: "✅ Request submitted!",
@@ -368,10 +354,10 @@ export default function RequestMedicine() {
     if (!requirePrescription()) return;
     setSubmitting("whatsapp");
     try {
-      await saveToFirestore(values, "whatsapp");
+      await saveToAPI(values, "whatsapp");
     } catch (err) {
       console.error("[RequestMedicine] WhatsApp save failed:", err);
-      // Non-fatal: open WhatsApp even if Firestore save fails
+      // Non-fatal: open WhatsApp even if API save fails
     }
     const message = encodeURIComponent(buildWAMessage(values));
     window.setTimeout(() => {
@@ -394,10 +380,10 @@ export default function RequestMedicine() {
     if (!requirePrescription()) return;
     setSubmitting("email");
     try {
-      await saveToFirestore(values, "email");
+      await saveToAPI(values, "email");
     } catch (err) {
       console.error("[RequestMedicine] Email save failed:", err);
-      // Non-fatal: open email even if Firestore save fails
+      // Non-fatal: open email even if API save fails
     }
     const subject = encodeURIComponent(`Medicine Request - Ayush Medico`);
     const body = encodeURIComponent(buildEmailBody(values));

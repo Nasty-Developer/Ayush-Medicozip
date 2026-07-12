@@ -11,8 +11,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { addDocument } from "@/lib/firestoreHelpers";
-import { isFirebaseConfigured } from "@/lib/firebase";
 
 const inquirySchema = z.object({
   customerName: z.string().min(2, "Please enter your name"),
@@ -65,24 +63,29 @@ export default function GeneralInquiry() {
     },
   });
 
-  const saveToFirestore = async (values: InquiryFormValues, source: SubmitSource): Promise<string> => {
-    if (!isFirebaseConfigured) {
-      throw new Error("Firebase is not configured. Set VITE_FIREBASE_* environment variables.");
-    }
+  // Save to PostgreSQL via REST API (replaces Firestore "inquiries" collection)
+  const saveToAPI = async (values: InquiryFormValues, source: SubmitSource): Promise<string> => {
     const inquiryId = generateInquiryId();
-    await addDocument("inquiries", {
-      type: "inquiry",                          // differentiates from medicine-request type
-      inquiryId,
-      customerName: values.customerName,
-      mobileNumber: values.mobileNumber,
-      email: values.email || "",
-      subject: values.subject,
-      message: values.message,
-      preferredContact: values.preferredContact,
-      source,
-      status: "pending",
-      channel: source === "website" ? "normal" : source, // backward-compat
+    const res = await fetch("/api/inquiries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "inquiry",
+        inquiryId,
+        customerName: values.customerName,
+        mobileNumber: values.mobileNumber,
+        email: values.email || "",
+        subject: values.subject,
+        message: values.message,
+        preferredContact: values.preferredContact,
+        source,
+        status: "pending",
+      }),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(err.error ?? "Failed to submit inquiry");
+    }
     return inquiryId;
   };
 
@@ -135,7 +138,7 @@ export default function GeneralInquiry() {
   const handleSubmit = async (values: InquiryFormValues) => {
     setSubmitting("send");
     try {
-      const id = await saveToFirestore(values, "website");
+      const id = await saveToAPI(values, "website");
       toast({
         title: "✅ Inquiry submitted!",
         description: `Your inquiry (${id}) has been received. We'll contact you via ${values.preferredContact}.`,
@@ -160,10 +163,10 @@ export default function GeneralInquiry() {
     setSubmitting("whatsapp");
     let id = "";
     try {
-      id = await saveToFirestore(values, "whatsapp");
+      id = await saveToAPI(values, "whatsapp");
     } catch (err) {
       console.error("[GeneralInquiry] WhatsApp save failed:", err);
-      // Non-fatal: open WhatsApp even if Firestore save fails
+      // Non-fatal: open WhatsApp even if API save fails
     }
     const msg = encodeURIComponent(buildWAMessage(values));
     window.setTimeout(() => {
@@ -178,10 +181,10 @@ export default function GeneralInquiry() {
     setSubmitting("email");
     let id = "";
     try {
-      id = await saveToFirestore(values, "email");
+      id = await saveToAPI(values, "email");
     } catch (err) {
       console.error("[GeneralInquiry] Email save failed:", err);
-      // Non-fatal: open email even if Firestore save fails
+      // Non-fatal: open email even if API save fails
     }
     const subject = encodeURIComponent(`Inquiry - ${values.subject} | Ayush Medico`);
     const body = encodeURIComponent(buildEmailBody(values));

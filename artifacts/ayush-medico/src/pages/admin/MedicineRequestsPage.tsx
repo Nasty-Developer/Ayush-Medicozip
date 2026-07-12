@@ -9,9 +9,7 @@ import {
   AlertCircle, ShieldCheck, IndianRupee, ChefHat, XCircle,
   MapPin, Image as ImageIcon, Save,
 } from "lucide-react";
-import {
-  subscribeToCollection, updateDocument, deleteDocument, orderBy, where
-} from "@/lib/firestoreHelpers";
+import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import type { RequestStatus } from "@/lib/orderStatus";
 import { buildStatusUpdateMessage } from "@/lib/whatsappMessages";
@@ -538,70 +536,113 @@ export default function MedicineRequestsPage() {
   const prevPendingRef = useRef(-1);
   const initialLoadDone = useRef(false);
 
-  useEffect(() => {
-    // Reads from the shared "inquiries" collection filtering by type.
-    // No orderBy to avoid requiring a composite Firestore index; sorted client-side.
-    const unsub = subscribeToCollection(
-      "inquiries",
-      [where("type", "==", "medicine-request")],
-      (docs) => {
-        const data = (docs as MedicineRequest[]).sort(
-          (a, b) => getTimestampSecs(b) - getTimestampSecs(a)
-        );
-        const pendingCount = data.filter((d) => d.status === "new").length;
+  // Normalize PG row → UI MedicineRequest type
+  const normalizeRow = (row: Record<string, unknown>): MedicineRequest => ({
+    ...row,
+    id: String(row.id),
+    medicineName: (row.medicineName as string) || "—",
+    quantity: (row.quantity as string) || "1",
+    source: (row.source as RequestSource) || "website",
+    status: (row.status as RequestStatus) || "new",
+    createdAt: row.createdAt
+      ? { seconds: Math.floor(new Date(row.createdAt as string).getTime() / 1000) }
+      : undefined,
+  } as MedicineRequest);
 
-        if (initialLoadDone.current && pendingCount > prevPendingRef.current && prevPendingRef.current >= 0) {
-          playChime();
-          toast({ title: "🔔 New Medicine Request", description: "A new request just arrived!" });
-        }
+  const loadRequests = useCallback(async () => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch("/api/inquiries?type=medicine-request", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Fetch failed");
+      const { data } = await res.json() as { data: Record<string, unknown>[] };
+      const normalized = (data ?? []).map(normalizeRow);
+      const pendingCount = normalized.filter((d) => d.status === "new").length;
 
-        prevPendingRef.current = pendingCount;
-        initialLoadDone.current = true;
-        setRequests(data);
-        setLoading(false);
-        setError(false);
+      if (initialLoadDone.current && pendingCount > prevPendingRef.current && prevPendingRef.current >= 0) {
+        playChime();
+        toast({ title: "🔔 New Medicine Request", description: "A new request just arrived!" });
+      }
 
-        setSelected((prev) => {
-          if (!prev) return null;
-          return data.find((d) => d.id === prev.id) ?? null;
-        });
-      },
-      () => { setLoading(false); setError(true); }
-    );
-    return unsub;
+      prevPendingRef.current = pendingCount;
+      initialLoadDone.current = true;
+      setRequests(normalized);
+      setLoading(false);
+      setError(false);
+
+      setSelected((prev) => {
+        if (!prev) return null;
+        return normalized.find((d) => d.id === prev.id) ?? null;
+      });
+    } catch {
+      setLoading(false);
+      setError(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    loadRequests();
+    const interval = setInterval(loadRequests, 30_000);
+    return () => clearInterval(interval);
+  }, [loadRequests]);
 
   const handleUpdateStatus = useCallback(async (req: MedicineRequest, status: RequestStatus) => {
     try {
-      await updateDocument("inquiries", req.id, { status });
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch(`/api/inquiries/${req.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error("Update failed");
+      await loadRequests();
     } catch (err) {
       console.error("[MedicineRequestsPage] Status update failed:", err);
       toast({ variant: "destructive", title: "Failed to update status" });
     }
-  }, []);
+  }, [loadRequests]);
 
   const handleSavePricing = useCallback(async (req: MedicineRequest, fields: { medicinePrice: number; deliveryCharge: number; discount: number; grandTotal: number }) => {
     try {
-      await updateDocument("inquiries", req.id, {
-        ...fields,
-        status: req.status === "new" || req.status === "pending-verification" ? "accepted" : req.status,
+      const token = await auth.currentUser?.getIdToken();
+      const newStatus = req.status === "new" || req.status === "pending-verification" ? "accepted" : req.status;
+      const res = await fetch(`/api/inquiries/${req.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ ...fields, status: newStatus }),
       });
+      if (!res.ok) throw new Error("Save failed");
       toast({ title: "Pricing saved", description: "Customer can now proceed to payment." });
+      await loadRequests();
     } catch (err) {
       console.error("[MedicineRequestsPage] Pricing save failed:", err);
       toast({ variant: "destructive", title: "Failed to save pricing" });
     }
-  }, []);
+  }, [loadRequests]);
 
   const handleDelete = useCallback(async (req: MedicineRequest) => {
     try {
-      await deleteDocument("inquiries", req.id);
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch(`/api/inquiries/${req.id}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Delete failed");
       toast({ title: "Request deleted" });
+      await loadRequests();
     } catch (err) {
       console.error("[MedicineRequestsPage] Delete failed:", err);
       toast({ variant: "destructive", title: "Failed to delete request" });
     }
-  }, []);
+  }, [loadRequests]);
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   const total       = requests.length;
@@ -685,7 +726,7 @@ export default function MedicineRequestsPage() {
           <div className="flex-1">
             <p className="text-sm font-semibold text-destructive">Could not load requests</p>
             <p className="text-xs text-destructive/70 mt-0.5">
-              Check your Firestore rules — ensure <code className="bg-destructive/10 px-1 rounded">medicine-requests</code> allows admin read.
+              Failed to load requests from the API server. Check that the API server is running.
             </p>
           </div>
           <button onClick={() => window.location.reload()}

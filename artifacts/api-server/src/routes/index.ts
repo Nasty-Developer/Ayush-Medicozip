@@ -8,6 +8,7 @@ import usersRouter     from "./users";
 import couponsRouter   from "./coupons";
 import syncRouter      from "./sync";
 import adminRouter     from "./admin";       // admin stats, companies, drug-groups, medicines CRUD
+import inquiriesRouter from "./inquiries";   // /api/inquiries — replaces Firestore "inquiries" collection
 
 const router: IRouter = Router();
 
@@ -25,5 +26,6 @@ router.use("/orders",    ordersRouter);
 router.use("/users",     usersRouter);
 router.use("/coupons",   couponsRouter);
 router.use("/sync",      syncRouter);
+router.use("/inquiries", inquiriesRouter);
 
 export default router;
