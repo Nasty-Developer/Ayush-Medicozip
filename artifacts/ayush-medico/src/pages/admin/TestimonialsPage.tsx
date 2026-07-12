@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Pencil, Trash2, X, Loader2, Star } from "lucide-react";
-import { getCollection, addDocument, updateDocument, deleteDocument, orderBy } from "@/lib/firestoreHelpers";
+import { authFetchJson } from "@/lib/apiAuth";
 import { useToast } from "@/hooks/use-toast";
 
 type Testimonial = {
@@ -114,8 +114,8 @@ export default function TestimonialsPage() {
 
   const load = async () => {
     try {
-      const docs = await getCollection("testimonials", [orderBy("order")], "testimonials");
-      setTestimonials(docs as Testimonial[]);
+      const rows = await authFetchJson<Array<Testimonial & { id: number }>>("/api/testimonials/all");
+      setTestimonials(rows.map((r) => ({ ...r, id: String(r.id) })));
     } finally {
       setLoading(false);
     }
@@ -126,10 +126,10 @@ export default function TestimonialsPage() {
   const handleSave = async (data: Omit<Testimonial, "id">) => {
     try {
       if (dialog.testimonial) {
-        await updateDocument("testimonials", dialog.testimonial.id, data, "testimonials");
+        await authFetchJson(`/api/testimonials/${dialog.testimonial.id}`, { method: "PUT", body: JSON.stringify(data) });
         toast({ title: "Testimonial updated" });
       } else {
-        await addDocument("testimonials", data, "testimonials");
+        await authFetchJson("/api/testimonials", { method: "POST", body: JSON.stringify(data) });
         toast({ title: "Testimonial added" });
       }
       await load();
@@ -142,7 +142,7 @@ export default function TestimonialsPage() {
   const handleDelete = async (id: string) => {
     setDeleting(id);
     try {
-      await deleteDocument("testimonials", id, "testimonials");
+      await authFetchJson(`/api/testimonials/${id}`, { method: "DELETE" });
       toast({ title: "Testimonial removed" });
       setTestimonials((p) => p.filter((t) => t.id !== id));
     } catch {
@@ -153,7 +153,7 @@ export default function TestimonialsPage() {
   };
 
   const handleToggle = async (t: Testimonial) => {
-    await updateDocument("testimonials", t.id, { enabled: !t.enabled }, "testimonials");
+    await authFetchJson(`/api/testimonials/${t.id}`, { method: "PUT", body: JSON.stringify({ enabled: !t.enabled }) });
     setTestimonials((p) => p.map((item) => item.id === t.id ? { ...item, enabled: !item.enabled } : item));
   };
 

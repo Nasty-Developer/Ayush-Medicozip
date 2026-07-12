@@ -17,7 +17,7 @@ import {
   getOrderPipelineIndex,
   type OrderStatus,
 } from "@/lib/orderStatus";
-import type { Timestamp } from "firebase/firestore";
+import type { Timestamp } from "@/lib/orderService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

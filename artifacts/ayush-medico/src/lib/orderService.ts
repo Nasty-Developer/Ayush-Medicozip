@@ -1,23 +1,11 @@
-// Order Service — Firestore CRUD for the `orders` collection.
-// This is the Phase 2 order system for cart-based checkout.
-// The existing prescription-based "inquiries" collection is NOT touched here.
+// Order Service — SQL-backed CRUD for the Phase 2 cart-based order system.
+// Talks to the api-server's /api/orders endpoints (PostgreSQL `orders` +
+// `order_items` tables) instead of Firestore. Exported function names and
+// shapes are kept identical to the previous Firestore implementation so
+// call sites (CheckoutPage, OrderDetailPage, MyOrdersModal, admin
+// OrdersPage) did not need to change.
 
-import {
-  collection,
-  doc,
-  addDoc,
-  updateDoc,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  query,
-  where,
-  orderBy,
-  limit,
-  Timestamp,
-  type Unsubscribe,
-} from "firebase/firestore";
-import { db } from "./firebase";
+import { authFetch, authFetchJson } from "./apiAuth";
 import type { OrderStatus } from "./orderStatus";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -32,6 +20,15 @@ export type DeliveryStatus =
   | "out-for-delivery"
   | "delivered"
   | "failed";
+
+// Lightweight Firestore-Timestamp-compatible shape — only `.seconds` is ever
+// read anywhere in the app (no `.toDate()` usage), so a plain object works.
+export type Timestamp = { seconds: number };
+
+function toTimestamp(iso: string | null | undefined): Timestamp | undefined {
+  if (!iso) return undefined;
+  return { seconds: Math.floor(new Date(iso).getTime() / 1000) };
+}
 
 export type OrderAddress = {
   fullName: string;
@@ -98,7 +95,7 @@ export type OrderDelivery = {
 };
 
 export type Order = {
-  id: string; // Firestore document ID
+  id: string; // numeric SQL id, stringified (kept as `id` for URL/route compatibility)
   orderId: string; // AYM-YYYY-NNNNNN
   customerId: string;
   customerName: string;
@@ -119,67 +116,84 @@ export type Order = {
 
 export type CreateOrderInput = Omit<Order, "id" | "createdAt" | "updatedAt">;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Row → Order mapping ──────────────────────────────────────────────────────
 
-function assertDb(): NonNullable<typeof db> {
-  if (!db) throw new Error("Firebase is not configured.");
-  return db;
+type OrderRow = {
+  id: number;
+  orderId: string;
+  customerId: string;
+  customerName: string;
+  customerEmail: string | null;
+  customerPhone: string;
+  address: OrderAddress;
+  pricing: OrderPricing;
+  payment: OrderPayment;
+  prescription: OrderPrescription;
+  delivery: OrderDelivery;
+  status: string;
+  notes: string | null;
+  source: "website" | "app";
+  createdAt: string;
+  updatedAt: string;
+  items?: (OrderItem & { id?: number; orderId?: number })[];
+};
+
+function mapRow(row: OrderRow): Order {
+  return {
+    id: String(row.id),
+    orderId: row.orderId,
+    customerId: row.customerId,
+    customerName: row.customerName,
+    customerEmail: row.customerEmail,
+    customerPhone: row.customerPhone,
+    address: row.address,
+    items: (row.items ?? []).map((i) => ({
+      medicineId: i.medicineId,
+      medicineName: i.medicineName,
+      categoryName: i.categoryName ?? undefined,
+      brandName: i.brandName ?? undefined,
+      quantity: i.quantity,
+      unitPrice: Number(i.unitPrice),
+      totalPrice: Number(i.totalPrice),
+      prescriptionRequired: i.prescriptionRequired,
+    })),
+    pricing: row.pricing,
+    payment: row.payment,
+    prescription: row.prescription,
+    delivery: row.delivery,
+    status: row.status as OrderStatus,
+    notes: row.notes ?? undefined,
+    source: row.source,
+    createdAt: toTimestamp(row.createdAt)!,
+    updatedAt: toTimestamp(row.updatedAt)!,
+  };
 }
 
 // ─── Order ID generation ──────────────────────────────────────────────────────
-// Generates AYM-YYYY-NNNNNN from the `orders` collection (not `inquiries`).
-
-const ORDER_PREFIX = "AYM";
-
-async function getNextOrderSequence(database: NonNullable<typeof db>): Promise<number> {
-  const year = new Date().getFullYear();
-  const q = query(
-    collection(database, "orders"),
-    where("orderId", ">=", `${ORDER_PREFIX}-${year}-000000`),
-    where("orderId", "<=", `${ORDER_PREFIX}-${year}-999999`),
-    orderBy("orderId", "desc"),
-    limit(1)
-  );
-  try {
-    const snap = await getDocs(q);
-    if (snap.empty) return 1;
-    const lastId: string = snap.docs[0].data().orderId as string;
-    const match = lastId.match(/(\d{6})$/);
-    return match ? parseInt(match[1], 10) + 1 : 1;
-  } catch {
-    return Math.floor(Date.now() / 1000) % 1000000;
-  }
-}
 
 export async function generateNewOrderId(): Promise<string> {
-  const database = assertDb();
-  const year = new Date().getFullYear();
-  const seq = await getNextOrderSequence(database);
-  return `${ORDER_PREFIX}-${year}-${String(seq).padStart(6, "0")}`;
+  const { orderId } = await authFetchJson<{ orderId: string }>("/api/orders/next-id");
+  return orderId;
 }
 
 // ─── CRUD ──────────────────────────────────────────────────────────────────────
 
 export async function createOrder(input: CreateOrderInput): Promise<string> {
-  const database = assertDb();
-  const ref = await addDoc(collection(database, "orders"), {
-    ...input,
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
+  const row = await authFetchJson<OrderRow>("/api/orders", {
+    method: "POST",
+    body: JSON.stringify(input),
   });
-  return ref.id;
+  return String(row.id);
 }
 
 export async function updateOrderStatus(
   docId: string,
   status: OrderStatus,
-  extra?: Record<string, unknown>
+  _extra?: Record<string, unknown>
 ): Promise<void> {
-  const database = assertDb();
-  await updateDoc(doc(database, "orders", docId), {
-    status,
-    updatedAt: Timestamp.now(),
-    ...(extra ?? {}),
+  await authFetchJson(`/api/orders/${docId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
   });
 }
 
@@ -187,128 +201,126 @@ export async function updateOrderPayment(
   docId: string,
   payment: Partial<OrderPayment>
 ): Promise<void> {
-  const database = assertDb();
-  const updates: Record<string, unknown> = { updatedAt: Timestamp.now() };
-  for (const [k, v] of Object.entries(payment)) {
-    updates[`payment.${k}`] = v;
-  }
-  await updateDoc(doc(database, "orders", docId), updates);
+  await authFetchJson(`/api/orders/${docId}/payment`, {
+    method: "PATCH",
+    body: JSON.stringify(payment),
+  });
 }
 
 export async function updateOrderDelivery(
   docId: string,
   delivery: Partial<OrderDelivery>
 ): Promise<void> {
-  const database = assertDb();
-  const updates: Record<string, unknown> = { updatedAt: Timestamp.now() };
-  for (const [k, v] of Object.entries(delivery)) {
-    updates[`delivery.${k}`] = v;
-  }
-  await updateDoc(doc(database, "orders", docId), updates);
+  await authFetchJson(`/api/orders/${docId}/delivery`, {
+    method: "PATCH",
+    body: JSON.stringify(delivery),
+  });
 }
 
 export async function updateOrderPrescription(
   docId: string,
   prescription: Partial<OrderPrescription>
 ): Promise<void> {
-  const database = assertDb();
-  const updates: Record<string, unknown> = { updatedAt: Timestamp.now() };
-  for (const [k, v] of Object.entries(prescription)) {
-    updates[`prescription.${k}`] = v;
-  }
-  await updateDoc(doc(database, "orders", docId), updates);
+  await authFetchJson(`/api/orders/${docId}/prescription`, {
+    method: "PATCH",
+    body: JSON.stringify(prescription),
+  });
 }
 
 export async function updateOrderFields(
   docId: string,
   fields: Record<string, unknown>
 ): Promise<void> {
-  const database = assertDb();
-  await updateDoc(doc(database, "orders", docId), {
-    ...fields,
-    updatedAt: Timestamp.now(),
+  await authFetchJson(`/api/orders/${docId}/fields`, {
+    method: "PATCH",
+    body: JSON.stringify(fields),
   });
 }
 
 export async function getOrderById(docId: string): Promise<Order | null> {
-  const database = assertDb();
-  const snap = await getDoc(doc(database, "orders", docId));
-  if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as Order;
+  const res = await authFetch(`/api/orders/${docId}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to fetch order: ${res.status}`);
+  return mapRow(await res.json());
 }
 
 export async function getOrderByOrderId(orderId: string): Promise<Order | null> {
-  const database = assertDb();
-  const q = query(
-    collection(database, "orders"),
-    where("orderId", "==", orderId),
-    limit(1)
-  );
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  return { id: snap.docs[0].id, ...snap.docs[0].data() } as Order;
+  const res = await authFetch(`/api/orders/by-order-id/${encodeURIComponent(orderId)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to fetch order: ${res.status}`);
+  return mapRow(await res.json());
 }
 
-// ─── Real-time subscriptions ──────────────────────────────────────────────────
+// ─── Polling-based "subscriptions" ────────────────────────────────────────────
+// Firestore's onSnapshot gave live updates; the SQL API is request/response,
+// so these poll on an interval while preserving the same callback signature
+// and an Unsubscribe-style cleanup function so existing call sites (which
+// expect `() => void` back) keep working unchanged.
+
+const POLL_INTERVAL_MS = 8000;
 
 export function subscribeToOrder(
   docId: string,
   onData: (order: Order | null) => void,
   onError?: (err: Error) => void
-): Unsubscribe {
-  if (!db) {
-    setTimeout(() => onData(null), 0);
-    return () => {};
-  }
-  return onSnapshot(
-    doc(db, "orders", docId),
-    (snap) => onData(snap.exists() ? ({ id: snap.id, ...snap.data() } as Order) : null),
-    onError
-  );
+): () => void {
+  let cancelled = false;
+  const tick = async () => {
+    try {
+      const order = await getOrderById(docId);
+      if (!cancelled) onData(order);
+    } catch (err) {
+      if (!cancelled) onError?.(err as Error);
+    }
+  };
+  tick();
+  const interval = setInterval(tick, POLL_INTERVAL_MS);
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
 }
 
 export function subscribeToCustomerOrders(
   customerId: string,
   onData: (orders: Order[]) => void,
   onError?: (err: Error) => void
-): Unsubscribe {
-  if (!db) {
-    setTimeout(() => onData([]), 0);
-    return () => {};
-  }
-  const q = query(
-    collection(db, "orders"),
-    where("customerId", "==", customerId)
-  );
-  return onSnapshot(
-    q,
-    (snap) => {
-      const orders = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() } as Order))
-        .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
-      onData(orders);
-    },
-    onError
-  );
+): () => void {
+  let cancelled = false;
+  const tick = async () => {
+    try {
+      const rows = await authFetchJson<OrderRow[]>(`/api/orders?customerId=${encodeURIComponent(customerId)}`);
+      if (!cancelled) onData(rows.map(mapRow));
+    } catch (err) {
+      if (!cancelled) onError?.(err as Error);
+    }
+  };
+  tick();
+  const interval = setInterval(tick, POLL_INTERVAL_MS);
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
 }
 
 // Admin: subscribe to all orders
 export function subscribeToAllOrders(
   onData: (orders: Order[]) => void,
   onError?: (err: Error) => void
-): Unsubscribe {
-  if (!db) {
-    setTimeout(() => onData([]), 0);
-    return () => {};
-  }
-  return onSnapshot(
-    collection(db, "orders"),
-    (snap) => {
-      const orders = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() } as Order))
-        .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
-      onData(orders);
-    },
-    onError
-  );
+): () => void {
+  let cancelled = false;
+  const tick = async () => {
+    try {
+      const rows = await authFetchJson<OrderRow[]>("/api/orders?limit=500");
+      if (!cancelled) onData(rows.map(mapRow));
+    } catch (err) {
+      if (!cancelled) onError?.(err as Error);
+    }
+  };
+  tick();
+  const interval = setInterval(tick, POLL_INTERVAL_MS);
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
 }

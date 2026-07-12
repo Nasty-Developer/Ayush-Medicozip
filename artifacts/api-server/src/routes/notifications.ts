@@ -10,11 +10,49 @@
  */
 
 import { Router, type Request, type Response } from "express";
+import { db } from "@workspace/db";
+import { notificationsTable, type InsertNotification } from "@workspace/db";
 import { sendWhatsAppMessage, type WhatsAppEvent } from "../lib/whatsappService";
 import { logger } from "../lib/logger";
-import { requireAuth } from "../middlewares/authMiddleware";
+import { requireAuth, type AuthenticatedRequest } from "../middlewares/authMiddleware";
 
 const router = Router();
+
+// ── POST /api/notifications ──────────────────────────────────────────────────
+// Logs a notification intent to PostgreSQL (replaces the Firestore
+// "notifications" collection write in the frontend's queueNotification()).
+router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const body = req.body as {
+      orderId?: string;
+      orderDocId?: number | string;
+      customerId?: string;
+      event?: string;
+      eventLabel?: string;
+      channels?: string[];
+      metadata?: Record<string, unknown>;
+    };
+    if (!body.orderId || !body.customerId || !body.event) {
+      res.status(400).json({ error: "orderId, customerId, and event are required" });
+      return;
+    }
+    const orderDbId = body.orderDocId != null ? Number(body.orderDocId) : null;
+    const [created] = await db.insert(notificationsTable).values({
+      orderId: body.orderId,
+      orderDbId: orderDbId != null && !isNaN(orderDbId) ? orderDbId : null,
+      customerId: body.customerId,
+      event: body.event,
+      eventLabel: body.eventLabel ?? null,
+      channels: body.channels ?? [],
+      status: "queued",
+      metadata: body.metadata ?? {},
+    } satisfies InsertNotification).returning();
+    res.status(201).json(created);
+  } catch (err) {
+    logger.error({ err }, "POST /notifications failed");
+    res.status(500).json({ error: "Failed to queue notification" });
+  }
+});
 
 router.post("/whatsapp", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const { to, event, params } = req.body as {

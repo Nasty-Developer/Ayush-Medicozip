@@ -1,9 +1,9 @@
 /**
  * Admin Dashboard
  *
- * Stats cards pull from two sources:
- *  - PostgreSQL (via /api/admin/stats): medicines, categories, companies, drug groups
- *  - Firestore (getCountFromServer):    inquiries, FAQs, testimonials
+ * All stats now pull from a single source of truth: /api/admin/stats
+ * (PostgreSQL) — medicines, categories, companies, drug groups, inquiries,
+ * FAQs, and testimonials all live in SQL.
  *
  * The dashboard re-fetches stats whenever the page mounts and also listens for
  * the custom "ayush:sync-complete" window event fired by InventorySyncPage after
@@ -17,8 +17,6 @@ import {
   TrendingUp, Clock, CheckCircle2, Tag, Building2, FlaskConical, RefreshCw,
 } from "lucide-react";
 import { Link } from "wouter";
-import { collection, query, where, getCountFromServer } from "firebase/firestore";
-import { db as fsDb } from "@/lib/firebase";
 
 type Stats = {
   medicines:  number;
@@ -87,41 +85,9 @@ export default function DashboardPage() {
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
-      // ── PostgreSQL counts ──────────────────────────────────────────────────
-      const pgRes  = await fetch("/api/admin/stats");
-      const pgData = pgRes.ok
-        ? (await pgRes.json() as { medicines: number; categories: number; companies: number; drugGroups: number })
-        : { medicines: 0, categories: 0, companies: 0, drugGroups: 0 };
-
-      // ── Firestore counts (inquiries, FAQs, testimonials) ───────────────────
-      let inquiries = 0, newInquiries = 0, faqs = 0, testimonials = 0;
-      if (fsDb) {
-        try {
-          const [inqAll, inqNew, faqSnap, testSnap] = await Promise.all([
-            getCountFromServer(collection(fsDb, "inquiries")),
-            getCountFromServer(query(collection(fsDb, "inquiries"), where("status", "==", "new"))),
-            getCountFromServer(collection(fsDb, "faqs")),
-            getCountFromServer(collection(fsDb, "testimonials")),
-          ]);
-          inquiries    = inqAll.data().count;
-          newInquiries = inqNew.data().count;
-          faqs         = faqSnap.data().count;
-          testimonials = testSnap.data().count;
-        } catch {
-          // Firebase not configured — leave counts at 0
-        }
-      }
-
-      setStats({
-        medicines:   pgData.medicines,
-        categories:  pgData.categories,
-        companies:   pgData.companies,
-        drugGroups:  pgData.drugGroups,
-        inquiries,
-        newInquiries,
-        faqs,
-        testimonials,
-      });
+      const res = await fetch("/api/admin/stats");
+      const data = res.ok ? await res.json() as Stats : INIT;
+      setStats(data);
     } finally {
       setLoading(false);
     }

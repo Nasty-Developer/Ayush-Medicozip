@@ -21,6 +21,7 @@ import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import {
   medicinesTable, categoriesTable, companiesTable, drugGroupsTable,
+  inquiriesTable, testimonialsTable, faqsTable,
   type InsertMedicine, type InsertCompany,
 } from "@workspace/db";
 import { eq, sql, count, ilike, or, and, asc } from "drizzle-orm";
@@ -33,17 +34,25 @@ const router = Router();
 
 router.get("/stats", async (_req: Request, res: Response): Promise<void> => {
   try {
-    const [[medRow], [catRow], [coRow], [dgRow]] = await Promise.all([
+    const [[medRow], [catRow], [coRow], [dgRow], [inqRow], [newInqRow], [faqRow], [testRow]] = await Promise.all([
       db.select({ count: count() }).from(medicinesTable).where(eq(medicinesTable.status, "active")),
       db.select({ count: count() }).from(categoriesTable),
       db.select({ count: count() }).from(companiesTable),
       db.select({ count: count() }).from(drugGroupsTable),
+      db.select({ count: count() }).from(inquiriesTable),
+      db.select({ count: count() }).from(inquiriesTable).where(eq(inquiriesTable.status, "pending")),
+      db.select({ count: count() }).from(faqsTable),
+      db.select({ count: count() }).from(testimonialsTable),
     ]);
     res.json({
       medicines:  medRow?.count  ?? 0,
       categories: catRow?.count  ?? 0,
       companies:  coRow?.count   ?? 0,
       drugGroups: dgRow?.count   ?? 0,
+      inquiries:    inqRow?.count    ?? 0,
+      newInquiries: newInqRow?.count ?? 0,
+      faqs:         faqRow?.count    ?? 0,
+      testimonials: testRow?.count   ?? 0,
     });
   } catch (err) {
     logger.error({ err }, "GET /admin/stats failed");

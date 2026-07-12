@@ -29,7 +29,7 @@ import {
 import { queueNotification } from "@/lib/notificationService";
 import { verifyUpiPayment } from "@/lib/paymentService";
 import { assignDeliveryPartner } from "@/lib/deliveryService";
-import type { Timestamp } from "firebase/firestore";
+import type { Timestamp } from "@/lib/orderService";
 import { useEffect } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

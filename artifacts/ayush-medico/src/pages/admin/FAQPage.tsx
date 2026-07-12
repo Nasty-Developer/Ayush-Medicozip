@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Pencil, Trash2, X, Loader2, GripVertical, HelpCircle } from "lucide-react";
-import { getCollection, addDocument, updateDocument, deleteDocument, orderBy } from "@/lib/firestoreHelpers";
+import { authFetchJson } from "@/lib/apiAuth";
 import { useToast } from "@/hooks/use-toast";
 
 type FAQ = { id: string; question: string; answer: string; order: number; enabled: boolean };
@@ -84,8 +84,8 @@ export default function FAQPage() {
 
   const load = async () => {
     try {
-      const docs = await getCollection("faqs", [orderBy("order")], "faqs");
-      setFaqs(docs as FAQ[]);
+      const rows = await authFetchJson<Array<FAQ & { id: number }>>("/api/faqs/all");
+      setFaqs(rows.map((r) => ({ ...r, id: String(r.id) })));
     } finally {
       setLoading(false);
     }
@@ -96,10 +96,10 @@ export default function FAQPage() {
   const handleSave = async (data: Omit<FAQ, "id">) => {
     try {
       if (dialog.faq) {
-        await updateDocument("faqs", dialog.faq.id, data, "faqs");
+        await authFetchJson(`/api/faqs/${dialog.faq.id}`, { method: "PUT", body: JSON.stringify(data) });
         toast({ title: "FAQ updated" });
       } else {
-        await addDocument("faqs", data, "faqs");
+        await authFetchJson("/api/faqs", { method: "POST", body: JSON.stringify(data) });
         toast({ title: "FAQ added" });
       }
       await load();
@@ -112,7 +112,7 @@ export default function FAQPage() {
   const handleDelete = async (id: string) => {
     setDeleting(id);
     try {
-      await deleteDocument("faqs", id, "faqs");
+      await authFetchJson(`/api/faqs/${id}`, { method: "DELETE" });
       toast({ title: "FAQ removed" });
       setFaqs((p) => p.filter((f) => f.id !== id));
     } catch {
@@ -123,7 +123,7 @@ export default function FAQPage() {
   };
 
   const handleToggle = async (faq: FAQ) => {
-    await updateDocument("faqs", faq.id, { enabled: !faq.enabled }, "faqs");
+    await authFetchJson(`/api/faqs/${faq.id}`, { method: "PUT", body: JSON.stringify({ enabled: !faq.enabled }) });
     setFaqs((p) => p.map((f) => f.id === faq.id ? { ...f, enabled: !f.enabled } : f));
   };
 

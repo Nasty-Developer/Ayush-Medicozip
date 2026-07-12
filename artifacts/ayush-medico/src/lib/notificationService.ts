@@ -1,7 +1,10 @@
 // Notification Service — Architecture for multi-channel customer notifications.
 //
-// Currently all dispatch methods are placeholders that log to Firestore's
-// `notifications` collection only. No actual messages are sent.
+// Currently all dispatch methods are placeholders that log to the SQL
+// `order_notifications` table only (via POST /api/notifications). No actual
+// messages are sent from here — WhatsApp send-outs are triggered separately
+// by the admin panel's manual "Send WhatsApp" buttons (see whatsappService.ts
+// / POST /api/notifications/whatsapp).
 //
 // Future integration points:
 //   WhatsApp: Twilio / Interakt / WATI API
@@ -9,12 +12,7 @@
 //   Email:    SendGrid / Nodemailer via api-server
 //   Push:     Firebase Cloud Messaging (FCM)
 
-import {
-  collection,
-  addDoc,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "./firebase";
+import { authFetch } from "./apiAuth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,7 +58,7 @@ const EVENT_LABELS: Record<NotificationEvent, string> = {
 // ─── Dispatch ─────────────────────────────────────────────────────────────────
 
 /**
- * Queues a notification in Firestore and logs the intent.
+ * Queues a notification in PostgreSQL and logs the intent.
  * Future: dispatches to actual channels via api-server webhooks.
  */
 export async function queueNotification(input: NotificationInput): Promise<void> {
@@ -69,19 +67,18 @@ export async function queueNotification(input: NotificationInput): Promise<void>
   );
 
   try {
-    if (db) {
-      await addDoc(collection(db, "notifications"), {
+    await authFetch("/api/notifications", {
+      method: "POST",
+      body: JSON.stringify({
         orderId: input.orderId,
         orderDocId: input.orderDocId,
         customerId: input.customerId,
         event: input.event,
         eventLabel: EVENT_LABELS[input.event] ?? input.event,
         channels: input.channels,
-        status: "queued",
         metadata: input.metadata ?? {},
-        createdAt: Timestamp.now(),
-      });
-    }
+      }),
+    });
   } catch (err) {
     console.error("[NotificationService] Failed to queue notification:", err);
   }

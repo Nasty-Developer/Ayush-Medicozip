@@ -93,6 +93,35 @@ router.patch("/:inquiryId/prescription", async (req: Request, res: Response): Pr
   }
 });
 
+// ── GET /api/inquiries/lookup ─────────────────────────────────────────────────
+// Public — order tracking page. Requires BOTH inquiryId and mobile number to
+// match the same record; never reveals which of the two was wrong (generic
+// 404 on any mismatch) to prevent enumeration of order data.
+router.get("/lookup", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const inquiryId = String(req.query.inquiryId ?? "").trim().toUpperCase();
+    const mobile = String(req.query.mobile ?? "").trim().replace(/\D/g, "").slice(-10);
+    if (!inquiryId || !mobile) {
+      res.status(400).json({ error: "inquiryId and mobile are required" });
+      return;
+    }
+
+    const [row] = await db.select().from(inquiriesTable).where(eq(inquiriesTable.inquiryId, inquiryId));
+    if (!row) { res.status(404).json({ error: "Order not found" }); return; }
+
+    const storedDigits = (row.mobileNumber || "").replace(/\D/g, "").slice(-10);
+    if (!storedDigits || storedDigits !== mobile) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    res.json(row);
+  } catch (err) {
+    logger.error({ err }, "GET /inquiries/lookup failed");
+    res.status(500).json({ error: "Order not found" });
+  }
+});
+
 // ── GET /api/inquiries/counts ─────────────────────────────────────────────────
 // Admin: badge counts for sidebar
 router.get(

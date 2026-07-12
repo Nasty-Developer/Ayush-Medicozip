@@ -9,6 +9,10 @@ import couponsRouter   from "./coupons";
 import syncRouter      from "./sync";
 import adminRouter     from "./admin";       // admin stats, companies, drug-groups, medicines CRUD
 import inquiriesRouter from "./inquiries";   // /api/inquiries — replaces Firestore "inquiries" collection
+import addressesRouter from "./addresses";   // /api/addresses — replaces Firestore userAddresses subcollection
+import testimonialsRouter from "./testimonials"; // /api/testimonials — replaces Firestore "testimonials" collection
+import faqsRouter      from "./faqs";        // /api/faqs — replaces Firestore "faqs" collection
+import notificationsRouter from "./notifications"; // /api/notifications — order event log + WhatsApp dispatch
 
 const router: IRouter = Router();
 
@@ -27,5 +31,9 @@ router.use("/users",     usersRouter);
 router.use("/coupons",   couponsRouter);
 router.use("/sync",      syncRouter);
 router.use("/inquiries", inquiriesRouter);
+router.use("/addresses", addressesRouter);
+router.use("/testimonials", testimonialsRouter);
+router.use("/faqs",      faqsRouter);
+router.use("/notifications", notificationsRouter);
 
 export default router;

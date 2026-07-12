@@ -13,8 +13,6 @@ import {
   MapPin,
   LockKeyhole,
 } from "lucide-react";
-import { getCollection, where } from "@/lib/firestoreHelpers";
-import { isFirebaseConfigured } from "@/lib/firebase";
 import { STATUS_LABELS, isNegativeStatus, getPipelineIndex, type RequestStatus } from "@/lib/orderStatus";
 import OrderStatusTimeline, { NegativeStatusBanner } from "@/components/customer/OrderStatusTimeline";
 import WaitingBanner from "@/components/customer/WaitingBanner";
@@ -57,34 +55,42 @@ function formatDate(secs?: number) {
 
 // ─── Lookup ───────────────────────────────────────────────────────────────────
 // SECURITY: tracking requires BOTH the Order ID and the Mobile Number to
-// match the same Firestore document. We never reveal which of the two was
-// wrong — a mismatch on either (or both) returns the same generic message.
+// match the same record. We never reveal which of the two was wrong — a
+// mismatch on either (or both) returns the same generic message. The
+// api-server's GET /api/inquiries/lookup endpoint enforces this same rule
+// server-side.
 //
 // FUTURE AUTH: this function is the natural seam for swapping in an
 // authenticated lookup later (e.g. Firebase Phone Auth) — once a customer is
-// signed in, this could instead query `where("customerUid", "==", uid)` to
-// list their full order history, with no changes needed to the rendering
-// code below.
+// signed in, this could instead query their own order history by uid, with
+// no changes needed to the rendering code below.
 async function lookupOrder(orderId: string, mobileNumber: string): Promise<TrackedRequest | null> {
   const normalizedId = orderId.trim().toUpperCase();
   const normalizedMobile = mobileNumber.trim();
 
-  const docs = await getCollection(
-    "inquiries",
-    [where("requestId", "==", normalizedId)],
-    `track_${normalizedId}`,
+  const res = await fetch(
+    `/api/inquiries/lookup?inquiryId=${encodeURIComponent(normalizedId)}&mobile=${encodeURIComponent(normalizedMobile)}`
   );
-  if (!docs.length) return null;
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Lookup failed: ${res.status}`);
 
-  const doc = docs[0] as TrackedRequest;
-  // Compare only the last 10 digits so formatting differences (+91, spaces,
-  // dashes) between what the customer typed and what's stored don't cause a
-  // false mismatch.
-  const storedDigits = (doc.mobileNumber || "").replace(/\D/g, "").slice(-10);
-  const inputDigits = normalizedMobile.replace(/\D/g, "").slice(-10);
-  if (!storedDigits || storedDigits !== inputDigits) return null;
-
-  return doc;
+  const row = await res.json();
+  return {
+    id: String(row.id),
+    requestId: row.inquiryId,
+    customerName: row.customerName,
+    mobileNumber: row.mobileNumber,
+    medicineName: row.medicineName,
+    quantity: row.quantity,
+    fullAddress: row.fullAddress,
+    status: row.status,
+    medicinePrice: row.medicinePrice,
+    deliveryCharge: row.deliveryCharge,
+    discount: row.discount,
+    grandTotal: row.grandTotal,
+    createdAt: row.createdAt ? { seconds: Math.floor(new Date(row.createdAt).getTime() / 1000) } : undefined,
+    updatedAt: row.updatedAt ? { seconds: Math.floor(new Date(row.updatedAt).getTime() / 1000) } : undefined,
+  } satisfies TrackedRequest;
 }
 
 function useOrderLookup() {
@@ -99,10 +105,6 @@ function useOrderLookup() {
     setData(null);
     setSearched(true);
     try {
-      if (!isFirebaseConfigured) {
-        setError("Tracking is temporarily unavailable.");
-        return;
-      }
       const result = await lookupOrder(orderId, mobileNumber);
       if (!result) {
         setError(GENERIC_NOT_FOUND);
