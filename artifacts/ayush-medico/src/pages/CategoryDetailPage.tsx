@@ -125,42 +125,83 @@ export default function CategoryDetailPage() {
           </BreadcrumbList>
         </Breadcrumb>
 
-        <Link href="/categories">
-          <a className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary mb-6 transition-colors group">
-            <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
-            Browse Medicines
-          </a>
+        <Link
+          href="/categories"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary mb-6 transition-colors group"
+        >
+          <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+          Browse Medicines
         </Link>
 
         {/* ── Category hero ─────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}
-          className={`rounded-3xl bg-gradient-to-br ${colors.light} border border-border p-10 lg:p-14 mb-10 text-center`}
+          className={`relative rounded-3xl overflow-hidden border border-border mb-10 ${
+            category.imageUrl ? "" : `bg-gradient-to-br ${colors.light} p-10 lg:p-14 text-center`
+          }`}
         >
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }}
-            className={`inline-flex items-center justify-center p-5 rounded-3xl bg-gradient-to-br ${colors.gradient} shadow-2xl mb-6`}
-          >
-            <span className="text-5xl leading-none" role="img" aria-label={category.name}>
-              {category.icon || "💊"}
-            </span>
-          </motion.div>
-
-          <h1
-            className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4"
-            style={{ fontFamily: "'Poppins', sans-serif" }}
-          >
-            {category.name}
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            {category.description ||
-              `Explore our full range of ${category.name.toLowerCase()} — genuine, trusted, and always available.`}
-          </p>
-
-          {!medicinesLoading && medicines.length > 0 && (
-            <p className="mt-4 text-sm font-semibold text-primary">
-              {medicines.length}{hasMore ? "+" : ""} medicine{medicines.length === 1 ? "" : "s"} in this category
-            </p>
+          {/* Photo banner (when admin has uploaded a category image) */}
+          {category.imageUrl ? (
+            <>
+              <div className="relative h-52 sm:h-64 lg:h-72 w-full">
+                <img
+                  src={category.imageUrl}
+                  alt={category.name}
+                  className="w-full h-full object-cover"
+                />
+                {/* Gradient overlay for legibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              </div>
+              <div className="px-8 pb-8 pt-4 relative -mt-16">
+                <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${colors.gradient} shadow-xl mb-4 border-2 border-white/20`}>
+                  <span className="text-3xl leading-none" role="img" aria-label={category.name}>
+                    {category.icon || "💊"}
+                  </span>
+                </div>
+                <h1
+                  className="text-3xl sm:text-4xl font-bold text-white drop-shadow-md mb-2"
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
+                  {category.name}
+                </h1>
+                <p className="text-white/80 text-base max-w-2xl">
+                  {category.description ||
+                    `Explore our full range of ${category.name.toLowerCase()} — genuine, trusted, and always available.`}
+                </p>
+                {!medicinesLoading && medicines.length > 0 && (
+                  <p className="mt-3 text-sm font-semibold text-white/90">
+                    {medicines.length}{hasMore ? "+" : ""} medicine{medicines.length === 1 ? "" : "s"} available
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            /* Gradient fallback (no photo yet) */
+            <>
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }}
+                className={`inline-flex items-center justify-center p-5 rounded-3xl bg-gradient-to-br ${colors.gradient} shadow-2xl mb-6`}
+              >
+                <span className="text-5xl leading-none" role="img" aria-label={category.name}>
+                  {category.icon || "💊"}
+                </span>
+              </motion.div>
+              <h1
+                className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4"
+                style={{ fontFamily: "'Poppins', sans-serif" }}
+              >
+                {category.name}
+              </h1>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                {category.description ||
+                  `Explore our full range of ${category.name.toLowerCase()} — genuine, trusted, and always available.`}
+              </p>
+              {!medicinesLoading && medicines.length > 0 && (
+                <p className="mt-4 text-sm font-semibold text-primary">
+                  {medicines.length}{hasMore ? "+" : ""} medicine{medicines.length === 1 ? "" : "s"} in this category
+                </p>
+              )}
+            </>
           )}
         </motion.div>
 

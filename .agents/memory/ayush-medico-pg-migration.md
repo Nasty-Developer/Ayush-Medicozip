@@ -47,7 +47,17 @@ Authentication, Users, Orders, Medicine Requests, Wishlist, Testimonials, Announ
 ~13k medicines: expected ~10–30 seconds, no quota limits, no delays. Uses batch upserts of 500 medicines per batch with `ON CONFLICT (product_code) DO UPDATE`.
 
 ## Admin dashboard category count
-`DashboardPage.tsx` still queries Firestore `categories` count — this will show 0 after migration (minor cosmetic issue, lower priority to fix).
+`DashboardPage.tsx` now reads medicine count by summing `categories[].count` from the API, and categories count from `categories.length`. Firestore no longer queried for these two stats.
+
+## Category image system (implemented)
+- 21 AI-generated PNGs in `artifacts/ayush-medico/public/category-images/` (10 original + 11 new)
+- `categories.image_url` in PostgreSQL stores the active image for each category
+- `resolveMedicineImage(imageUrl, categoryImageUrl, categoryName)` — 3-arg priority chain: medicine-level → category DB image → keyword PNG → SVG emoji fallback
+- `CategoryMedicine.categoryImageUrl` — API joins categories table and returns imageUrl alongside each medicine
+- `CategoryDetailPage` shows a full-width photo banner when `category.imageUrl` is set; falls back to gradient+icon when not
+- Admin `CategoriesPage` has per-row image thumbnail + upload button (Cloudinary, same preset as medicine images)
+- `categoryNormalizer.ts` in api-server maps raw SDF clinical names (ANALGESICS, ANTI-INFECTIVES, etc.) + company/product name patterns to 21 consumer-friendly categories on every import
+- All 15 existing DB categories seeded with their `imageUrl` via direct SQL UPDATE
 
 ## How to apply
 Run SDF import via admin panel → Inventory Sync. Upload PRODUCT.SDF + STOCK.SDF, optionally COMPANY.SDF + CATEGORY.SDF + DRUG.SDF. Everything imports to PostgreSQL.

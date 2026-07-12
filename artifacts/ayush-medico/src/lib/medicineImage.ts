@@ -1,19 +1,55 @@
 /**
- * Shared placeholder images for medicines that don't have a real photo yet
- * (mainly the ~51,000 MediVision Gold imports, which never ship product
- * photography).
+ * medicineImage.ts
  *
- * Priority order when resolving what image to show:
- *  1. Real `imageUrl` stored on the Firestore document (admin upload).
- *  2. AI-generated category hero image (one per category, served as a static
- *     asset from /category-images/*.png — generated from `public/category-images/`).
- *  3. Inline SVG emoji placeholder (instant, zero network requests, used for
- *     categories that don't yet have a generated image).
- *  4. Generic medicine SVG fallback.
+ * Shared image resolution for medicines that don't have a real product photo.
  *
- * Medicines that get a real `imageUrl` simply use that URL instead — the
- * placeholder chain is only reached when `imageUrl` is empty or missing.
+ * Priority order when resolving what image to show for a medicine:
+ *  1. Real `imageUrl` stored on the medicine record (admin-uploaded, Cloudinary URL).
+ *  2. Category `imageUrl` stored in the categories table (admin-uploaded per category).
+ *  3. Static AI-generated PNG from /category-images/ — matched by category name.
+ *  4. Inline SVG emoji placeholder — zero network, instant, for unrecognised categories.
+ *  5. Generic medicine capsule SVG fallback.
+ *
+ * Admin-managed flags (featured, special, newArrival) can have their own imageUrl
+ * — those still flow through priority 1.
  */
+
+// ── Static category image mapping ────────────────────────────────────────────
+// Maps keyword patterns against the category name to pick a pre-generated PNG.
+// Order matters — first match wins.
+
+const CATEGORY_IMAGES: Array<{ keywords: string[]; image: string }> = [
+  { keywords: ["baby", "infant", "neonatal", "paediatric", "pediatric"],       image: "/category-images/baby-care.png"       },
+  { keywords: ["oral care", "dental", "toothpaste", "mouthwash", "toothbrush"], image: "/category-images/oral-care.png"       },
+  { keywords: ["skin care", "skincare", "derma", "moistur", "sunscreen", "fairness", "acne", "complexion"], image: "/category-images/skin-care.png" },
+  { keywords: ["hair care", "haircare", "shampoo", "conditioner", "hair oil", "scalp"],                     image: "/category-images/hair-care.png" },
+  { keywords: ["first aid", "bandage", "antiseptic", "wound", "dressing", "gauze"],                         image: "/category-images/first-aid.png" },
+  { keywords: ["diabet", "glucomet", "insulin", "blood sugar"],                image: "/category-images/diabetes-care.png"   },
+  { keywords: ["personal care", "soap", "deodorant", "body wash", "hygiene", "sanitizer"], image: "/category-images/personal-care.png" },
+  { keywords: ["supplement", "vitamin", "mineral", "calcium", "omega", "probiotic", "nutraceutical"], image: "/category-images/nutrition.png" },
+  { keywords: ["ors", "rehydration", "electrolyte", "health drink", "sports drink", "energy drink", "glucon"], image: "/category-images/beverages.png" },
+  { keywords: ["food", "nutrition", "honey", "cereal", "oat", "biscuit", "horlicks", "bournvita"],          image: "/category-images/food-nutrition.png" },
+  { keywords: ["protein", "whey", "casein", "protinex", "ensure", "pediasure", "mass gainer"],              image: "/category-images/protein-powder.png" },
+  { keywords: ["ayurved", "herbal", "homeopath", "unani", "siddha", "chyawan", "patanjali", "dabur"],       image: "/category-images/ayurvedic.png"       },
+  { keywords: ["medical device", "equipment", "thermometer", "bp monitor", "nebulizer", "oximeter", "glucometer", "weighing"], image: "/category-images/medical-devices.png" },
+  { keywords: ["women", "female", "sanitary", "feminine", "gynae", "menstrual", "maternity", "obstetric"],  image: "/category-images/women-care.png"      },
+  { keywords: ["cosmetic", "beauty", "makeup", "lipstick", "foundation", "kajal", "mascara"],               image: "/category-images/cosmetics.png"       },
+  { keywords: ["eye", "ear", "nasal", "ophthalm", "aural", "otic", "ent", "rhinitis", "sinusitis"],        image: "/category-images/eye-ear-nasal.png"   },
+  { keywords: ["cardiac", "heart", "cardio", "antihypertensive", "hypertension", "cholesterol", "statin"],  image: "/category-images/cardiac-care.png"    },
+  { keywords: ["respiratory", "asthma", "inhaler", "bronch", "cough", "copd", "lung"],                     image: "/category-images/respiratory.png"     },
+  { keywords: ["gastro", "digestive", "antacid", "laxative", "constipation", "diarrhoea", "liver", "ulcer", "ibs"], image: "/category-images/gastro-care.png" },
+  { keywords: ["pain relief", "analgesic", "nsaid", "anti-inflammatory", "muscle relaxant", "antipyretic"],  image: "/category-images/pain-relief.png"    },
+  // Surgical / medical consumables
+  { keywords: ["surgical", "surgicals", "gloves", "mask", "ppe", "sterile", "suture", "cannula"], image: "/category-images/first-aid.png" },
+  // Homeopathic / Unani
+  { keywords: ["homeopathic", "homeopath", "unani", "unani medicine"], image: "/category-images/ayurvedic.png" },
+  // IV fluids / infusion
+  { keywords: ["iv fluid", "intravenous", "infusion", "saline", "dextrose fluid"], image: "/category-images/general-medicines.png" },
+  // General medicines / clinical catch-all (also handles raw SDF names)
+  { keywords: ["allopathic", "allopathy", "general medicines", "general", "generics", "antibiotic", "anti-infective", "antifungal", "antiviral", "antimicrobial", "antihistamine", "banned drug", "nrx", "tuberculosis", "veternery", "veterinary"], image: "/category-images/general-medicines.png" },
+];
+
+// ── SVG emoji fallback builder ─────────────────────────────────────────────────
 
 function buildPlaceholderSvg(emoji: string, colorFrom: string, colorTo: string): string {
   const svg = `
@@ -36,141 +72,48 @@ function buildPlaceholderSvg(emoji: string, colorFrom: string, colorTo: string):
   return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
 }
 
-/** Generic fallback used when no real image or category match is found. */
+/** Generic capsule fallback — used when no category match is found at all. */
 export const DEFAULT_MEDICINE_IMAGE = buildPlaceholderSvg("💊", "#0d9488", "#14b8a6");
 
-/**
- * Category image mapping.
- *
- * `image` is either:
- *   - A path to an AI-generated PNG in /public/category-images/ (served as
- *     a static asset at /category-images/<name>.png), or
- *   - An inline SVG data URI for categories not yet covered by AI images.
- *
- * Keys are matched against a medicine's `categoryName` using case-insensitive
- * substring matching so slightly different MediVision labels (e.g.
- * "Baby Care Products" → matches "baby") still map correctly.
- */
-const CATEGORY_PLACEHOLDERS: Array<{ keywords: string[]; image: string }> = [
-  {
-    keywords: ["baby", "infant", "neonatal"],
-    image: "/category-images/baby-care.png",
-  },
-  {
-    keywords: ["skin care", "skincare", "face wash", "moistur", "sunscreen", "complexion", "fairness", "acne", "derma"],
-    image: "/category-images/skin-care.png",
-  },
-  {
-    keywords: ["hair care", "haircare", "shampoo", "conditioner", "hair oil", "hair serum"],
-    image: "/category-images/hair-care.png",
-  },
-  {
-    keywords: ["oral care", "dental", "toothpaste", "mouthwash", "toothbrush"],
-    image: "/category-images/oral-care.png",
-  },
-  {
-    keywords: ["first aid", "bandage", "antiseptic", "wound", "dressing", "cotton", "gauze"],
-    image: "/category-images/first-aid.png",
-  },
-  {
-    keywords: ["diabet", "glucose", "glucometer", "insulin", "blood sugar"],
-    image: "/category-images/diabetes-care.png",
-  },
-  {
-    keywords: ["personal care", "toiletries", "hygiene", "soap", "deodorant", "body wash"],
-    image: "/category-images/personal-care.png",
-  },
-  {
-    keywords: ["supplement", "nutraceutical", "protein", "vitamin", "mineral", "omega", "probiotic"],
-    image: "/category-images/nutrition.png",
-  },
-  {
-    keywords: ["beverage", "ors", "rehydration", "electrolyte", "energy drink", "health drink"],
-    image: "/category-images/beverages.png",
-  },
-  {
-    keywords: ["food", "nutrition", "grocery", "cereal", "honey", "oat", "biscuit", "bread", "peanut"],
-    image: "/category-images/food-nutrition.png",
-  },
-  {
-    keywords: ["ayurved", "herbal", "homeopath", "chyawan", "unani", "siddha"],
-    image: buildPlaceholderSvg("🌿", "#059669", "#34d399"),
-  },
-  {
-    keywords: ["device", "equipment", "instrument", "thermometer", "bp monitor", "nebulizer", "oximeter", "medical device"],
-    image: buildPlaceholderSvg("🩺", "#2563eb", "#60a5fa"),
-  },
-  {
-    keywords: ["women", "female", "sanitary", "feminine", "gynae", "maternity", "menstrual"],
-    image: buildPlaceholderSvg("🌸", "#ec4899", "#f9a8d4"),
-  },
-  {
-    keywords: ["men", "shav", "beard", "masculin"],
-    image: buildPlaceholderSvg("🧔", "#1d4ed8", "#93c5fd"),
-  },
-  {
-    keywords: ["pain relief", "analgesic", "muscle", "anti-inflammatory", "nsaid", "pain"],
-    image: buildPlaceholderSvg("🩹", "#dc2626", "#f87171"),
-  },
-  {
-    keywords: ["surgical", "gloves", "mask", "sanitizer", "ppe", "sterile"],
-    image: buildPlaceholderSvg("🧤", "#0891b2", "#67e8f9"),
-  },
-  {
-    keywords: ["eye", "ear", "nasal", "ent", "ophthalm", "aural"],
-    image: buildPlaceholderSvg("👁", "#7c3aed", "#c4b5fd"),
-  },
-  {
-    keywords: ["cosmetic", "beauty", "makeup", "lipstick", "foundation"],
-    image: buildPlaceholderSvg("💄", "#f43f5e", "#fb7185"),
-  },
-  {
-    keywords: ["antibiotic", "antifungal", "antiviral", "antimicrobial", "antiparasit"],
-    image: buildPlaceholderSvg("💉", "#dc2626", "#f87171"),
-  },
-  {
-    keywords: ["cardiac", "heart", "cardio", "hypertension", "antihypertensive"],
-    image: buildPlaceholderSvg("❤️", "#ef4444", "#fca5a5"),
-  },
-  {
-    keywords: ["respiratory", "asthma", "inhaler", "bronch", "cough", "lung"],
-    image: buildPlaceholderSvg("🫁", "#0284c7", "#7dd3fc"),
-  },
-  {
-    keywords: ["gastro", "digestive", "antacid", "constipation", "laxative", "stomach", "liver"],
-    image: buildPlaceholderSvg("🫁", "#16a34a", "#86efac"),
-  },
-  {
-    keywords: ["neuro", "brain", "nerve", "sedative", "sleep", "anxiety", "psycho"],
-    image: buildPlaceholderSvg("🧠", "#7c3aed", "#a78bfa"),
-  },
-  {
-    keywords: ["thyroid", "hormone", "endocrine"],
-    image: buildPlaceholderSvg("⚗️", "#0891b2", "#22d3ee"),
-  },
-];
+// ── Public API ────────────────────────────────────────────────────────────────
 
-/** Pick the best placeholder image for a given category name. */
-export function resolveCategoryPlaceholder(categoryName?: string | null): string {
-  if (!categoryName) return DEFAULT_MEDICINE_IMAGE;
-  const norm = categoryName.toLowerCase();
-  for (const entry of CATEGORY_PLACEHOLDERS) {
-    if (entry.keywords.some((kw) => norm.includes(kw))) return entry.image;
-  }
-  return DEFAULT_MEDICINE_IMAGE;
-}
-
-/** True when a medicine document has no real uploaded photo. */
+/** True when a medicine record has no real uploaded photo. */
 export function needsPlaceholderImage(imageUrl?: string | null): boolean {
   return !imageUrl || imageUrl.trim().length === 0;
 }
 
 /**
- * Resolve the image to show for a medicine — real photo if present,
- * otherwise a category-appropriate placeholder (falls back to the
- * generic medicine placeholder when the category has no dedicated art
- * or isn't provided).
+ * Pick a static category PNG (or SVG fallback) by matching the category name
+ * against keyword patterns.  Used as priority 3 when neither the medicine nor
+ * the category has an admin-uploaded image.
  */
-export function resolveMedicineImage(imageUrl?: string | null, categoryName?: string | null): string {
-  return needsPlaceholderImage(imageUrl) ? resolveCategoryPlaceholder(categoryName) : (imageUrl as string);
+export function resolveCategoryPlaceholder(categoryName?: string | null): string {
+  if (!categoryName) return DEFAULT_MEDICINE_IMAGE;
+  const norm = categoryName.toLowerCase();
+  for (const entry of CATEGORY_IMAGES) {
+    if (entry.keywords.some((kw) => norm.includes(kw))) return entry.image;
+  }
+  return DEFAULT_MEDICINE_IMAGE;
+}
+
+/**
+ * resolveMedicineImage
+ *
+ * Resolve the image URL to display for a medicine card/detail page.
+ *
+ * @param imageUrl         Medicine-level imageUrl (admin-uploaded per product)
+ * @param categoryImageUrl Category-level imageUrl (admin-uploaded per category)
+ * @param categoryName     Category display name — used for keyword-based PNG fallback
+ */
+export function resolveMedicineImage(
+  imageUrl?: string | null,
+  categoryImageUrl?: string | null,
+  categoryName?: string | null,
+): string {
+  // 1. Medicine-level real photo
+  if (imageUrl && imageUrl.trim().length > 0) return imageUrl;
+  // 2. Admin-set category image (from DB)
+  if (categoryImageUrl && categoryImageUrl.trim().length > 0) return categoryImageUrl;
+  // 3. Keyword-matched static PNG or SVG fallback
+  return resolveCategoryPlaceholder(categoryName);
 }

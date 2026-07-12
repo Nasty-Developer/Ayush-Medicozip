@@ -28,6 +28,7 @@ export type CategoryMedicine = {
   mrp?: number | null;
   discount?: number | null;
   categoryName?: string | null;
+  categoryImageUrl?: string | null;
   order?: number;
   prescriptionRequired?: boolean;
   packInfo?: string | null;

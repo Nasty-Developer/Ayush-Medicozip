@@ -11,6 +11,8 @@
  * no Firebase SDK, no browser globals.
  */
 
+import { normalizeCategory } from "./categoryNormalizer";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ParsedMedicine {
@@ -301,7 +303,7 @@ export function parseSdfBuffers(files: {
       stockQty,
       prescriptionRequired,
       available,
-      categoryName: product.categoryName,
+      categoryName: normalizeCategory(product.categoryName, product.name, product.companyName),
     });
   }
 

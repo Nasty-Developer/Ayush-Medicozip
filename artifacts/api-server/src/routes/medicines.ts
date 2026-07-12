@@ -33,7 +33,7 @@ const LOW_STOCK_THRESHOLD = 10;
 
 /** Map a DB medicine row to the shape the frontend expects (CategoryMedicine). */
 function toPublicMedicine(
-  m: Medicine & { companyName?: string | null; categoryName?: string | null }
+  m: Medicine & { companyName?: string | null; categoryName?: string | null; categoryImageUrl?: string | null }
 ) {
   const stockQty = m.stockQty ?? 0;
   let stockStatus: "in_stock" | "low_stock" | "out_of_stock" = m.stockStatus as "in_stock" | "low_stock" | "out_of_stock";
@@ -47,6 +47,7 @@ function toPublicMedicine(
     brand: m.companyName ?? null,
     description: m.genericName ?? null,
     imageUrl: m.imageUrl ?? null,
+    categoryImageUrl: m.categoryImageUrl ?? null,
     categoryName: m.categoryName ?? null,
     packInfo: m.packing ?? null,
     mrp: m.mrp ? Number(m.mrp) : null,
@@ -73,13 +74,14 @@ const STOCK_ORDER = sql`
   END
 `;
 
-/** Join medicines with company and category names. */
+/** Join medicines with company and category names (+ category imageUrl). */
 async function fetchMedicinesWithJoins(where?: SQL, limit = 50, offset = 0, extraOrder?: SQL) {
   const rows = await db
     .select({
       m: medicinesTable,
       companyName: companiesTable.name,
       categoryName: categoriesTable.name,
+      categoryImageUrl: categoriesTable.imageUrl,
     })
     .from(medicinesTable)
     .leftJoin(companiesTable, eq(medicinesTable.companyId, companiesTable.id))
@@ -90,7 +92,7 @@ async function fetchMedicinesWithJoins(where?: SQL, limit = 50, offset = 0, extr
     .offset(offset);
 
   return rows.map((r) =>
-    toPublicMedicine({ ...r.m, companyName: r.companyName, categoryName: r.categoryName })
+    toPublicMedicine({ ...r.m, companyName: r.companyName, categoryName: r.categoryName, categoryImageUrl: r.categoryImageUrl })
   );
 }
 

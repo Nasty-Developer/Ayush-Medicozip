@@ -123,8 +123,8 @@ export function MedicineCard({ item, index }: MedicineCardProps) {
   const inCart = !!cartItem;
   const canAdd = (status === "in_stock" || status === "low_stock") && !!item.sellingPrice;
   const imageSrc = imgErr
-    ? resolveMedicineImage(null, item.categoryName)
-    : resolveMedicineImage(item.imageUrl, item.categoryName);
+    ? resolveMedicineImage(null, item.categoryImageUrl, item.categoryName)
+    : resolveMedicineImage(item.imageUrl, item.categoryImageUrl, item.categoryName);
 
   const handleRequestMedicine = (e: React.MouseEvent) => {
     e.stopPropagation();

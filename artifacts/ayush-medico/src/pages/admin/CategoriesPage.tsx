@@ -2,14 +2,19 @@
  * CategoriesPage — Admin
  *
  * Reads/writes categories from PostgreSQL via the API server.
- * Drag-and-drop reordering, icon/color/enabled management.
+ * Drag-and-drop reordering, icon/color/enabled management,
+ * and per-category image upload (Cloudinary).
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Pencil, Trash2, X, Loader2, GripVertical, Tag, AlertCircle, RefreshCw } from "lucide-react";
+import {
+  Plus, Pencil, Trash2, X, Loader2, GripVertical, Tag,
+  AlertCircle, RefreshCw, Upload, ImageIcon, Check,
+} from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { uploadCategoryImage } from "@/lib/storageHelpers";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -45,6 +50,88 @@ async function adminFetch(path: string, init: RequestInit = {}) {
       ...init.headers,
     },
   });
+}
+
+// ── Category Image Upload Cell ────────────────────────────────────────────────
+
+function CategoryImageCell({
+  category,
+  onImageSaved,
+}: {
+  category: Category;
+  onImageSaved: (id: string, url: string) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [pct, setPct]             = useState(0);
+  const { toast } = useToast();
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    setPct(0);
+    try {
+      const url   = await uploadCategoryImage(file, category.id, setPct);
+      const token = await auth.currentUser?.getIdToken();
+      const resp  = await fetch(`/api/admin/categories/${category.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ imageUrl: url }),
+      });
+      if (!resp.ok) throw new Error("Failed to save image URL");
+      onImageSaved(category.id, url);
+      toast({ title: "Category image updated ✓" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Upload failed", description: err instanceof Error ? err.message : "Unknown error" });
+    } finally {
+      setUploading(false);
+      setPct(0);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      {/* Thumbnail */}
+      <div
+        className="w-10 h-10 rounded-lg border border-border overflow-hidden bg-muted flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={() => !uploading && fileRef.current?.click()}
+        title="Click to change category image"
+      >
+        {category.imageUrl ? (
+          <img src={category.imageUrl} alt={category.name} className="w-full h-full object-cover" />
+        ) : (
+          <ImageIcon size={16} className="text-muted-foreground/50" />
+        )}
+      </div>
+
+      {/* Upload button */}
+      <button
+        onClick={() => !uploading && fileRef.current?.click()}
+        disabled={uploading}
+        className="flex items-center gap-1 px-2 py-1 rounded-lg border border-border text-[10px] font-medium text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors disabled:opacity-50 whitespace-nowrap"
+        title="Upload category image"
+      >
+        {uploading ? (
+          <><Loader2 size={10} className="animate-spin" />{pct}%</>
+        ) : category.imageUrl ? (
+          <><Check size={10} className="text-secondary" /> Image set</>
+        ) : (
+          <><Upload size={10} /> Add image</>
+        )}
+      </button>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void handleFile(f);
+          e.target.value = "";
+        }}
+      />
+    </div>
+  );
 }
 
 // ── Dialog ────────────────────────────────────────────────────────────────────
@@ -201,7 +288,6 @@ export default function CategoriesPage() {
   const [deleting,   setDeleting]   = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Drag state
   const dragFrom   = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
 
@@ -215,7 +301,11 @@ export default function CategoriesPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) throw new Error(`API error ${resp.status}`);
-      const data = await resp.json() as { id: number; name: string; slug: string; icon: string; description: string; color: string; displayOrder: number; enabled: boolean }[];
+      const data = await resp.json() as {
+        id: number; name: string; slug: string; icon: string;
+        description: string; color: string; displayOrder: number;
+        enabled: boolean; imageUrl?: string | null;
+      }[];
       setCategories(
         data.map((r) => ({
           id:          String(r.id),
@@ -226,6 +316,7 @@ export default function CategoriesPage() {
           color:       r.color,
           order:       r.displayOrder,
           enabled:     r.enabled,
+          imageUrl:    r.imageUrl ?? null,
         }))
       );
     } catch (err) {
@@ -254,10 +345,8 @@ export default function CategoriesPage() {
     const reordered = [...categories];
     const [item] = reordered.splice(fromIdx, 1);
     if (item) reordered.splice(dropIdx, 0, item);
-    // Optimistic update
     setCategories(reordered);
 
-    // Persist new display order
     await Promise.all(
       reordered.map((cat, i) =>
         adminFetch(`/api/admin/categories/${cat.id}`, {
@@ -315,11 +404,14 @@ export default function CategoriesPage() {
         body: JSON.stringify({ enabled: !cat.enabled }),
       });
       if (!resp.ok) throw new Error();
-      // Optimistic UI update
       setCategories((prev) => prev.map((c) => c.id === cat.id ? { ...c, enabled: !c.enabled } : c));
     } catch {
       toast({ variant: "destructive", title: "Failed to update" });
     }
+  };
+
+  const handleImageSaved = (id: string, url: string) => {
+    setCategories((prev) => prev.map((c) => c.id === id ? { ...c, imageUrl: url } : c));
   };
 
   return (
@@ -329,6 +421,8 @@ export default function CategoriesPage() {
           <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>Categories</h1>
           <p className="text-muted-foreground text-sm mt-1">
             {categories.length} categories · <span className="text-primary font-medium">PostgreSQL</span>
+            {" · "}
+            <span className="text-muted-foreground/70">Click the image thumbnail to upload a category photo</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -370,11 +464,16 @@ export default function CategoriesPage() {
             >
               <GripVertical size={16} className="text-muted-foreground flex-shrink-0 cursor-grab active:cursor-grabbing" />
               <span className="text-2xl flex-shrink-0 select-none">{cat.icon || "💊"}</span>
+
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground">{cat.name}</p>
                 {cat.description && <p className="text-xs text-muted-foreground truncate">{cat.description}</p>}
                 <p className="text-[10px] text-muted-foreground/60 mt-0.5">slug: {cat.slug || slugify(cat.name)}</p>
               </div>
+
+              {/* Image upload cell */}
+              <CategoryImageCell category={cat} onImageSaved={handleImageSaved} />
+
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 <button onClick={() => handleToggle(cat)}
                   className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all ${
