@@ -294,6 +294,10 @@ export default function InventorySyncPage() {
     if (job.status !== "running") {
       setPollingEnabled(false);
       setStage("done");
+      // Notify DashboardPage (and any other listeners) to refresh stats
+      if (job.status === "done") {
+        window.dispatchEvent(new CustomEvent("ayush:sync-complete"));
+      }
     }
   }, [job?.status]);
 

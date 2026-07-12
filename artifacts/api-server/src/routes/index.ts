@@ -7,6 +7,7 @@ import ordersRouter    from "./orders";
 import usersRouter     from "./users";
 import couponsRouter   from "./coupons";
 import syncRouter      from "./sync";
+import adminRouter     from "./admin";       // admin stats, companies, drug-groups, medicines CRUD
 
 const router: IRouter = Router();
 
@@ -18,6 +19,7 @@ router.use("/", medicinesRouter);
 
 // ── Admin CRUD ────────────────────────────────────────────────────────────────
 router.use("/admin/categories", categoriesRouter); // moved to /admin/ to avoid conflict
+router.use("/admin",     adminRouter);    // stats, companies, drug-groups, medicines
 router.use("/products",  productsRouter);
 router.use("/orders",    ordersRouter);
 router.use("/users",     usersRouter);

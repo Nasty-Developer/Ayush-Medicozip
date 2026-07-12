@@ -1,30 +1,34 @@
 /**
  * Admin Dashboard
  *
- * Performance fix: replaced full collection fetches (getCollection) with
- * Firestore getCountFromServer() aggregation queries. The old code read all
- * 51k+ medicine documents just to count them; now each stat card costs
- * exactly one lightweight count query.
+ * Stats cards pull from two sources:
+ *  - PostgreSQL (via /api/admin/stats): medicines, categories, companies, drug groups
+ *  - Firestore (getCountFromServer):    inquiries, FAQs, testimonials
+ *
+ * The dashboard re-fetches stats whenever the page mounts and also listens for
+ * the custom "ayush:sync-complete" window event fired by InventorySyncPage after
+ * a successful inventory sync — so counts update without a full page reload.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Pill, MessageSquare, Megaphone, Star, HelpCircle,
-  TrendingUp, Clock, CheckCircle2, Tag, Building2,
+  TrendingUp, Clock, CheckCircle2, Tag, Building2, FlaskConical, RefreshCw,
 } from "lucide-react";
 import { Link } from "wouter";
 import { collection, query, where, getCountFromServer } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db as fsDb } from "@/lib/firebase";
 
 type Stats = {
-  medicines: number;
-  inquiries: number;
-  newInquiries: number;
-  faqs: number;
-  testimonials: number;
+  medicines:  number;
   categories: number;
-  brands: number;
+  companies:  number;
+  drugGroups: number;
+  inquiries:  number;
+  newInquiries: number;
+  faqs:        number;
+  testimonials: number;
 };
 
 function StatCard({
@@ -65,80 +69,129 @@ const quickLinks = [
   { label: "View Inquiries",       href: "/admin/inquiries",    icon: MessageSquare,desc: "Customer medicine requests" },
   { label: "Update Announcement",  href: "/admin/announcement", icon: Megaphone,    desc: "Control the banner" },
   { label: "Manage Categories",    href: "/admin/categories",   icon: Tag,          desc: "Medicine categories" },
-  { label: "Manage Brands",        href: "/admin/brands",       icon: Building2,    desc: "Featured brands" },
+  { label: "Manage Companies",     href: "/admin/brands",       icon: Building2,    desc: "Pharmaceutical companies" },
   { label: "Manage FAQs",          href: "/admin/faq",          icon: HelpCircle,   desc: "Edit common questions" },
   { label: "Testimonials",         href: "/admin/testimonials", icon: Star,         desc: "Customer reviews" },
   { label: "Store Settings",       href: "/admin/settings",     icon: Clock,        desc: "Hours, phone, address" },
 ];
 
+const INIT: Stats = {
+  medicines: 0, categories: 0, companies: 0, drugGroups: 0,
+  inquiries: 0, newInquiries: 0, faqs: 0, testimonials: 0,
+};
+
 export default function DashboardPage() {
-  const [stats, setStats] = useState<Stats>({
-    medicines: 0, inquiries: 0, newInquiries: 0,
-    faqs: 0, testimonials: 0, categories: 0, brands: 0,
-  });
+  const [stats,   setStats]   = useState<Stats>(INIT);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Medicines + categories counts come from the PostgreSQL API.
-    // Inquiries, FAQs, testimonials, brands remain in Firestore.
-    const pgFetch = fetch("/api/categories")
-      .then((r) => r.ok ? r.json() as Promise<{ data: { count?: number }[] }> : { data: [] });
+  const fetchStats = useCallback(async () => {
+    setLoading(true);
+    try {
+      // ── PostgreSQL counts ──────────────────────────────────────────────────
+      const pgRes  = await fetch("/api/admin/stats");
+      const pgData = pgRes.ok
+        ? (await pgRes.json() as { medicines: number; categories: number; companies: number; drugGroups: number })
+        : { medicines: 0, categories: 0, companies: 0, drugGroups: 0 };
 
-    const firestoreFetch = db ? Promise.all([
-      getCountFromServer(collection(db, "inquiries")),
-      getCountFromServer(query(collection(db, "inquiries"), where("status", "==", "new"))),
-      getCountFromServer(collection(db, "faqs")),
-      getCountFromServer(collection(db, "testimonials")),
-      getCountFromServer(collection(db, "brands")),
-    ]) : Promise.resolve(null);
+      // ── Firestore counts (inquiries, FAQs, testimonials) ───────────────────
+      let inquiries = 0, newInquiries = 0, faqs = 0, testimonials = 0;
+      if (fsDb) {
+        try {
+          const [inqAll, inqNew, faqSnap, testSnap] = await Promise.all([
+            getCountFromServer(collection(fsDb, "inquiries")),
+            getCountFromServer(query(collection(fsDb, "inquiries"), where("status", "==", "new"))),
+            getCountFromServer(collection(fsDb, "faqs")),
+            getCountFromServer(collection(fsDb, "testimonials")),
+          ]);
+          inquiries    = inqAll.data().count;
+          newInquiries = inqNew.data().count;
+          faqs         = faqSnap.data().count;
+          testimonials = testSnap.data().count;
+        } catch {
+          // Firebase not configured — leave counts at 0
+        }
+      }
 
-    Promise.all([pgFetch, firestoreFetch])
-      .then(([pgData, fsData]) => {
-        const cats = pgData.data ?? [];
-        const totalMeds = cats.reduce((sum, c) => sum + (c.count ?? 0), 0);
-        setStats({
-          medicines:    totalMeds,
-          categories:   cats.length,
-          inquiries:    fsData ? fsData[0].data().count : 0,
-          newInquiries: fsData ? fsData[1].data().count : 0,
-          faqs:         fsData ? fsData[2].data().count : 0,
-          testimonials: fsData ? fsData[3].data().count : 0,
-          brands:       fsData ? fsData[4].data().count : 0,
-        });
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      setStats({
+        medicines:   pgData.medicines,
+        categories:  pgData.categories,
+        companies:   pgData.companies,
+        drugGroups:  pgData.drugGroups,
+        inquiries,
+        newInquiries,
+        faqs,
+        testimonials,
+      });
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // Re-fetch whenever inventory sync completes
+  useEffect(() => {
+    const handler = () => fetchStats();
+    window.addEventListener("ayush:sync-complete", handler);
+    return () => window.removeEventListener("ayush:sync-complete", handler);
+  }, [fetchStats]);
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <div className="mb-8">
-        <h1
-          className="text-2xl font-bold text-foreground"
-          style={{ fontFamily: "'Poppins', sans-serif" }}
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1
+            className="text-2xl font-bold text-foreground"
+            style={{ fontFamily: "'Poppins', sans-serif" }}
+          >
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Welcome back! Here's what's happening at Ayush Medico.
+          </p>
+        </div>
+        <button
+          onClick={fetchStats}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all disabled:opacity-50"
         >
-          Dashboard
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Welcome back! Here's what's happening at Ayush Medico.
-        </p>
+          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+          Refresh
+        </button>
       </div>
 
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[...Array(6)].map((_, i) => (
+          {[...Array(8)].map((_, i) => (
             <div key={i} className="bg-card border border-border rounded-2xl p-5 h-32 animate-pulse" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={Pill}         label="Medicines"   value={stats.medicines}    sub="In catalog"        color="bg-primary/10 text-primary"      href="/admin/medicines" />
-          <StatCard icon={MessageSquare}label="Inquiries"   value={stats.inquiries}    sub={`${stats.newInquiries} new`} color="bg-secondary/10 text-secondary" href="/admin/inquiries" />
-          <StatCard icon={Tag}          label="Categories"  value={stats.categories}   sub="Product groups"    color="bg-accent/10 text-accent"         href="/admin/categories" />
-          <StatCard icon={Building2}    label="Brands"      value={stats.brands}       sub="Featured"          color="bg-purple-500/10 text-purple-500"  href="/admin/brands" />
-          <StatCard icon={HelpCircle}   label="FAQs"        value={stats.faqs}         sub="Published"         color="bg-orange-500/10 text-orange-500"  href="/admin/faq" />
-          <StatCard icon={Star}         label="Reviews"     value={stats.testimonials} sub="Testimonials"      color="bg-pink-500/10 text-pink-500"      href="/admin/testimonials" />
-        </div>
+        <>
+          {/* ── Inventory stats (PostgreSQL) ─────────────────────────────── */}
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+            Inventory Catalogue
+          </p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <StatCard icon={Pill}         label="Medicines"    value={stats.medicines}   sub="Active in catalogue"    color="bg-primary/10 text-primary"       href="/admin/medicines" />
+            <StatCard icon={Tag}          label="Categories"   value={stats.categories}  sub="Product groups"         color="bg-accent/10 text-accent"          href="/admin/categories" />
+            <StatCard icon={Building2}    label="Companies"    value={stats.companies}   sub="Manufacturers"          color="bg-purple-500/10 text-purple-500"  href="/admin/brands" />
+            <StatCard icon={FlaskConical} label="Drug Groups"  value={stats.drugGroups}  sub="Generic formulations"   color="bg-teal-500/10 text-teal-500"      href="/admin/medicines" />
+          </div>
+
+          {/* ── Engagement stats (Firestore) ─────────────────────────────── */}
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+            Customer Engagement
+          </p>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            <StatCard icon={MessageSquare}label="Inquiries"    value={stats.inquiries}    sub={`${stats.newInquiries} new`} color="bg-secondary/10 text-secondary" href="/admin/inquiries" />
+            <StatCard icon={HelpCircle}   label="FAQs"         value={stats.faqs}         sub="Published"               color="bg-orange-500/10 text-orange-500"  href="/admin/faq" />
+            <StatCard icon={Star}         label="Reviews"      value={stats.testimonials} sub="Testimonials"             color="bg-pink-500/10 text-pink-500"      href="/admin/testimonials" />
+          </div>
+        </>
       )}
 
       <div className="mb-4">

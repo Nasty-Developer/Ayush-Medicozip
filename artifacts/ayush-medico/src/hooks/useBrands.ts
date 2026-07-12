@@ -1,48 +1,77 @@
 /**
  * useBrands
- * Real-time Firestore listener for the `brands` collection.
- * Mirrors the same pattern as useCategories — live updates everywhere.
  *
- * NOTE: We do NOT use Firestore's orderBy() constraint — see useCategories.ts
- * for the full explanation. Documents missing the `order` field would be
- * silently excluded by Firestore; we sort client-side instead.
+ * Fetches companies from the PostgreSQL API (GET /api/admin/companies).
+ * The shape is kept compatible with the previous Firestore Brand type so
+ * existing consumers (MedicinesPage dialogs etc.) continue to work unchanged.
+ *
+ * Note: logoUrl, description, website are not stored in the companies table —
+ * they are always empty strings here. Use the BrandsPage (CompaniesPage) for
+ * full company management.
  */
 
 import { useEffect, useState } from "react";
-import { subscribeToCollection } from "@/lib/firestoreHelpers";
 
 export type Brand = {
-  id: string;
+  id: string;      // string id for backwards-compat (PG id cast to string)
   name: string;
   logoUrl: string;
   description: string;
   website: string;
-  order?: number;   // optional — docs without this field are sorted to the front
+  order?: number;
   enabled: boolean;
 };
 
-/**
- * @param onlyEnabled - when true, only returns brands with enabled=true
- */
-export function useBrands(onlyEnabled = false) {
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [loading, setLoading] = useState(true);
+type ApiCompany = { id: number; name: string; createdAt: string };
+
+let _cache: { data: Brand[]; ts: number } | null = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export function useBrands(_onlyEnabled = false) {
+  const [brands,  setBrands]  = useState<Brand[]>(_cache?.data ?? []);
+  const [loading, setLoading] = useState(!_cache);
 
   useEffect(() => {
-    const unsub = subscribeToCollection(
-      "brands",
-      [], // No Firestore-side ordering — sort client-side to include all docs
-      (docs) => {
-        const all = (docs as unknown as Brand[])
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-        setBrands(onlyEnabled ? all.filter((b) => b.enabled) : all);
+    const now = Date.now();
+    if (_cache && now - _cache.ts < CACHE_TTL) {
+      setBrands(_cache.data);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+
+    // Fetch all companies (up to 1000) — used only for form dropdowns
+    fetch("/api/admin/companies?limit=1000")
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`API error ${r.status}`);
+        const json = await r.json() as { data: ApiCompany[] };
+        if (cancelled) return;
+        const mapped: Brand[] = json.data.map((c) => ({
+          id:          String(c.id),
+          name:        c.name,
+          logoUrl:     "",
+          description: "",
+          website:     "",
+          enabled:     true,
+        }));
+        _cache = { data: mapped, ts: Date.now() };
+        setBrands(mapped);
         setLoading(false);
-      },
-      () => setLoading(false)
-    );
-    return unsub;
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { brands, loading };
+}
+
+/** Invalidate the in-memory cache (call after create/update/delete). */
+export function invalidateBrandsCache() {
+  _cache = null;
 }

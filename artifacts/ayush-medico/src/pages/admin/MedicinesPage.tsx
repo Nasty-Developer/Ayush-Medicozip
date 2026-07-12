@@ -1,94 +1,80 @@
 /**
  * MedicinesPage — Admin
  *
- * Medicine catalog with full inventory fields designed to support future
- * MediVision Gold sync without schema changes.
+ * Lists medicines from PostgreSQL via GET /api/admin/medicines.
+ * Supports full-text search, pagination, and inline flag editing.
+ * Add / Edit / Delete via the admin REST API.
  *
- * Features:
- *   • Dynamic category + brand dropdowns from Firestore (real-time).
- *   • "Other / New" option for both: auto-creates in Firestore + refreshes dropdown instantly.
- *   • All fields: name, brand, category, manufacturer, salt/composition,
- *     prescription required, SKU, barcode, pack size, batch number, expiry date,
- *     HSN code, GST, pricing (selling/MRP/discount/offer), stock qty,
- *     low stock alert, status, featured flags, description, meta title/description.
- *   • Stores categoryId + categoryName + brandId + brandName (backwards-compatible).
- *   • Filter dropdown populated from Firestore — no hardcoded arrays.
+ * Field mapping (PG ↔ form):
+ *   genericName  ↔ "Generic Name / Salt"
+ *   packing      ↔ "Pack Info"
+ *   newArrival   ↔ "New Arrivals" toggle
+ *   special      ↔ "Special Medicines" toggle
  */
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Search, Pencil, Trash2, X,
-  PackageCheck, PackageX, Clock, Loader2, Upload, Sparkles, Award, ChevronDown,
-  FlaskConical, Pill, ClipboardList, Barcode, Tag, Calendar, Star,
+  PackageCheck, PackageX, Loader2, Upload, Sparkles, Award, ChevronDown,
+  FlaskConical, Pill, Tag, Star, RefreshCw,
 } from "lucide-react";
-import { subscribeToCollection, addDocument, updateDocument, deleteDocument, orderBy, limit } from "@/lib/firestoreHelpers";
+import { auth } from "@/lib/firebase";
 import { uploadMedicineImage } from "@/lib/storageHelpers";
 import { useCategories } from "@/hooks/useCategories";
-import { useBrands } from "@/hooks/useBrands";
+import { useBrands, invalidateBrandsCache } from "@/hooks/useBrands";
 import { useToast } from "@/hooks/use-toast";
 
-/* ── Types ────────────────────────────────────────────────────────────────── */
-type StockStatus = "in_stock" | "out_of_stock" | "coming_soon";
-type MedStatus   = "active" | "inactive";
+/* ── Types ──────────────────────────────────────────────────────────────────── */
+type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
+type MedStatus   = "active" | "deleted";
 
-type Medicine = {
-  id: string;
+type AdminMedicine = {
+  id: number;
+  productCode: number;
   name: string;
-  // Brand — plain string (backwards-compat) + ID-based
-  brand: string;
-  brandId?: string;
-  brandName?: string;
-  // Category — plain string (backwards-compat) + ID-based
-  category: string;
-  categoryId?: string;
-  categoryName?: string;
-  // Product details
-  manufacturer?: string;
-  saltComposition?: string;
-  prescriptionRequired?: boolean;
-  // Inventory / SKU (supports MediVision Gold sync)
-  sku?: string;
-  barcode?: string;
-  packSize?: string;
-  batchNumber?: string;
-  expiryDate?: string;           // ISO date string "YYYY-MM-DD"
-  stockQty?: number | "";
-  lowStockAlert?: number | "";
-  // Regulatory
-  hsnCode?: string;
-  gst?: number | "";
-  // Pricing
-  sellingPrice: number | "";
-  mrp: number | "";
-  discount: number | "";
-  offerPrice?: number | "";
-  // Display & status
+  genericName: string | null;
+  packing: string | null;
+  mrp: string | null;
+  sellingPrice: string | null;
+  discount: string | null;
+  prescriptionRequired: boolean;
   stockStatus: StockStatus;
-  available?: boolean;           // legacy
-  status?: MedStatus;
-  featured?: boolean;
-  showInNewArrivals: boolean;
-  showInSpecialMedicines: boolean;
-  // Content
-  description: string;
-  imageUrl: string;
-  metaTitle?: string;
-  metaDescription?: string;
-  order?: number;
+  stockQty: number;
+  imageUrl: string | null;
+  featured: boolean;
+  newArrival: boolean;
+  special: boolean;
+  status: MedStatus;
+  companyId: number | null;
+  categoryId: number | null;
+  companyName: string | null;
+  categoryName: string | null;
 };
 
-const STOCK_OPTIONS: { value: StockStatus; label: string; icon: React.ReactNode }[] = [
-  { value: "in_stock",     label: "In Stock",     icon: <PackageCheck size={13} /> },
-  { value: "out_of_stock", label: "Out of Stock", icon: <PackageX     size={13} /> },
-  { value: "coming_soon",  label: "Coming Soon",  icon: <Clock        size={13} /> },
-];
+type PageData = { data: AdminMedicine[]; total: number; page: number; limit: number };
 
-function slugify(s: string) {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+/* ── Auth helper ─────────────────────────────────────────────────────────────── */
+async function adminFetch(path: string, init: RequestInit = {}) {
+  const token = await auth.currentUser?.getIdToken();
+  return fetch(path, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init.headers as Record<string, string> ?? {}),
+    },
+  });
 }
 
-/* ── Section header helper ────────────────────────────────────────────────── */
+/* ── Stock label map ─────────────────────────────────────────────────────────── */
+const STOCK_LABEL: Record<StockStatus, { label: string; cls: string; icon: React.ReactNode }> = {
+  in_stock:     { label: "In Stock",    cls: "bg-secondary/10 text-secondary",        icon: <PackageCheck size={11} /> },
+  low_stock:    { label: "Low Stock",   cls: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400", icon: <PackageCheck size={11} /> },
+  out_of_stock: { label: "Out of Stock",cls: "bg-muted text-muted-foreground",         icon: <PackageX size={11} /> },
+};
+
+/* ── Section header ──────────────────────────────────────────────────────────── */
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 pt-1">
@@ -98,98 +84,35 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── Medicine dialog ──────────────────────────────────────────────────────── */
-function MedicineDialog({ medicine, onClose, onSave }: {
-  medicine: Medicine | null;
+/* ── Medicine edit/add dialog ───────────────────────────────────────────────── */
+function MedicineDialog({
+  medicine, onClose, onSave,
+}: {
+  medicine: AdminMedicine | null;
   onClose: () => void;
-  onSave: (data: Omit<Medicine, "id">) => Promise<void>;
+  onSave: (data: Partial<AdminMedicine>) => Promise<void>;
 }) {
   const { categories, loading: catsLoading } = useCategories();
   const { brands,     loading: brandsLoading } = useBrands();
 
-  /* ── Core fields ── */
-  const [name,             setName]             = useState(medicine?.name             ?? "");
-  const [description,      setDescription]      = useState(medicine?.description      ?? "");
-  const [imageUrl,         setImageUrl]          = useState(medicine?.imageUrl         ?? "");
-  const [manufacturer,     setManufacturer]      = useState(medicine?.manufacturer     ?? "");
-  const [saltComposition,  setSaltComposition]   = useState(medicine?.saltComposition  ?? "");
+  const [name,           setName]           = useState(medicine?.name          ?? "");
+  const [genericName,    setGenericName]    = useState(medicine?.genericName   ?? "");
+  const [packing,        setPacking]        = useState(medicine?.packing       ?? "");
+  const [imageUrl,       setImageUrl]       = useState(medicine?.imageUrl      ?? "");
+  const [mrp,            setMrp]            = useState(medicine?.mrp           ?? "");
+  const [sellingPrice,   setSellingPrice]   = useState(medicine?.sellingPrice  ?? "");
+  const [discount,       setDiscount]       = useState(medicine?.discount      ?? "");
   const [prescriptionRequired, setPrescriptionRequired] = useState(medicine?.prescriptionRequired ?? false);
+  const [featured,       setFeatured]       = useState(medicine?.featured      ?? false);
+  const [newArrival,     setNewArrival]     = useState(medicine?.newArrival    ?? false);
+  const [special,        setSpecial]        = useState(medicine?.special       ?? false);
+  const [status,         setStatus]         = useState<MedStatus>(medicine?.status ?? "active");
+  const [companyId,      setCompanyId]      = useState<string>(medicine?.companyId ? String(medicine.companyId) : "");
+  const [categoryId,     setCategoryId]     = useState<string>(medicine?.categoryId ? String(medicine.categoryId) : "");
 
-  /* ── Pricing ── */
-  const [sellingPrice, setSellingPrice] = useState<number | "">(medicine?.sellingPrice ?? "");
-  const [mrp,          setMrp]          = useState<number | "">(medicine?.mrp          ?? "");
-  const [discount,     setDiscount]     = useState<number | "">(medicine?.discount     ?? "");
-  const [offerPrice,   setOfferPrice]   = useState<number | "">(medicine?.offerPrice   ?? "");
-
-  /* ── Inventory / SKU ── */
-  const [sku,           setSku]           = useState(medicine?.sku           ?? "");
-  const [barcode,       setBarcode]       = useState(medicine?.barcode       ?? "");
-  const [packSize,      setPackSize]      = useState(medicine?.packSize      ?? "");
-  const [batchNumber,   setBatchNumber]   = useState(medicine?.batchNumber   ?? "");
-  const [expiryDate,    setExpiryDate]    = useState(medicine?.expiryDate    ?? "");
-  const [stockQty,      setStockQty]      = useState<number | "">(medicine?.stockQty      ?? "");
-  const [lowStockAlert, setLowStockAlert] = useState<number | "">(medicine?.lowStockAlert ?? "");
-
-  /* ── Regulatory ── */
-  const [hsnCode, setHsnCode] = useState(medicine?.hsnCode ?? "");
-  const [gst,     setGst]     = useState<number | "">(medicine?.gst ?? "");
-
-  /* ── Status & display ── */
-  const [stockStatus,            setStockStatus]            = useState<StockStatus>(
-    medicine?.stockStatus ?? (medicine?.available === false ? "out_of_stock" : "in_stock")
-  );
-  const [status,                 setStatus]                 = useState<MedStatus>(medicine?.status ?? "active");
-  const [featured,               setFeatured]               = useState(medicine?.featured               ?? false);
-  const [showInNewArrivals,      setShowInNewArrivals]      = useState(medicine?.showInNewArrivals      ?? false);
-  const [showInSpecialMedicines, setShowInSpecialMedicines] = useState(medicine?.showInSpecialMedicines ?? false);
-
-  /* ── SEO ── */
-  const [metaTitle,       setMetaTitle]       = useState(medicine?.metaTitle       ?? "");
-  const [metaDescription, setMetaDescription] = useState(medicine?.metaDescription ?? "");
-
-  /* ── Category picker ── */
-  const [catMode,   setCatMode]   = useState<"select" | "other">("select");
-  const [catId,     setCatId]     = useState("");
-  const [customCat, setCustomCat] = useState("");
-
-  /* ── Brand picker ── */
-  const [brandMode,   setBrandMode]   = useState<"select" | "other">("select");
-  const [brandId,     setBrandId]     = useState("");
-  const [customBrand, setCustomBrand] = useState("");
-
-  /* ── One-time init when Firestore data arrives ── */
-  const [initialized, setInitialized] = useState(false);
-  useEffect(() => {
-    if (initialized || catsLoading || brandsLoading) return;
-
-    if (medicine) {
-      // Category — check ID first, then both stored name fields for backwards-compat
-      const catNameFallback = (medicine.categoryName ?? medicine.category ?? "").toLowerCase();
-      const catMatch = categories.find(
-        (c) => c.id === medicine.categoryId ||
-               (catNameFallback && c.name.toLowerCase() === catNameFallback)
-      );
-      if (catMatch) { setCatId(catMatch.id); setCatMode("select"); }
-      else if (catNameFallback) { setCustomCat(medicine.categoryName || medicine.category || ""); setCatMode("other"); }
-      else if (categories[0]) { setCatId(categories[0].id); setCatMode("select"); }
-
-      // Brand — same pattern
-      const brandNameFallback = (medicine.brandName ?? medicine.brand ?? "").toLowerCase();
-      const brandMatch = brands.find(
-        (b) => b.id === medicine.brandId ||
-               (brandNameFallback && b.name.toLowerCase() === brandNameFallback)
-      );
-      if (brandMatch) { setBrandId(brandMatch.id); setBrandMode("select"); }
-      else if (brandNameFallback) { setCustomBrand(medicine.brandName || medicine.brand || ""); setBrandMode("other"); }
-    } else {
-      if (categories[0]) { setCatId(categories[0].id); setCatMode("select"); }
-    }
-    setInitialized(true);
-  }, [catsLoading, brandsLoading, initialized]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /* ── Image upload ── */
-  const [uploading, setUploading] = useState(false);
-  const [uploadPct, setUploadPct] = useState(0);
+  const [uploading,  setUploading]  = useState(false);
+  const [uploadPct,  setUploadPct]  = useState(0);
+  const [saving,     setSaving]     = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,152 +121,37 @@ function MedicineDialog({ medicine, onClose, onSave }: {
     setUploading(true);
     setUploadPct(0);
     try {
-      const url = await uploadMedicineImage(file, medicine?.id ?? `med_${Date.now()}`, setUploadPct);
+      const url = await uploadMedicineImage(file, medicine ? String(medicine.id) : `med_${Date.now()}`, setUploadPct);
       setImageUrl(url);
     } catch { } finally { setUploading(false); }
   };
-
-  /* ── Resolve / auto-create category ── */
-  const resolveCategory = async (): Promise<{ category: string; categoryId: string; categoryName: string }> => {
-    if (catMode === "select" && catId) {
-      const cat = categories.find((c) => c.id === catId);
-      return { category: cat?.name ?? "", categoryId: catId, categoryName: cat?.name ?? "" };
-    }
-    const nm = customCat.trim();
-    if (!nm) return { category: "", categoryId: "", categoryName: "" };
-    const existing = categories.find((c) => c.name.trim().toLowerCase() === nm.toLowerCase());
-    if (existing) return { category: existing.name, categoryId: existing.id, categoryName: existing.name };
-    const newId = await addDocument("categories", {
-      name: nm, icon: "💊", description: "", color: "primary",
-      enabled: true, slug: slugify(nm), order: Date.now(),
-    });
-    return { category: nm, categoryId: newId, categoryName: nm };
-  };
-
-  /* ── Resolve / auto-create brand ── */
-  const resolveBrand = async (): Promise<{ brand: string; brandId: string; brandName: string }> => {
-    if (brandMode === "select" && brandId) {
-      const br = brands.find((b) => b.id === brandId);
-      return { brand: br?.name ?? "", brandId, brandName: br?.name ?? "" };
-    }
-    const nm = customBrand.trim();
-    if (!nm) return { brand: "", brandId: "", brandName: "" };
-    const existing = brands.find((b) => b.name.trim().toLowerCase() === nm.toLowerCase());
-    if (existing) return { brand: existing.name, brandId: existing.id, brandName: existing.name };
-    const newId = await addDocument("brands", {
-      name: nm, logoUrl: "", description: "", website: "", enabled: true, order: Date.now(),
-    });
-    return { brand: nm, brandId: newId, brandName: nm };
-  };
-
-  /* ── Submit ── */
-  const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     setSaving(true);
     try {
-      const [catResolved, brandResolved] = await Promise.all([resolveCategory(), resolveBrand()]);
       await onSave({
-        name: name.trim(),
-        description: description.trim(),
-        imageUrl,
-        manufacturer: manufacturer.trim(),
-        saltComposition: saltComposition.trim(),
+        name:                name.trim(),
+        genericName:         genericName.trim() || null,
+        packing:             packing.trim()     || null,
+        imageUrl:            imageUrl.trim()    || null,
+        mrp:                 mrp.trim()         || null,
+        sellingPrice:        sellingPrice.trim()|| null,
+        discount:            discount.trim()    || null,
         prescriptionRequired,
-        sku: sku.trim(),
-        barcode: barcode.trim(),
-        packSize: packSize.trim(),
-        batchNumber: batchNumber.trim(),
-        expiryDate,
-        stockQty:      stockQty      === "" ? "" : Number(stockQty),
-        lowStockAlert: lowStockAlert === "" ? "" : Number(lowStockAlert),
-        hsnCode: hsnCode.trim(),
-        gst: gst === "" ? "" : Number(gst),
-        sellingPrice: sellingPrice === "" ? "" : Number(sellingPrice),
-        mrp:          mrp          === "" ? "" : Number(mrp),
-        discount:     discount     === "" ? "" : Number(discount),
-        offerPrice:   offerPrice   === "" ? "" : Number(offerPrice),
-        stockStatus,
-        status,
         featured,
-        showInNewArrivals,
-        showInSpecialMedicines,
-        metaTitle: metaTitle.trim(),
-        metaDescription: metaDescription.trim(),
-        order: medicine?.order ?? Date.now(),
-        ...catResolved,
-        ...brandResolved,
+        newArrival,
+        special,
+        status,
+        companyId:           companyId  ? Number(companyId)  : null,
+        categoryId:          categoryId ? Number(categoryId) : null,
       });
       onClose();
     } finally { setSaving(false); }
   };
 
-  const handleCatChange = (val: string) => {
-    if (val === "__other__") { setCatMode("other"); setCatId(""); }
-    else                     { setCatMode("select"); setCatId(val); }
-  };
-  const handleBrandChange = (val: string) => {
-    if (val === "__other__") { setBrandMode("other"); setBrandId(""); }
-    else                     { setBrandMode("select"); setBrandId(val); }
-  };
-
-  const catSelectValue   = catMode   === "other" ? "__other__" : catId;
-  const brandSelectValue = brandMode === "other" ? "__other__" : brandId;
-  const formLoading      = catsLoading || brandsLoading || !initialized;
-
-  /* ── Number field helper ── */
-  const numField = (
-    label: string, val: number | "", set: (v: number | "") => void,
-    opts?: { prefix?: string; suffix?: string; min?: number; max?: number; placeholder?: string }
-  ) => (
-    <div>
-      <label className="block text-[10px] text-muted-foreground mb-1">{label}</label>
-      <div className="relative">
-        {opts?.prefix && <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">{opts.prefix}</span>}
-        <input type="number" min={opts?.min ?? 0} max={opts?.max}
-          value={val}
-          onChange={(e) => set(e.target.value === "" ? "" : Number(e.target.value))}
-          placeholder={opts?.placeholder ?? "0"}
-          className={`w-full ${opts?.prefix ? "pl-6" : "pl-3"} ${opts?.suffix ? "pr-6" : "pr-2"} py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all`}
-        />
-        {opts?.suffix && <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">{opts.suffix}</span>}
-      </div>
-    </div>
-  );
-
-  /* ── Toggle helper — explicit classes only (Tailwind purge-safe) ── */
-  type ToggleColor = "primary" | "secondary" | "amber";
-  const TOGGLE_CLS: Record<ToggleColor, { wrapper: string; dot: string }> = {
-    primary:   { wrapper: "border-primary bg-primary/5",                                     dot: "bg-primary border-primary"   },
-    secondary: { wrapper: "border-secondary bg-secondary/5",                                 dot: "bg-secondary border-secondary" },
-    amber:     { wrapper: "border-amber-500 bg-amber-50 dark:bg-amber-950/20",               dot: "bg-amber-500 border-amber-500" },
-  };
-
-  const toggleRow = (
-    checked: boolean, onToggle: () => void,
-    icon: React.ReactNode, label: string, sub: string,
-    color: ToggleColor = "primary"
-  ) => {
-    const cls = TOGGLE_CLS[color];
-    return (
-      <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-        checked ? cls.wrapper : "border-border hover:bg-muted/30"
-      }`}>
-        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-          checked ? cls.dot : "border-border"
-        }`}>
-          {checked && <span className="text-white text-xs font-bold">✓</span>}
-        </div>
-        <input type="checkbox" checked={checked} onChange={onToggle} className="sr-only" />
-        <div>
-          <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">{icon} {label}</div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>
-        </div>
-      </label>
-    );
-  };
+  const formLoading = catsLoading || brandsLoading;
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -355,7 +163,9 @@ function MedicineDialog({ medicine, onClose, onSave }: {
           <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
             {medicine ? "Edit Medicine" : "Add Medicine"}
           </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={16} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
+            <X size={16} />
+          </button>
         </div>
 
         {formLoading ? (
@@ -364,8 +174,6 @@ function MedicineDialog({ medicine, onClose, onSave }: {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
-
-            {/* ── PRODUCT IDENTITY ── */}
             <SectionHeader>Product Identity</SectionHeader>
 
             {/* Name */}
@@ -376,16 +184,25 @@ function MedicineDialog({ medicine, onClose, onSave }: {
                 className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
             </div>
 
-            {/* Brand + Category */}
+            {/* Generic Name */}
+            <div>
+              <label className="block text-[10px] text-muted-foreground mb-1 flex items-center gap-1">
+                <FlaskConical size={10} /> Generic Name / Salt Composition
+              </label>
+              <input value={genericName} onChange={(e) => setGenericName(e.target.value)}
+                placeholder="e.g. Paracetamol 500mg"
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+            </div>
+
+            {/* Company + Category */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Brand</label>
+                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Company / Brand</label>
                 <div className="relative">
-                  <select value={brandSelectValue} onChange={(e) => handleBrandChange(e.target.value)}
+                  <select value={companyId} onChange={(e) => setCompanyId(e.target.value)}
                     className="w-full px-3 py-2.5 pr-8 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all appearance-none">
-                    <option value="">— No brand —</option>
+                    <option value="">— None —</option>
                     {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                    <option value="__other__">✏️ Other / New Brand</option>
                   </select>
                   <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 </div>
@@ -393,56 +210,27 @@ function MedicineDialog({ medicine, onClose, onSave }: {
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Category</label>
                 <div className="relative">
-                  <select value={catSelectValue} onChange={(e) => handleCatChange(e.target.value)}
+                  <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}
                     className="w-full px-3 py-2.5 pr-8 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all appearance-none">
-                    <option value="">— No category —</option>
+                    <option value="">— None —</option>
                     {categories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-                    <option value="__other__">✏️ Other / New Category</option>
                   </select>
                   <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 </div>
               </div>
             </div>
 
-            {/* Custom brand */}
-            {brandMode === "other" && (
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Custom Brand Name</label>
-                <input value={customBrand} onChange={(e) => setCustomBrand(e.target.value)}
-                  placeholder="Enter brand name (auto-created if new)" required autoFocus
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-primary/50 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-                <p className="text-[10px] text-muted-foreground mt-1">New brands are created automatically in the Brands catalog.</p>
-              </div>
-            )}
-
-            {/* Custom category */}
-            {catMode === "other" && (
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Custom Category Name</label>
-                <input value={customCat} onChange={(e) => setCustomCat(e.target.value)}
-                  placeholder="Enter category name (auto-created if new)" required autoFocus={brandMode !== "other"}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-primary/50 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-                <p className="text-[10px] text-muted-foreground mt-1">New categories are created automatically in the Categories catalog.</p>
-              </div>
-            )}
-
-            {/* Manufacturer + Salt */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-muted-foreground mb-1">Manufacturer</label>
-                <input value={manufacturer} onChange={(e) => setManufacturer(e.target.value)}
-                  placeholder="e.g. Sun Pharma"
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground mb-1 flex items-center gap-1"><FlaskConical size={10} /> Salt / Composition</label>
-                <input value={saltComposition} onChange={(e) => setSaltComposition(e.target.value)}
-                  placeholder="e.g. Paracetamol 500mg"
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-              </div>
+            {/* Pack Info */}
+            <div>
+              <label className="block text-[10px] text-muted-foreground mb-1 flex items-center gap-1">
+                <Tag size={10} /> Pack Info
+              </label>
+              <input value={packing} onChange={(e) => setPacking(e.target.value)}
+                placeholder="e.g. 10 tablets, 100ml bottle"
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
             </div>
 
-            {/* Prescription required */}
+            {/* Prescription */}
             <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
               prescriptionRequired ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20" : "border-border hover:bg-muted/30"
             }`}>
@@ -460,36 +248,24 @@ function MedicineDialog({ medicine, onClose, onSave }: {
               </div>
             </label>
 
-            {/* ── INVENTORY ── */}
-            <SectionHeader>Inventory & Stock</SectionHeader>
-
-            <div className="grid grid-cols-2 gap-3">
-              {numField("Stock Quantity", stockQty, setStockQty, { placeholder: "e.g. 100" })}
-              {numField("Low Stock Alert", lowStockAlert, setLowStockAlert, { placeholder: "e.g. 10" })}
+            <SectionHeader>Pricing (₹)</SectionHeader>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                ["Selling Price", sellingPrice, setSellingPrice],
+                ["MRP", mrp, setMrp],
+                ["Discount %", discount, setDiscount],
+              ].map(([lbl, val, setter]) => (
+                <div key={String(lbl)}>
+                  <label className="block text-[10px] text-muted-foreground mb-1">{String(lbl)}</label>
+                  <input type="number" min="0" value={String(val)}
+                    onChange={(e) => (setter as (v: string) => void)(e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+                </div>
+              ))}
             </div>
 
-            {/* Stock status */}
-            <div>
-              <label className="block text-[10px] text-muted-foreground mb-2">Stock Status</label>
-              <div className="grid grid-cols-3 gap-2">
-                {STOCK_OPTIONS.map((opt) => (
-                  <button key={opt.value} type="button" onClick={() => setStockStatus(opt.value)}
-                    className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 text-xs font-semibold transition-all ${
-                      stockStatus === opt.value
-                        ? opt.value === "in_stock"      ? "border-secondary text-secondary bg-secondary/5"
-                          : opt.value === "out_of_stock" ? "border-muted-foreground text-muted-foreground bg-muted/30"
-                          : "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/20"
-                        : "border-border text-muted-foreground hover:bg-muted/30"
-                    }`}>
-                    {opt.icon} {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* ── IMAGE ── */}
             <SectionHeader>Product Image</SectionHeader>
-
             <div className="flex gap-3 items-start">
               {imageUrl && (
                 <div className="w-14 h-14 rounded-xl border border-border bg-muted flex-shrink-0 overflow-hidden">
@@ -509,70 +285,11 @@ function MedicineDialog({ medicine, onClose, onSave }: {
               </div>
             </div>
 
-            {/* ── PRICING ── */}
-            <SectionHeader>Pricing (₹)</SectionHeader>
-
-            <div className="grid grid-cols-2 gap-3">
-              {numField("Selling Price *", sellingPrice, setSellingPrice, { prefix: "₹" })}
-              {numField("MRP", mrp, setMrp, { prefix: "₹" })}
-              {numField("Discount %", discount, setDiscount, { max: 100, placeholder: "0" })}
-              {numField("Offer Price", offerPrice, setOfferPrice, { prefix: "₹", placeholder: "Optional" })}
-            </div>
-            <p className="text-[10px] text-muted-foreground -mt-2">
-              Offer Price overrides Selling Price when set (use for limited-time promotions).
-            </p>
-
-            {/* ── PRODUCT DETAILS ── */}
-            <SectionHeader>Product Details</SectionHeader>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-muted-foreground mb-1 flex items-center gap-1"><Tag size={10} /> SKU</label>
-                <input value={sku} onChange={(e) => setSku(e.target.value)}
-                  placeholder="e.g. MED-PCM-500"
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground mb-1 flex items-center gap-1"><Barcode size={10} /> Barcode</label>
-                <input value={barcode} onChange={(e) => setBarcode(e.target.value)}
-                  placeholder="e.g. 8901234567890"
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground mb-1 flex items-center gap-1"><ClipboardList size={10} /> Pack Size</label>
-                <input value={packSize} onChange={(e) => setPackSize(e.target.value)}
-                  placeholder="e.g. 10 tablets, 100ml"
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground mb-1">Batch Number</label>
-                <input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)}
-                  placeholder="e.g. BT2024001"
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[10px] text-muted-foreground mb-1 flex items-center gap-1"><Calendar size={10} /> Expiry Date</label>
-                <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground mb-1">HSN Code</label>
-                <input value={hsnCode} onChange={(e) => setHsnCode(e.target.value)}
-                  placeholder="e.g. 30049099"
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-              </div>
-              {numField("GST %", gst, setGst, { max: 100, placeholder: "e.g. 12" })}
-            </div>
-
-            {/* ── DISPLAY SETTINGS ── */}
             <SectionHeader>Display & Status</SectionHeader>
 
-            {/* Active / Inactive */}
+            {/* Active/Deleted */}
             <div className="grid grid-cols-2 gap-2">
-              {(["active", "inactive"] as MedStatus[]).map((s) => (
+              {(["active", "deleted"] as MedStatus[]).map((s) => (
                 <button key={s} type="button" onClick={() => setStatus(s)}
                   className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 text-xs font-semibold transition-all capitalize ${
                     status === s
@@ -581,56 +298,36 @@ function MedicineDialog({ medicine, onClose, onSave }: {
                       : "border-border text-muted-foreground hover:bg-muted/30"
                   }`}>
                   {s === "active" ? <PackageCheck size={13} /> : <PackageX size={13} />}
-                  {s === "active" ? "Active — Listed" : "Inactive — Hidden"}
+                  {s === "active" ? "Active — Listed" : "Deleted — Hidden"}
                 </button>
               ))}
             </div>
 
-            {/* Homepage toggles */}
+            {/* Flags */}
             <div className="space-y-2">
-              {toggleRow(featured, () => setFeatured(!featured),
-                <Star size={13} className="text-amber-500" />,
-                "Featured Medicine", "Highlighted with a Featured badge", "amber"
-              )}
-              {toggleRow(showInNewArrivals, () => setShowInNewArrivals(!showInNewArrivals),
-                <Sparkles size={13} className="text-primary" />,
-                "New Arrivals", `Appears in the "New Arrivals" section on homepage`, "primary"
-              )}
-              {toggleRow(showInSpecialMedicines, () => setShowInSpecialMedicines(!showInSpecialMedicines),
-                <Award size={13} className="text-secondary" />,
-                "Special Medicines", `Appears in the "Exclusive" section on homepage`, "secondary"
-              )}
+              {([
+                [featured, () => setFeatured(!featured), <Star size={13} className="text-amber-500" />, "Featured Medicine", "Highlighted with a Featured badge", "border-amber-500 bg-amber-50 dark:bg-amber-950/20", "bg-amber-500 border-amber-500"],
+                [newArrival, () => setNewArrival(!newArrival), <Sparkles size={13} className="text-primary" />, "New Arrivals", "Appears in the New Arrivals section on homepage", "border-primary bg-primary/5", "bg-primary border-primary"],
+                [special, () => setSpecial(!special), <Award size={13} className="text-secondary" />, "Special Medicines", "Appears in the Exclusive section on homepage", "border-secondary bg-secondary/5", "bg-secondary border-secondary"],
+              ] as const).map(([checked, onToggle, icon, label, sub, activeWrapper, activeDot], i) => (
+                <label key={i} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                  checked ? activeWrapper : "border-border hover:bg-muted/30"
+                }`}>
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${
+                    checked ? activeDot : "border-border"
+                  }`}>
+                    {checked && <span className="text-white text-xs font-bold">✓</span>}
+                  </div>
+                  <input type="checkbox" checked={checked} onChange={onToggle} className="sr-only" />
+                  <div>
+                    <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">{icon} {label}</div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>
+                  </div>
+                </label>
+              ))}
             </div>
 
-            {/* ── DESCRIPTION ── */}
-            <SectionHeader>Description</SectionHeader>
-
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
-              placeholder="Brief description of the medicine, its uses and benefits..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-none" />
-
-            {/* ── SEO ── */}
-            <SectionHeader>SEO (optional)</SectionHeader>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] text-muted-foreground mb-1">Meta Title</label>
-                <input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)}
-                  placeholder="e.g. Buy Paracetamol 500mg — Ayush Medico Kurla West"
-                  maxLength={70}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
-                <p className="text-[10px] text-muted-foreground mt-0.5 text-right">{metaTitle.length}/70</p>
-              </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground mb-1">Meta Description</label>
-                <textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)}
-                  rows={2} placeholder="Short description for search engines..." maxLength={160}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-none" />
-                <p className="text-[10px] text-muted-foreground mt-0.5 text-right">{metaDescription.length}/160</p>
-              </div>
-            </div>
-
-            {/* ── Actions ── */}
+            {/* Actions */}
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={onClose}
                 className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all">
@@ -649,100 +346,97 @@ function MedicineDialog({ medicine, onClose, onSave }: {
   );
 }
 
-/* ── Stock label map ──────────────────────────────────────────────────────── */
-const STOCK_LABEL: Record<StockStatus, { label: string; cls: string; icon: React.ReactNode }> = {
-  in_stock:    { label: "In Stock",     cls: "bg-secondary/10 text-secondary",                                               icon: <PackageCheck size={11} /> },
-  out_of_stock:{ label: "Out of Stock", cls: "bg-muted text-muted-foreground",                                               icon: <PackageX     size={11} /> },
-  coming_soon: { label: "Coming Soon",  cls: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",         icon: <Clock        size={11} /> },
-};
+/* ── Page ────────────────────────────────────────────────────────────────────── */
+const PAGE_SIZE = 50;
 
-/* ── Page ─────────────────────────────────────────────────────────────────── */
 export default function MedicinesPage() {
-  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [pageData,  setPageData]  = useState<PageData | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [search,    setSearch]    = useState("");
-  const [catFilter, setCatFilter] = useState("All");
-  const [dialog,    setDialog]    = useState<{ open: boolean; medicine: Medicine | null }>({ open: false, medicine: null });
-  const [deleting,  setDeleting]  = useState<string | null>(null);
+  const [page,      setPage]      = useState(1);
+  const [dialog,    setDialog]    = useState<{ open: boolean; medicine: AdminMedicine | null }>({ open: false, medicine: null });
+  const [deleting,  setDeleting]  = useState<number | null>(null);
   const { toast } = useToast();
-
-  // Live categories for the filter dropdown (all, not just enabled)
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { categories } = useCategories();
 
-  useEffect(() => {
-    // Performance: subscribe to first 50 medicines only (ordered by name).
-    // For a catalog with 51k+ items, subscribing to all is unsustainable.
-    // Use the search bar to find specific medicines — it queries the loaded set.
-    // "Load More" is intentionally omitted here because the real-time listener
-    // keeps the visible 50 up-to-date (add/edit/delete reflect immediately).
-    const unsub = subscribeToCollection(
-      "medicines", [orderBy("name"), limit(50)],
-      (docs) => { setMedicines(docs as unknown as Medicine[]); setLoading(false); },
-      () => { toast({ variant: "destructive", title: "Failed to load medicines" }); setLoading(false); }
-    );
-    return unsub;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const filtered = useMemo(() => {
-    return medicines.filter((m) => {
-      const q = search.toLowerCase();
-      const matchSearch = !q
-        || m.name.toLowerCase().includes(q)
-        || (m.brand         || "").toLowerCase().includes(q)
-        || (m.category      || "").toLowerCase().includes(q)
-        || (m.brandName     || "").toLowerCase().includes(q)
-        || (m.categoryName  || "").toLowerCase().includes(q)
-        || (m.manufacturer  || "").toLowerCase().includes(q)
-        || (m.sku           || "").toLowerCase().includes(q)
-        || (m.barcode       || "").toLowerCase().includes(q);
-      const matchCat = catFilter === "All" || m.category === catFilter || m.categoryName === catFilter;
-      return matchSearch && matchCat;
-    });
-  }, [medicines, search, catFilter]);
-
-  // Filter options: Firestore categories + any extra category names still on old medicines
-  const catFilterOptions = useMemo(() => {
-    const fromFirestore = categories.map((c) => c.name);
-    const fromMedicines = medicines.map((m) => m.categoryName || m.category || "").filter(Boolean);
-    const merged = Array.from(new Set([...fromFirestore, ...fromMedicines])).sort();
-    return ["All", ...merged];
-  }, [categories, medicines]);
-
-  const handleSave = async (data: Omit<Medicine, "id">) => {
+  const load = useCallback(async (q: string, p: number) => {
+    setLoading(true);
     try {
-      if (dialog.medicine) {
-        await updateDocument("medicines", dialog.medicine.id, data);
-        toast({ title: "Medicine updated ✓" });
-      } else {
-        await addDocument("medicines", data);
-        toast({ title: "Medicine added ✓" });
-      }
-    } catch (error) {
-      const msg  = error instanceof Error ? error.message : JSON.stringify(error);
-      const code = (error as any)?.code ?? "unknown";
-      toast({ variant: "destructive", title: `Save Failed [${code}]`, description: msg });
-      throw error;
+      const token  = await auth.currentUser?.getIdToken();
+      const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) });
+      if (q.trim()) params.set("search", q.trim());
+      const res  = await fetch(`/api/admin/medicines?${params}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      const data = await res.json() as PageData;
+      setPageData(data);
+    } catch {
+      toast({ variant: "destructive", title: "Failed to load medicines" });
+    } finally {
+      setLoading(false);
     }
+  }, [toast]);
+
+  useEffect(() => { load("", 1); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSearch = (val: string) => {
+    setSearch(val);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => { setPage(1); load(val, 1); }, 300);
   };
 
-  const handleDelete = async (id: string) => {
+  const handlePage = (p: number) => { setPage(p); load(search, p); };
+
+  /* ── CRUD ───────────────────────────────────────────────────────────────── */
+  const handleSave = async (data: Partial<AdminMedicine>) => {
+    const isEdit = !!dialog.medicine;
+    const path   = isEdit ? `/api/admin/medicines/${dialog.medicine!.id}` : "/api/admin/medicines";
+    const res = await adminFetch(path, {
+      method: isEdit ? "PUT" : "POST",
+      body:   JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(err.error ?? "Save failed");
+    }
+    toast({ title: isEdit ? "Medicine updated ✓" : "Medicine added ✓" });
+    load(search, page);
+  };
+
+  const handleDelete = async (id: number) => {
     setDeleting(id);
     try {
-      await deleteDocument("medicines", id);
+      const res = await adminFetch(`/api/admin/medicines/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
       toast({ title: "Medicine removed" });
-    } catch (error) {
-      const msg  = error instanceof Error ? error.message : JSON.stringify(error);
-      const code = (error as any)?.code ?? "unknown";
-      toast({ variant: "destructive", title: `Delete Failed [${code}]`, description: msg });
+      load(search, page);
+    } catch {
+      toast({ variant: "destructive", title: "Failed to delete medicine" });
     } finally { setDeleting(null); }
   };
 
-  const handleCycleStock = async (med: Medicine) => {
-    const cycle: StockStatus[] = ["in_stock", "out_of_stock", "coming_soon"];
-    const current: StockStatus = med.stockStatus ?? (med.available ? "in_stock" : "out_of_stock");
-    const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
-    await updateDocument("medicines", med.id, { stockStatus: next });
+  const handleToggleFlag = async (med: AdminMedicine, flag: "featured" | "newArrival" | "special") => {
+    const res = await adminFetch(`/api/admin/medicines/${med.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ [flag]: !med[flag] }),
+    });
+    if (res.ok) load(search, page);
   };
+
+  const catFilterOptions = useMemo(() => (
+    ["All", ...categories.map((c) => c.name).sort()]
+  ), [categories]);
+
+  const [catFilter, setCatFilter] = useState("All");
+  const displayed = useMemo(() => {
+    if (!pageData) return [];
+    if (catFilter === "All") return pageData.data;
+    return pageData.data.filter((m) => m.categoryName === catFilter);
+  }, [pageData, catFilter]);
+
+  const totalPages = pageData ? Math.ceil(pageData.total / PAGE_SIZE) : 1;
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
@@ -750,21 +444,29 @@ export default function MedicinesPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>Medicines</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {medicines.length} in catalog · <span className="text-primary font-medium">live sync</span>
+            {pageData
+              ? <>{pageData.total.toLocaleString()} medicines · <span className="text-primary font-medium">PostgreSQL</span></>
+              : "Loading…"}
           </p>
         </div>
-        <button onClick={() => setDialog({ open: true, medicine: null })}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 hover:bg-primary/90 transition-all flex-shrink-0">
-          <Plus size={16} /> Add Medicine
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => load(search, page)} disabled={loading}
+            className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50" title="Refresh">
+            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+          </button>
+          <button onClick={() => setDialog({ open: true, medicine: null })}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 hover:bg-primary/90 transition-all flex-shrink-0">
+            <Plus size={16} /> Add Medicine
+          </button>
+        </div>
       </div>
 
-      {/* Search + filter */}
+      {/* Search + category filter */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, brand, category, SKU, barcode..."
+          <input value={search} onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Search by name or generic name…"
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
         </div>
         <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}
@@ -776,12 +478,16 @@ export default function MedicinesPage() {
       {/* Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
-          <div className="flex items-center justify-center h-40"><Loader2 size={24} className="animate-spin text-primary" /></div>
-        ) : filtered.length === 0 ? (
+          <div className="flex items-center justify-center h-40">
+            <Loader2 size={24} className="animate-spin text-primary" />
+          </div>
+        ) : displayed.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
             <PackageX size={28} className="mb-2" />
             <p className="text-sm font-medium">
-              {search || catFilter !== "All" ? "No medicines found" : "No medicines yet — add your first!"}
+              {search || catFilter !== "All"
+                ? "No medicines match your filters"
+                : "No medicines yet — run an Inventory Sync to import the catalogue"}
             </p>
           </div>
         ) : (
@@ -792,21 +498,17 @@ export default function MedicinesPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Medicine</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Category</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">Price</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">SKU / Stock</th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Stock</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Flags</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map((med) => {
-                  const stockSt: StockStatus = med.stockStatus ?? (med.available ? "in_stock" : "out_of_stock");
-                  const { label, cls, icon } = STOCK_LABEL[stockSt];
-                  const displayCategory = med.categoryName || med.category || "—";
-                  const displayBrand    = med.brandName    || med.brand    || "";
-                  const isInactive      = med.status === "inactive";
+                {displayed.map((med) => {
+                  const { label, cls, icon } = STOCK_LABEL[med.stockStatus] ?? STOCK_LABEL.out_of_stock;
+                  const isDeleted = med.status === "deleted";
                   return (
-                    <tr key={med.id} className={`hover:bg-muted/20 transition-colors ${isInactive ? "opacity-60" : ""}`}>
+                    <tr key={med.id} className={`hover:bg-muted/20 transition-colors ${isDeleted ? "opacity-50" : ""}`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           {med.imageUrl ? (
@@ -824,77 +526,56 @@ export default function MedicinesPage() {
                               {med.prescriptionRequired && (
                                 <span className="text-[9px] font-bold text-amber-600 bg-amber-100 dark:bg-amber-950/40 px-1 py-0.5 rounded">Rx</span>
                               )}
-                              {med.featured && (
-                                <Star size={10} className="text-amber-500 fill-amber-500" />
-                              )}
-                              {isInactive && (
-                                <span className="text-[9px] font-bold text-muted-foreground bg-muted px-1 py-0.5 rounded">Inactive</span>
+                              {isDeleted && (
+                                <span className="text-[9px] font-bold text-muted-foreground bg-muted px-1 py-0.5 rounded">Deleted</span>
                               )}
                             </div>
-                            {displayBrand && <p className="text-xs text-muted-foreground">{displayBrand}</p>}
+                            {med.companyName && <p className="text-xs text-muted-foreground">{med.companyName}</p>}
+                            {med.genericName && <p className="text-[10px] text-muted-foreground/70 truncate max-w-[200px]">{med.genericName}</p>}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs">{displayCategory}</td>
+                      <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs">
+                        {med.categoryName ?? "—"}
+                      </td>
                       <td className="px-4 py-3 hidden sm:table-cell">
                         {med.sellingPrice ? (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {med.offerPrice ? (
-                              <>
-                                <span className="font-bold text-secondary text-xs">₹{med.offerPrice}</span>
-                                <span className="text-[10px] text-muted-foreground line-through">₹{med.sellingPrice}</span>
-                              </>
-                            ) : (
-                              <span className="font-bold text-foreground text-xs">₹{med.sellingPrice}</span>
-                            )}
+                          <div className="space-y-0.5">
+                            <p className="font-bold text-foreground text-xs">₹{med.sellingPrice}</p>
                             {med.mrp && Number(med.mrp) > Number(med.sellingPrice) && (
-                              <span className="text-[10px] text-muted-foreground line-through">MRP ₹{med.mrp}</span>
+                              <p className="text-[10px] text-muted-foreground line-through">MRP ₹{med.mrp}</p>
                             )}
-                            {med.discount ? (
+                            {med.discount && (
                               <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-1 py-0.5 rounded-full">{med.discount}% OFF</span>
-                            ) : null}
+                            )}
                           </div>
                         ) : <span className="text-muted-foreground text-xs">—</span>}
                       </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <div className="space-y-0.5">
-                          {med.sku && <p className="text-[10px] text-muted-foreground font-mono">{med.sku}</p>}
-                          {med.stockQty !== undefined && med.stockQty !== "" && (
-                            <p className={`text-[10px] font-semibold ${
-                              med.lowStockAlert && Number(med.stockQty) <= Number(med.lowStockAlert)
-                                ? "text-amber-600" : "text-muted-foreground"
-                            }`}>
-                              Qty: {med.stockQty}
-                            </p>
-                          )}
-                        </div>
-                      </td>
                       <td className="px-4 py-3 text-center">
-                        <button onClick={() => handleCycleStock(med)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${cls}`}>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cls}`}>
                           {icon} {label}
-                        </button>
+                        </span>
+                        {med.stockQty > 0 && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Qty: {med.stockQty}</p>
+                        )}
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                          {med.showInNewArrivals && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">
-                              <Sparkles size={9} /> New
-                            </span>
-                          )}
-                          {med.showInSpecialMedicines && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/10 text-secondary text-[10px] font-semibold">
-                              <Award size={9} /> Special
-                            </span>
-                          )}
-                          {med.featured && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-950/40 text-[10px] font-semibold">
-                              <Star size={9} /> Featured
-                            </span>
-                          )}
-                          {!med.showInNewArrivals && !med.showInSpecialMedicines && !med.featured && (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
+                          <button onClick={() => handleToggleFlag(med, "featured")}
+                            title="Toggle Featured"
+                            className={`p-1 rounded transition-colors ${med.featured ? "text-amber-500" : "text-muted-foreground hover:text-amber-500"}`}>
+                            <Star size={13} className={med.featured ? "fill-amber-500" : ""} />
+                          </button>
+                          <button onClick={() => handleToggleFlag(med, "newArrival")}
+                            title="Toggle New Arrival"
+                            className={`p-1 rounded transition-colors ${med.newArrival ? "text-primary" : "text-muted-foreground hover:text-primary"}`}>
+                            <Sparkles size={13} />
+                          </button>
+                          <button onClick={() => handleToggleFlag(med, "special")}
+                            title="Toggle Special"
+                            className={`p-1 rounded transition-colors ${med.special ? "text-secondary" : "text-muted-foreground hover:text-secondary"}`}>
+                            <Award size={13} />
+                          </button>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -917,6 +598,26 @@ export default function MedicinesPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {!loading && pageData && totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-xs text-muted-foreground">
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, pageData.total)} of {pageData.total.toLocaleString()}
+          </p>
+          <div className="flex gap-1.5">
+            <button onClick={() => handlePage(page - 1)} disabled={page === 1}
+              className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium disabled:opacity-40 hover:bg-muted transition-colors">
+              ← Prev
+            </button>
+            <span className="px-3 py-1.5 text-xs text-muted-foreground">{page} / {totalPages}</span>
+            <button onClick={() => handlePage(page + 1)} disabled={page >= totalPages}
+              className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium disabled:opacity-40 hover:bg-muted transition-colors">
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
 
       <AnimatePresence>
         {dialog.open && (

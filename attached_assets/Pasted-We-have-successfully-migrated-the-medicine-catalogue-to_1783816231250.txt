@@ -1,0 +1,109 @@
+We have successfully migrated the medicine catalogue to the SQL database.
+
+Please perform a complete audit of the project and remove all unnecessary Firestore dependencies related to medicines.
+
+IMPORTANT:
+Do NOT delete anything until you verify the SQL implementation is working correctly.
+
+Tasks:
+
+1. Audit the project and identify every place that still reads medicines from Firestore.
+
+Examples:
+- Medicine Search
+- Categories
+- Product Details
+- Medicine Cards
+- Related Medicines
+- Homepage
+- New Arrivals
+- Special Medicines
+- Admin Medicines
+- Inventory Dashboard
+- Inventory Sync
+
+2. Replace every medicine-related Firestore query with SQL/PostgreSQL queries.
+
+3. After verifying SQL works correctly, remove the old medicine Firestore code.
+
+4. Keep Firestore only for application features if they still use it, such as:
+- Authentication (if still using Firebase Auth)
+- Notifications (if still using Firestore)
+- Other features that have NOT been migrated
+
+5. Request Medicine is currently NOT working.
+
+Please debug the complete workflow:
+
+Customer
+↓
+
+Fill Request Medicine Form
+↓
+
+Submit
+
+↓
+
+Request saved successfully
+
+↓
+
+Admin Panel receives the request
+
+↓
+
+Admin can review the request
+
+↓
+
+Admin can accept or reject
+
+↓
+
+Customer receives the updated status
+
+Make sure every step works.
+
+6. Inquiry Form is also not working.
+
+Debug and fix the complete workflow:
+
+Customer submits inquiry
+
+↓
+
+Data is saved
+
+↓
+
+Admin receives inquiry
+
+↓
+
+Admin can manage it
+
+7. Test every API endpoint used by:
+- Request Medicine
+- Inquiry
+- Orders
+
+Find and fix any broken routes, validation errors, database errors, or frontend integration issues.
+
+8. Verify the frontend is calling the correct backend endpoints.
+
+9. Generate a report listing:
+- Every place that still depended on Firestore
+- Every place migrated to SQL
+- Every bug fixed
+- Any remaining manual configuration required
+
+Do not mark the task complete until:
+- Medicines load from SQL
+- Dashboard shows real counts
+- Search works
+- Categories work
+- Request Medicine works end-to-end
+- Inquiry works end-to-end
+- Orders work end-to-end
+- No unnecessary Firestore medicine dependency remains.

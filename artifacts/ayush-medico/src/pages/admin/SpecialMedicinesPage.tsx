@@ -1,61 +1,72 @@
-import { useEffect, useState } from "react";
+/**
+ * SpecialMedicinesPage — Admin
+ * Shows medicines flagged as special=true from PostgreSQL.
+ * "Remove" untags the medicine via PUT /api/admin/medicines/:id.
+ */
+
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Pencil, Loader2, Award, Sparkles, PackageCheck, PackageX, Clock, ExternalLink } from "lucide-react";
-import { subscribeToCollection, updateDocument, where } from "@/lib/firestoreHelpers";
+import { Loader2, Award, Sparkles, PackageCheck, PackageX, ExternalLink, RefreshCw } from "lucide-react";
+import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 
-type StockStatus = "in_stock" | "out_of_stock" | "coming_soon";
-type Medicine = {
-  id: string;
-  name: string;
-  brand?: string;
-  imageUrl?: string;
-  sellingPrice?: number;
-  stockStatus?: StockStatus;
-  showInNewArrivals?: boolean;
-  showInSpecialMedicines?: boolean;
+type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
+type AdminMedicine = {
+  id: number; name: string; companyName: string | null; imageUrl: string | null;
+  sellingPrice: string | null; stockStatus: StockStatus; newArrival: boolean;
 };
 
 const STOCK_LABEL: Record<StockStatus, { label: string; cls: string; icon: React.ReactNode }> = {
-  in_stock: { label: "Available", cls: "bg-secondary/10 text-secondary", icon: <PackageCheck size={11} /> },
-  out_of_stock: { label: "Out of Stock", cls: "bg-muted text-muted-foreground", icon: <PackageX size={11} /> },
-  coming_soon: { label: "Coming Soon", cls: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400", icon: <Clock size={11} /> },
+  in_stock:     { label: "Available",    cls: "bg-secondary/10 text-secondary",        icon: <PackageCheck size={11} /> },
+  low_stock:    { label: "Low Stock",    cls: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400", icon: <PackageCheck size={11} /> },
+  out_of_stock: { label: "Out of Stock", cls: "bg-muted text-muted-foreground",         icon: <PackageX size={11} /> },
 };
 
+async function adminFetch(path: string, init: RequestInit = {}) {
+  const token = await auth.currentUser?.getIdToken();
+  return fetch(path, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init.headers as Record<string, string> ?? {}),
+    },
+  });
+}
+
 export default function SpecialMedicinesPage() {
-  const [items, setItems] = useState<Medicine[]>([]);
+  const [items,   setItems]   = useState<AdminMedicine[]>([]);
+  const [total,   setTotal]   = useState(0);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const unsub = subscribeToCollection(
-      "medicines",
-      [where("showInSpecialMedicines", "==", true)],
-      (docs) => {
-        const sorted = [...docs].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-        setItems(sorted as unknown as Medicine[]);
-        setLoading(false);
-      },
-      () => setLoading(false)
-    );
-    return unsub;
-  }, []);
-
-  const handleRemove = async (item: Medicine) => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      await updateDocument("medicines", item.id, { showInSpecialMedicines: false });
-      toast({ title: `"${item.name}" removed from Special Medicines` });
+      const token = await auth.currentUser?.getIdToken();
+      const res   = await fetch("/api/admin/medicines?special=true&limit=100", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json() as { data: AdminMedicine[]; total: number };
+      setItems(data.data);
+      setTotal(data.total);
     } catch {
-      toast({ variant: "destructive", title: "Failed to update" });
-    }
-  };
+      toast({ variant: "destructive", title: "Failed to load medicines" });
+    } finally { setLoading(false); }
+  }, [toast]);
 
-  const handleCycleStock = async (item: Medicine) => {
-    const cycle: StockStatus[] = ["in_stock", "out_of_stock", "coming_soon"];
-    const current: StockStatus = item.stockStatus ?? "in_stock";
-    const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
-    await updateDocument("medicines", item.id, { stockStatus: next });
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRemove = async (item: AdminMedicine) => {
+    try {
+      await adminFetch(`/api/admin/medicines/${item.id}`, {
+        method: "PUT", body: JSON.stringify({ special: false }),
+      });
+      toast({ title: `"${item.name}" removed from Special Medicines` });
+      load();
+    } catch { toast({ variant: "destructive", title: "Failed to update" }); }
   };
 
   return (
@@ -64,21 +75,26 @@ export default function SpecialMedicinesPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>Special Medicines</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {items.length} exclusive medicines · <span className="text-secondary font-medium">live sync</span>
+            {total} exclusive medicines · <span className="text-secondary font-medium">PostgreSQL</span>
           </p>
         </div>
-        <Link href="/admin/medicines">
-          <a className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-white text-sm font-semibold rounded-xl shadow-md shadow-secondary/25 hover:bg-secondary/90 transition-all flex-shrink-0">
-            <ExternalLink size={15} /> Manage in Medicines
-          </a>
-        </Link>
+        <div className="flex items-center gap-2">
+          <button onClick={load} disabled={loading}
+            className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50">
+            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+          </button>
+          <Link href="/admin/medicines">
+            <a className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-white text-sm font-semibold rounded-xl shadow-md shadow-secondary/25 hover:bg-secondary/90 transition-all flex-shrink-0">
+              <ExternalLink size={15} /> Manage in Medicines
+            </a>
+          </Link>
+        </div>
       </div>
 
       <div className="mb-5 p-4 rounded-xl bg-secondary/5 border border-secondary/15 space-y-1.5">
         <p className="text-sm font-semibold text-secondary flex items-center gap-2"><Award size={14} /> How to add medicines here</p>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Go to <strong>Medicines</strong> page → Add or Edit a medicine → Check <strong>"⭐ Show in Special Medicines"</strong>.
-          It will appear here and on the homepage instantly.
+          Go to <strong>Medicines</strong> → Edit a medicine → Enable <strong>"Special Medicines"</strong> flag. It will appear here immediately.
         </p>
       </div>
 
@@ -88,13 +104,12 @@ export default function SpecialMedicinesPage() {
         <div className="flex flex-col items-center justify-center h-44 bg-card border border-border rounded-2xl text-muted-foreground">
           <Award size={28} className="mb-2 text-secondary/30" />
           <p className="text-sm font-medium">No medicines tagged as Special</p>
-          <p className="text-xs mt-1">Edit any medicine and check "Show in Special Medicines"</p>
+          <p className="text-xs mt-1">Edit any medicine and enable the Special Medicines flag</p>
         </div>
       ) : (
         <div className="space-y-3">
           {items.map((item) => {
-            const stockStatus: StockStatus = item.stockStatus ?? "in_stock";
-            const { label, cls, icon } = STOCK_LABEL[stockStatus];
+            const { label, cls, icon } = STOCK_LABEL[item.stockStatus] ?? STOCK_LABEL.out_of_stock;
             return (
               <div key={item.id} className="bg-card border border-border rounded-2xl p-4 shadow-sm flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-secondary/10 to-primary/10 flex items-center justify-center border border-border">
@@ -108,25 +123,19 @@ export default function SpecialMedicinesPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{item.name}</p>
                   <div className="flex items-center gap-2">
-                    {item.brand && <p className="text-xs text-muted-foreground truncate">{item.brand}</p>}
+                    {item.companyName && <p className="text-xs text-muted-foreground truncate">{item.companyName}</p>}
                     {item.sellingPrice ? <span className="text-xs font-bold text-foreground">· ₹{item.sellingPrice}</span> : null}
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {item.showInNewArrivals && (
+                  {item.newArrival && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">
                       <Sparkles size={9} /> New
                     </span>
                   )}
-                  <button onClick={() => handleCycleStock(item)}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all ${cls}`}>
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cls}`}>
                     {icon} {label}
-                  </button>
-                  <Link href="/admin/medicines">
-                    <a className="p-1.5 rounded-lg text-muted-foreground hover:text-secondary hover:bg-secondary/10 transition-colors">
-                      <Pencil size={13} />
-                    </a>
-                  </Link>
+                  </span>
                   <button onClick={() => handleRemove(item)}
                     className="px-2 py-1 rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                     Remove
