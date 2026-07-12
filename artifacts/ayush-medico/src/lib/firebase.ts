@@ -1,5 +1,4 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getFirestore, type Firestore } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { getAnalytics, isSupported, type Analytics } from "firebase/analytics";
@@ -25,14 +24,12 @@ export const isFirebaseConfigured =
   isValidEnv(firebaseConfig.appId);
 
 let app: FirebaseApp | undefined;
-let db: Firestore | undefined;
 let auth: Auth | undefined;
 let storage: FirebaseStorage | undefined;
 let analytics: Analytics | undefined;
 
 if (isFirebaseConfigured) {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-  db = getFirestore(app);
   auth = getAuth(app);
   storage = getStorage(app);
 
@@ -45,4 +42,4 @@ if (isFirebaseConfigured) {
   }
 }
 
-export { app, db, auth, storage, analytics };
+export { app, auth, storage, analytics };

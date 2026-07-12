@@ -13,6 +13,7 @@ import addressesRouter from "./addresses";   // /api/addresses — replaces Fire
 import testimonialsRouter from "./testimonials"; // /api/testimonials — replaces Firestore "testimonials" collection
 import faqsRouter      from "./faqs";        // /api/faqs — replaces Firestore "faqs" collection
 import notificationsRouter from "./notifications"; // /api/notifications — order event log + WhatsApp dispatch
+import settingsRouter from "./settings";           // /api/settings — site-wide key/value config (replaces Firestore "settings" collection)
 
 const router: IRouter = Router();
 
@@ -35,5 +36,6 @@ router.use("/addresses", addressesRouter);
 router.use("/testimonials", testimonialsRouter);
 router.use("/faqs",      faqsRouter);
 router.use("/notifications", notificationsRouter);
+router.use("/settings",     settingsRouter);
 
 export default router;

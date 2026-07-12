@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Megaphone, Save, Loader2, Eye, EyeOff } from "lucide-react";
-import { getDocById, setDocument } from "@/lib/firestoreHelpers";
+import { authFetch } from "@/lib/apiAuth";
 import { useToast } from "@/hooks/use-toast";
 import { announcementConfig } from "@/config/announcement";
 
@@ -33,15 +33,25 @@ export default function AnnouncementPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    getDocById("settings", "announcement").then((doc) => {
-      if (doc) setData(doc as unknown as AnnouncementData);
-    }).finally(() => setLoading(false));
+    fetch("/api/settings/announcement")
+      .then((r) => r.ok ? r.json() : null)
+      .then((doc) => {
+        if (doc && typeof doc === "object" && Object.keys(doc).length > 0) {
+          setData(doc as AnnouncementData);
+        }
+      })
+      .catch(() => {/* use defaults */})
+      .finally(() => setLoading(false));
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setDocument("settings", "announcement", data);
+      const res = await authFetch("/api/settings/announcement", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Save failed");
       toast({ title: "Announcement updated!", description: "Changes will appear on the website immediately." });
     } catch {
       toast({ variant: "destructive", title: "Failed to save" });

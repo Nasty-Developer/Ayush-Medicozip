@@ -8,3 +8,4 @@ export * from "./orders";
 export * from "./inquiries";
 export * from "./testimonials";
 export * from "./faqs";
+export * from "./settings";

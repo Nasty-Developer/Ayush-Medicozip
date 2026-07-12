@@ -1,18 +1,22 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { subscribeToDoc } from "@/lib/firestoreHelpers";
 import { announcementConfig, type AnnouncementConfig } from "@/config/announcement";
 
 const AnnouncementContext = createContext<AnnouncementConfig>(announcementConfig);
+
+// Poll interval: 60 seconds is plenty for an announcement banner
+const POLL_INTERVAL_MS = 60_000;
 
 export function AnnouncementProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AnnouncementConfig>(announcementConfig);
 
   useEffect(() => {
-    const unsub = subscribeToDoc(
-      "settings",
-      "announcement",
-      (doc) => {
-        if (doc) {
+    let cancelled = false;
+
+    const load = () => {
+      fetch("/api/settings/announcement")
+        .then((r) => r.ok ? r.json() : null)
+        .then((doc: Record<string, unknown> | null) => {
+          if (cancelled || !doc || Object.keys(doc).length === 0) return;
           setData({
             enabled: Boolean(doc.enabled),
             title: String(doc.title ?? announcementConfig.title),
@@ -22,17 +26,16 @@ export function AnnouncementProvider({ children }: { children: ReactNode }) {
             icon: (doc.icon ?? announcementConfig.icon) as AnnouncementConfig["icon"],
             colorScheme: (doc.colorScheme ?? announcementConfig.colorScheme) as AnnouncementConfig["colorScheme"],
           });
-        } else {
-          // Document was deleted or never created — reset to static defaults (enabled: false)
-          setData(announcementConfig);
-        }
-      },
-      (err) => {
-        console.error("[AnnouncementContext] Firestore listener error:", err);
-        // Keep current data on error rather than hiding an active announcement
-      }
-    );
-    return unsub;
+        })
+        .catch(() => {/* keep current state on error */});
+    };
+
+    load();
+    const timer = setInterval(load, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, []);
 
   return (

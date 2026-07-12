@@ -6,7 +6,7 @@
  *  - Category pill view uses paginated useMedicinesByCategory with
  *    a "Load More" button instead of streaming all medicines at once.
  *  - "All Medicines" view already uses cursor-based pagination (unchanged).
- *  - useMedicineCounts now uses getCountFromServer() instead of streaming
+
  *    the entire medicines collection (done in hook, not here).
  */
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Save, Loader2, Sparkles, Award, LayoutDashboard, Eye, EyeOff } from "lucide-react";
-import { getDocById, setDocument } from "@/lib/firestoreHelpers";
+import { authFetch } from "@/lib/apiAuth";
 import { useToast } from "@/hooks/use-toast";
 
 type HomepageSettings = {
@@ -29,15 +29,25 @@ export default function HomepageManagerPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    getDocById("settings", "homepage").then((doc) => {
-      if (doc) setSettings({ ...DEFAULTS, ...doc } as HomepageSettings);
-    }).finally(() => setLoading(false));
+    fetch("/api/settings/homepage")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && typeof data === "object" && Object.keys(data).length > 0) {
+          setSettings({ ...DEFAULTS, ...(data as Partial<HomepageSettings>) });
+        }
+      })
+      .catch(() => {/* use defaults */})
+      .finally(() => setLoading(false));
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setDocument("settings", "homepage", settings);
+      const res = await authFetch("/api/settings/homepage", {
+        method: "PUT",
+        body: JSON.stringify(settings),
+      });
+      if (!res.ok) throw new Error("Save failed");
       toast({ title: "Homepage settings saved!", description: "Changes will appear on the website immediately." });
     } catch {
       toast({ variant: "destructive", title: "Failed to save" });

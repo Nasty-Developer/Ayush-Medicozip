@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Save, Loader2, Phone, MapPin, Clock, MessageCircle } from "lucide-react";
-import { getDocById, setDocument } from "@/lib/firestoreHelpers";
+import { authFetch } from "@/lib/apiAuth";
 import { useToast } from "@/hooks/use-toast";
 
 type StoreSettings = {
@@ -35,15 +35,25 @@ export default function SettingsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    getDocById("settings", "store").then((doc) => {
-      if (doc) setSettings({ ...DEFAULTS, ...doc } as StoreSettings);
-    }).finally(() => setLoading(false));
+    fetch("/api/settings/store")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && typeof data === "object") {
+          setSettings({ ...DEFAULTS, ...(data as Partial<StoreSettings>) });
+        }
+      })
+      .catch(() => {/* use defaults on error */})
+      .finally(() => setLoading(false));
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setDocument("settings", "store", settings);
+      const res = await authFetch("/api/settings/store", {
+        method: "PUT",
+        body: JSON.stringify(settings),
+      });
+      if (!res.ok) throw new Error("Save failed");
       toast({ title: "Settings saved!", description: "Your store information has been updated." });
     } catch {
       toast({ variant: "destructive", title: "Failed to save settings" });

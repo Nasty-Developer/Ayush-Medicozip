@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { Sparkles, PackageCheck, PackageX, Clock, ChevronLeft, ChevronRight, ShoppingCart, Plus, Minus, PackageSearch } from "lucide-react";
-import { subscribeToDoc } from "@/lib/firestoreHelpers";
-import { isFirebaseConfigured } from "@/lib/firebase";
 import { useCart } from "@/context/CartContext";
 import { useRequestMedicine } from "@/context/RequestMedicineContext";
 import { resolveMedicineImage } from "@/lib/medicineImage";
@@ -270,19 +268,19 @@ export default function NewArrivals() {
       })
       .catch(() => { if (!cancelled) setLoading(false); });
 
-    // Admin-configurable title/description/enabled still comes from Firestore settings
-    let unsubSettings: (() => void) | undefined;
-    if (isFirebaseConfigured) {
-      unsubSettings = subscribeToDoc("settings", "homepage", (doc) => {
-        if (!doc) return;
+    // Admin-configurable title/description/enabled from the PostgreSQL-backed API
+    fetch("/api/settings/homepage")
+      .then((r) => r.ok ? r.json() : null)
+      .then((doc: Record<string, unknown> | null) => {
+        if (!doc || cancelled) return;
         if (doc.newArrivalsEnabled === false) setSectionEnabled(false);
         else setSectionEnabled(true);
         if (doc.newArrivalsTitle) setTitle(doc.newArrivalsTitle as string);
         if (doc.newArrivalsDescription) setDescription(doc.newArrivalsDescription as string);
-      });
-    }
+      })
+      .catch(() => {/* use defaults */});
 
-    return () => { cancelled = true; unsubSettings?.(); };
+    return () => { cancelled = true; };
   }, []);
 
   if (!loading && !sectionEnabled) return null;
