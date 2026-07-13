@@ -25,6 +25,8 @@ import RequestMedicine from "@/components/RequestMedicine";
 import GeneralInquiry from "@/components/GeneralInquiry";
 import DeliveryFeatures from "@/components/DeliveryFeatures";
 import TrustBadges from "@/components/TrustBadges";
+import Categories from "@/components/Categories";
+import PromoBanner from "@/components/PromoBanner";
 import HowItWorks from "@/components/HowItWorks";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
@@ -73,10 +75,12 @@ function HomeSections() {
     <>
       <Hero />
       <TrustBadges />
-      <DeliveryFeatures />
-      <HowItWorks />
+      <Categories />
+      <PromoBanner />
       <NewArrivals />
       <SpecialMedicines />
+      <DeliveryFeatures />
+      <HowItWorks />
       <About />
       <Services />
       <WhyChooseUs />

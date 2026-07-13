@@ -320,3 +320,12 @@
 .pwa-btn-ripple {
   animation: pwa-btn-ripple 0.58s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
+
+/* ── Scrollbar hide utility ─────────────────────────────────────────────── */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

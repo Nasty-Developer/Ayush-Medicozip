@@ -1,20 +1,33 @@
 import { Router, type Request, type Response } from "express";
+import { sql, eq, and, getTableColumns } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { categoriesTable, type InsertCategory } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { categoriesTable, medicinesTable, type InsertCategory } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware";
 
 const router = Router();
 
-// Public: browse categories
+// Public: browse categories (with per-category medicine count)
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
   try {
-    const categories = await db
-      .select()
+    const rows = await db
+      .select({
+        ...getTableColumns(categoriesTable),
+        count: sql<number>`cast(count(${medicinesTable.id}) as int)`,
+      })
       .from(categoriesTable)
+      .leftJoin(
+        medicinesTable,
+        and(
+          eq(medicinesTable.categoryId, categoriesTable.id),
+          eq(medicinesTable.status, "active"),
+        ),
+      )
+      .where(eq(categoriesTable.enabled, true))
+      .groupBy(categoriesTable.id)
       .orderBy(categoriesTable.displayOrder, categoriesTable.name);
-    res.json(categories);
+
+    res.json({ data: rows });
   } catch (err) {
     logger.error({ err }, "Failed to fetch categories");
     res.status(500).json({ error: "Failed to fetch categories" });
