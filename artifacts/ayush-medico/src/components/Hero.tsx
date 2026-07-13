@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Phone, MapPin, MessageCircle, ShieldCheck, Clock, Star, Search } from "lucide-react";
+import { Phone, MapPin, MessageCircle, ShieldCheck, Clock, Star, Search, ArrowRight, BadgeCheck, Zap } from "lucide-react";
 import { Link } from "wouter";
 import PWAInstallButtons from "@/components/PWAInstallButtons";
 import { useAnnouncement } from "@/context/AnnouncementContext";
@@ -16,6 +16,8 @@ const statCards = [
   { icon: ShieldCheck, value: "100%", label: "Genuine Medicines", color: "text-primary" },
   { icon: Clock, value: "10+", label: "Years of Trust", color: "text-secondary" },
   { icon: Star, value: "50K+", label: "Happy Customers", color: "text-accent" },
+  { icon: BadgeCheck, value: "4.9★", label: "Customer Rating", color: "text-yellow-500 dark:text-yellow-400" },
+  { icon: Zap, value: "5000+", label: "Medicines", color: "text-violet-600 dark:text-violet-400" },
 ];
 
 export default function Hero() {
@@ -92,11 +94,6 @@ export default function Hero() {
               Fast medicine availability, genuine medicines, healthcare essentials, friendly service and trusted support — right here in your neighborhood.
             </motion.p>
 
-            {/*
-              Mobile: Call Now + Get Directions share one row (flex-1 = equal
-              width), WhatsApp is full-width on its own row.
-              Tablet/desktop (sm+): all three sit in a single natural-width row.
-            */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -123,7 +120,6 @@ export default function Hero() {
                 <MapPin size={18} />
                 Get Directions
               </a>
-              {/* Full-width on mobile so it fills its own row cleanly */}
               <a
                 href="https://wa.me/919833273838"
                 target="_blank"
@@ -137,45 +133,53 @@ export default function Hero() {
               </a>
             </motion.div>
 
-            {/*
-              PWA Install button — animates itself in when the browser fires
-              a BeforeInstallPrompt; returns null otherwise so no empty gap
-              appears in the Hero layout.
-            */}
             <PWAInstallButtons />
 
-            {/* Quick Medicine Search */}
+            {/* Quick Medicine Search — bigger, more prominent */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-8"
+              className="mt-8 space-y-3"
             >
               <Link
                 href="/categories"
                 data-testid="hero-search-catalog-link"
-                className="flex items-center gap-3 w-full max-w-xl px-5 py-3.5 rounded-2xl border border-border bg-card/90 backdrop-blur-sm text-sm text-muted-foreground shadow-sm hover:border-primary/40 hover:text-foreground transition-all duration-200"
+                className="flex items-center gap-3 w-full max-w-xl px-5 py-4 rounded-2xl border-2 border-border bg-card/90 backdrop-blur-sm text-sm text-muted-foreground shadow-md hover:border-primary/50 hover:text-foreground hover:shadow-primary/10 transition-all duration-200 group"
               >
-                <Search size={18} className="text-muted-foreground" aria-hidden />
-                Search medicines, e.g. Paracetamol, Vitamin D3…
+                <Search size={20} className="text-primary flex-shrink-0 group-hover:scale-110 transition-transform" aria-hidden />
+                <span className="flex-1">Search medicines, e.g. Paracetamol, Vitamin D3…</span>
+                <span className="hidden sm:flex items-center gap-1 text-xs text-primary font-medium">
+                  Search <ArrowRight size={12} />
+                </span>
+              </Link>
+
+              {/* Explore All Medicines CTA */}
+              <Link
+                href="/categories"
+                data-testid="hero-explore-btn"
+                className="flex w-full max-w-xl items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5 transition-all duration-200 text-sm"
+              >
+                Explore All Medicines
+                <ArrowRight size={16} />
               </Link>
             </motion.div>
 
-            {/* Stat Row */}
+            {/* Stat Row — 5 stats */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              className="flex flex-wrap gap-6 mt-10 pt-8 border-t border-border"
+              className="flex flex-wrap gap-4 mt-10 pt-8 border-t border-border"
             >
               {statCards.map((s, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-current/10`} style={{ color: "transparent" }}>
-                    <s.icon size={20} className={s.color} />
+                <div key={i} className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-muted">
+                    <s.icon size={16} className={s.color} />
                   </div>
                   <div>
-                    <p className={`text-xl font-bold ${s.color}`} style={{ fontFamily: "'Poppins', sans-serif" }}>{s.value}</p>
-                    <p className="text-xs text-muted-foreground">{s.label}</p>
+                    <p className={`text-base font-bold ${s.color} leading-tight`} style={{ fontFamily: "'Poppins', sans-serif" }}>{s.value}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{s.label}</p>
                   </div>
                 </div>
               ))}

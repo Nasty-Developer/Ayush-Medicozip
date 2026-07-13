@@ -73,3 +73,15 @@ VITE_FIREBASE_STORAGE_BUCKET = "ayush-medico.firebasestorage.app"
 RAZORPAY_KEY_ID = "rzp_test_TCRTOgywMxmWhD"
 RAZORPAY_KEY_SECRET = "ajqbIrEoIt8vUycYjq4bshZQ"
 VITE_RAZORPAY_KEY_ID = "rzp_test_TCRTOgywMxmWhD"
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 18169
+externalPort = 80

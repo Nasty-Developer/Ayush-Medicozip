@@ -1,4 +1,4 @@
-import { Phone, MapPin, Clock, MessageCircle } from "lucide-react";
+import { Phone, MapPin, Clock, MessageCircle, Instagram, Facebook } from "lucide-react";
 
 const quickLinks = [
   { label: "Home", href: "#home" },
@@ -39,10 +39,13 @@ export default function Footer() {
             <p className="text-sm text-background/60 leading-relaxed mb-4">
               Your trusted neighborhood pharmacy in Kurla West, Mumbai. Serving the community with genuine medicines and quality healthcare products since 2013.
             </p>
-            <div className="flex items-center gap-3">
+
+            {/* Social + contact icons */}
+            <div className="flex items-center gap-3 flex-wrap">
               <a
                 href="tel:+919833273838"
                 data-testid="footer-call-btn"
+                title="Call Us"
                 className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/20 text-primary hover:bg-primary hover:text-white transition-all duration-200"
               >
                 <Phone size={16} />
@@ -52,6 +55,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 data-testid="footer-whatsapp-btn"
+                title="WhatsApp"
                 className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366] hover:text-white transition-all duration-200"
               >
                 <MessageCircle size={16} />
@@ -61,9 +65,28 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 data-testid="footer-directions-btn"
+                title="Get Directions"
                 className="flex items-center justify-center w-9 h-9 rounded-xl bg-secondary/20 text-secondary hover:bg-secondary hover:text-white transition-all duration-200"
               >
                 <MapPin size={16} />
+              </a>
+              <a
+                href="https://www.instagram.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Instagram"
+                className="flex items-center justify-center w-9 h-9 rounded-xl bg-pink-500/20 text-pink-500 hover:bg-pink-500 hover:text-white transition-all duration-200"
+              >
+                <Instagram size={16} />
+              </a>
+              <a
+                href="https://www.facebook.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Facebook"
+                className="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-500/20 text-blue-500 hover:bg-blue-500 hover:text-white transition-all duration-200"
+              >
+                <Facebook size={16} />
               </a>
             </div>
           </div>
@@ -91,9 +114,19 @@ export default function Footer() {
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <MapPin size={16} className="text-primary mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-background/60 leading-relaxed">
-                  Shop No 67, Halav Pool Rd, Makad Wala Chawl, Kurla West, Mumbai 400070
-                </p>
+                <div>
+                  <p className="text-sm text-background/60 leading-relaxed">
+                    Shop No 67, Halav Pool Rd, Makad Wala Chawl, Kurla West, Mumbai 400070
+                  </p>
+                  <a
+                    href="https://maps.google.com/?q=Shop+No+67,+Halav+Pool+Rd,+Makad+Wala+Chawl,+Kurla+West,+Mumbai"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline mt-1 inline-block"
+                  >
+                    Open in Google Maps →
+                  </a>
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <Phone size={16} className="text-primary flex-shrink-0" />
@@ -110,7 +143,7 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Hours */}
+          {/* Hours + Legal */}
           <div>
             <h4 className="text-background font-semibold mb-5 text-sm" style={{ fontFamily: "'Poppins', sans-serif" }}>Working Hours</h4>
             <div className="space-y-3">
@@ -121,10 +154,18 @@ export default function Footer() {
                   <p className="text-sm text-background/60">8:00 AM – 10:00 PM</p>
                 </div>
               </div>
-              <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 bg-secondary/20 text-secondary rounded-full text-xs font-semibold">
+              <div className="mt-1 inline-flex items-center gap-2 px-3 py-2 bg-secondary/20 text-secondary rounded-full text-xs font-semibold">
                 <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
                 Open Every Day
               </div>
+            </div>
+
+            {/* Legal info */}
+            <div className="mt-6 space-y-1.5">
+              <p className="text-xs text-background/40 font-medium uppercase tracking-wider">Legal</p>
+              <p className="text-xs text-background/50">Drug License: [DL No. Pending]</p>
+              <p className="text-xs text-background/50">GST: [GSTIN Pending]</p>
+              <p className="text-xs text-background/50">Licensed Retail Pharmacy</p>
             </div>
           </div>
         </div>

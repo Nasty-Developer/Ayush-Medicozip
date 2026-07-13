@@ -1,0 +1,222 @@
+🎨 Premium Homepage UI Redesign (Inspired by Leading Pharmacy Websites)
+
+Redesign the Ayush Medico homepage to feel like a modern, premium healthcare platform inspired by websites like PharmEasy, while keeping Ayush Medico's own branding and identity. Do not copy the design directly.
+
+Hero Section
+Create a clean premium hero.
+Large search bar with rounded corners.
+Add placeholder:
+"Search medicines, brands, healthcare products..."
+Add autocomplete search suggestions.
+Add a primary green button:
+🔍 Search
+Add a secondary outlined button:
+💊 Explore All Medicines
+Add a third CTA:
+📦 Request Medicine Delivery
+Quick Categories
+
+Immediately below the hero create beautiful category cards.
+
+Example:
+
+💊 Prescription Medicines
+
+🤒 Fever & Pain
+
+🩺 Diabetes Care
+
+❤️ Heart Care
+
+🧴 Personal Care
+
+👶 Baby Care
+
+🦴 Vitamins
+
+🩹 First Aid
+
+🧬 Healthcare Devices
+
+🌿 Ayurvedic
+
+Each card should have:
+
+Rounded corners
+Soft shadow
+Premium hover animation
+Icon
+Medicine count
+Click opens category page
+
+Below categories add:
+
+View All Categories →
+
+Featured Medicine Banner
+
+Create a beautiful promotional banner slider similar to modern pharmacy websites.
+
+Examples:
+
+Up to 20% Off
+Diabetes Care
+Monsoon Essentials
+Baby Care
+Daily Wellness
+
+Do not copy PharmEasy assets.
+
+Use premium healthcare illustrations.
+
+Featured Medicines
+
+Instead of "Coming Soon"
+
+Display premium medicine cards.
+
+Each card should contain:
+
+Medicine Image
+
+Medicine Name
+
+Company
+
+Strength
+
+Price
+
+Availability
+
+Prescription Required Badge (if applicable)
+
+Buttons:
+
+🛒 Add to Cart
+
+⚡ Order Now
+
+❤️ Wishlist
+
+Search Experience
+
+Modern search dropdown.
+
+Show:
+
+Medicine Image
+
+Medicine Name
+
+Company
+
+Strength
+
+Availability
+
+Price
+
+Category
+
+Highlight matching text.
+
+Trust Section
+
+Create premium trust badges.
+
+✔ Genuine Medicines
+
+🚚 Same Day Delivery
+
+📍 Serving Kurla West
+
+🧾 Prescription Verified
+
+🔒 Secure Payments
+
+⭐ Trusted Pharmacy Since 2013
+
+Homepage Flow
+
+Design homepage in this order:
+
+Hero
+
+↓
+
+Search
+
+↓
+
+Quick Categories
+
+↓
+
+Featured Banner
+
+↓
+
+Featured Medicines
+
+↓
+
+Special Medicines
+
+↓
+
+Why Choose Us
+
+↓
+
+Testimonials
+
+↓
+
+FAQ
+
+↓
+
+Contact
+
+↓
+
+Footer
+
+Buttons
+
+Use modern rounded buttons.
+
+Primary Green
+
+Secondary White Outline
+
+Hover animations
+
+Ripple click effect
+
+Premium transitions
+
+Mobile Experience
+
+Make categories horizontally scrollable.
+
+Sticky search bar.
+
+Sticky bottom navigation.
+
+Large tap targets.
+
+Fast loading.
+
+IMPORTANT
+
+Do not change any backend logic.
+
+Do not break existing functionality.
+
+Do not modify routes.
+
+Only improve UI/UX while preserving all existing features.
+
+Make the design look premium, clean, modern and production-ready.

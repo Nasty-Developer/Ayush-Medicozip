@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 
 const faqs = [
   {
@@ -27,6 +27,14 @@ const faqs = [
     q: "Do you accept prescriptions?",
     a: "Yes, we accept valid prescriptions from registered medical practitioners. Our pharmacists review prescriptions carefully before dispensing any prescription medicine. We can also advise on proper dosage and usage as per your doctor's instructions.",
   },
+  {
+    q: "Do you offer home delivery?",
+    a: "Yes! We offer same-day home delivery within Kurla West and nearby areas (approximately 4 km from our store). Order before 6 PM for same-day delivery. We cover Kurla, Nehru Nagar, Tilak Nagar, and more.",
+  },
+  {
+    q: "How do I order medicines online?",
+    a: "You can browse our medicine catalog on this website and add items to your cart. For prescription medicines, you'll need to upload a valid prescription during checkout. You can also call or WhatsApp us at +91 98332 73838 to place an order directly.",
+  },
 ];
 
 function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
@@ -36,7 +44,7 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.08 }}
+      transition={{ duration: 0.4, delay: index * 0.06 }}
       className={`border rounded-2xl overflow-hidden transition-all duration-300 ${
         open ? "border-primary/30 shadow-md shadow-primary/5 bg-card" : "border-border bg-card hover:border-primary/20"
       }`}
@@ -80,6 +88,13 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
 export default function FAQ() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return faqs;
+    return faqs.filter(f => f.q.toLowerCase().includes(q) || f.a.toLowerCase().includes(q));
+  }, [query]);
 
   return (
     <section id="faq" ref={ref} className="py-20 lg:py-28 bg-muted/30">
@@ -88,7 +103,7 @@ export default function FAQ() {
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/10 text-secondary text-sm font-semibold border border-secondary/20 mb-4">
             FAQ
@@ -99,15 +114,47 @@ export default function FAQ() {
               Questions
             </span>
           </h2>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-lg mb-8">
             Everything you need to know about Ayush Medico — answered honestly.
           </p>
+
+          {/* Search bar */}
+          <div className="relative max-w-lg mx-auto">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search questions…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              className="w-full pl-11 pr-10 py-3.5 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
         </motion.div>
 
         <div className="space-y-3">
-          {inView && faqs.map((faq, i) => (
-            <FAQItem key={i} faq={faq} index={i} />
+          {inView && filtered.length > 0 && filtered.map((faq, i) => (
+            <FAQItem key={faq.q} faq={faq} index={i} />
           ))}
+          {inView && filtered.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12"
+            >
+              <p className="text-muted-foreground text-sm">No questions found for "{query}". Try different keywords.</p>
+              <button onClick={() => setQuery("")} className="mt-3 text-primary text-sm font-medium hover:underline">
+                Clear search
+              </button>
+            </motion.div>
+          )}
         </div>
 
         <motion.div
