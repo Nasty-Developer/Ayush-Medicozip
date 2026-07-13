@@ -9,12 +9,13 @@
  * • "View All Categories" CTA button
  */
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { motion, useInView } from "framer-motion";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { getCategoryColors } from "@/lib/categoryColors";
+import { resolveCategoryPlaceholder } from "@/lib/medicineImage";
 
 /* ── Color stripe map ─────────────────────────────────────────────────────── */
 const STRIPE: Record<string, { from: string; to: string; text: string; pill: string }> = {
@@ -65,10 +66,15 @@ function SkeletonGrid() {
 
 /* ── Category Card ────────────────────────────────────────────────────────── */
 function CategoryCard({ cat, index, inView }: { cat: ReturnType<typeof useCategories>["categories"][0]; index: number; inView: boolean }) {
-  const colors = getCategoryColors(cat.color, index);
+  const [imgErr, setImgErr] = useState(false);
   const stripe = getStripe(cat.color, index);
   const href   = `/category/${cat.slug ?? cat.id}`;
   const count  = (cat as any).count as number | undefined;
+
+  // Use admin-uploaded imageUrl first, then keyword-matched PNG, then emoji fallback
+  const imgSrc = cat.imageUrl && !imgErr
+    ? cat.imageUrl
+    : resolveCategoryPlaceholder(cat.name);
 
   return (
     <Link href={href} className="flex-shrink-0 w-40 sm:w-44 lg:w-auto block">
@@ -76,61 +82,74 @@ function CategoryCard({ cat, index, inView }: { cat: ReturnType<typeof useCatego
         initial={{ opacity: 0, y: 24 }}
         animate={inView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.45, delay: index * 0.05 }}
-        whileHover={{ y: -6, scale: 1.03 }}
-        className="group relative bg-card dark:bg-card border border-border/60 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-black/8 transition-all duration-300 cursor-pointer h-full"
+        whileHover={{ y: -6, scale: 1.02 }}
+        className="group relative bg-card dark:bg-card border border-border/60 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-black/10 transition-all duration-300 cursor-pointer h-full"
       >
-        {/* Gradient accent stripe */}
+        {/* Top gradient accent stripe */}
         <div
-          className="h-1.5 w-full"
+          className="h-1 w-full flex-shrink-0"
           style={{ background: `linear-gradient(90deg, ${stripe.from}, ${stripe.to})` }}
         />
 
-        {/* Card body */}
-        <div className="px-4 pt-5 pb-5 flex flex-col items-center text-center gap-3">
+        {/* Category image area */}
+        <div
+          className="relative h-28 overflow-hidden flex items-center justify-center"
+          style={{ background: `linear-gradient(135deg, ${stripe.from}14, ${stripe.to}20)` }}
+        >
+          <img
+            src={imgSrc}
+            alt={cat.name}
+            loading="lazy"
+            onError={() => setImgErr(true)}
+            className="h-24 w-24 object-contain group-hover:scale-110 transition-transform duration-400 drop-shadow-md"
+          />
+          {/* Soft glow under image */}
+          <div
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-6 blur-xl opacity-40"
+            style={{ background: stripe.from }}
+          />
+        </div>
 
-          {/* Icon bubble */}
-          <motion.div
-            whileHover={{ rotate: [0, -8, 8, 0] }}
-            transition={{ duration: 0.5 }}
-            className="relative w-16 h-16 rounded-2xl flex items-center justify-center shadow-md overflow-hidden"
-            style={{ background: `linear-gradient(135deg, ${stripe.from}22, ${stripe.to}33)` }}
+        {/* Card body */}
+        <div className="px-3 pt-3 pb-4 flex flex-col items-center text-center gap-2">
+
+          {/* Icon badge over the image-to-text transition */}
+          <div
+            className="inline-flex items-center justify-center w-8 h-8 rounded-xl text-lg -mt-7 ring-2 ring-card shadow-md"
+            style={{ background: `linear-gradient(135deg, ${stripe.from}, ${stripe.to})` }}
           >
-            {/* Soft radial glow behind emoji */}
-            <div
-              className="absolute inset-0 opacity-30 blur-sm"
-              style={{ background: `radial-gradient(circle, ${stripe.from}, transparent 70%)` }}
-            />
-            <span className="relative text-3xl leading-none" role="img" aria-label={cat.name}>
+            <span role="img" aria-label={cat.name} className="text-base leading-none">
               {cat.icon || "💊"}
             </span>
-          </motion.div>
+          </div>
 
           {/* Name */}
           <h3
-            className="font-bold text-foreground text-sm leading-tight group-hover:text-primary transition-colors duration-200"
+            className="font-bold text-foreground text-xs sm:text-sm leading-tight group-hover:text-primary transition-colors duration-200"
             style={{ fontFamily: "'Poppins', sans-serif" }}
           >
             {cat.name}
           </h3>
 
           {/* Medicine count pill */}
-          <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold ${stripe.pill}`}>
+          <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${stripe.pill}`}>
             {typeof count === "number" && count > 0
-              ? `${count.toLocaleString()} medicine${count === 1 ? "" : "s"}`
-              : "View products"}
+              ? `${count.toLocaleString()} items`
+              : "View all"}
           </div>
 
           {/* Arrow — slides in on hover */}
-          <div className="flex items-center gap-1 text-xs font-medium opacity-0 group-hover:opacity-100 -translate-y-1 group-hover:translate-y-0 transition-all duration-200"
+          <div
+            className="flex items-center gap-0.5 text-[10px] font-semibold opacity-0 group-hover:opacity-100 -translate-y-1 group-hover:translate-y-0 transition-all duration-200"
             style={{ color: stripe.from }}
           >
-            Shop now <ChevronRight size={12} />
+            Shop now <ChevronRight size={11} />
           </div>
         </div>
 
-        {/* Bottom gradient overlay on hover */}
+        {/* Hover wash */}
         <div
-          className="absolute inset-0 opacity-0 group-hover:opacity-[0.04] transition-opacity duration-300 pointer-events-none rounded-3xl"
+          className="absolute inset-0 opacity-0 group-hover:opacity-[0.03] transition-opacity duration-300 pointer-events-none rounded-3xl"
           style={{ background: `linear-gradient(135deg, ${stripe.from}, ${stripe.to})` }}
         />
       </motion.div>

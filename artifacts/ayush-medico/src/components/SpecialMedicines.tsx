@@ -70,19 +70,25 @@ function SkeletonCard() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 text-center col-span-full">
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }}
-        className="w-20 h-20 rounded-full bg-secondary/10 flex items-center justify-center mb-5 shadow-inner"
-      >
-        <Award size={34} className="text-secondary/40" />
-      </motion.div>
-      <h3 className="text-base font-bold text-foreground mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
-        Exclusive medicines coming soon!
-      </h3>
-      <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-        We're sourcing special medicines only available at Ayush Medico. Stay tuned!
-      </p>
+    <div className="col-span-full flex flex-col sm:flex-row items-center gap-6 py-10 px-6 rounded-2xl bg-gradient-to-r from-secondary/5 to-primary/5 border border-secondary/10">
+      <div className="flex-shrink-0 w-20 h-20 rounded-2xl bg-gradient-to-br from-secondary to-emerald-600 flex items-center justify-center shadow-lg shadow-secondary/25">
+        <Award size={32} className="text-white" />
+      </div>
+      <div className="text-center sm:text-left">
+        <h3 className="text-base font-bold text-foreground mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+          Discover medicines available at Ayush Medico
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+          Genuine medicines direct from authorised distributors — diabetes care, cardiac, vitamins, baby care and much more.
+        </p>
+        <a
+          href="/categories"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-secondary to-emerald-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-secondary/25 hover:-translate-y-0.5 transition-all duration-200"
+        >
+          Browse All Categories
+          <PackageSearch size={15} />
+        </a>
+      </div>
     </div>
   );
 }

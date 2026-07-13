@@ -70,19 +70,25 @@ function SkeletonCard() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }}
-        className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-5 shadow-inner"
-      >
-        <Sparkles size={34} className="text-primary/40" />
-      </motion.div>
-      <h3 className="text-base font-bold text-foreground mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
-        New medicines coming soon!
-      </h3>
-      <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-        We're stocking up on the latest medicines. Check back soon for fresh arrivals.
-      </p>
+    <div className="flex flex-col sm:flex-row items-center gap-6 py-10 px-6 rounded-2xl bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/10">
+      <div className="flex-shrink-0 w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/25">
+        <Sparkles size={32} className="text-white" />
+      </div>
+      <div className="text-center sm:text-left">
+        <h3 className="text-base font-bold text-foreground mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+          Explore our full medicine catalog
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+          Browse 5,000+ genuine medicines across all categories — prescription, OTC, vitamins, devices and more.
+        </p>
+        <a
+          href="/categories"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-secondary text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 hover:-translate-y-0.5 transition-all duration-200"
+        >
+          Browse All Medicines
+          <PackageSearch size={15} />
+        </a>
+      </div>
     </div>
   );
 }
