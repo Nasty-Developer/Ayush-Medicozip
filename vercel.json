@@ -1,0 +1,14 @@
+{
+  "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter @workspace/ayush-medico run build",
+  "outputDirectory": "artifacts/ayush-medico/dist/public",
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

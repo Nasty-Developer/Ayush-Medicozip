@@ -4,7 +4,7 @@
  * Parses the 5 fixed-width SDF export files (PRODUCT, STOCK, COMPANY,
  * CATEGORY, DRUG) from raw Node.js Buffers (latin-1 / Windows-1252 encoded).
  *
- * Returns a flat list of medicine documents ready to be written to Firestore,
+ * Returns a flat list of medicine documents ready to be written to PostgreSQL,
  * plus new category and brand names.
  *
  * This is a pure TypeScript port of the browser-side parser — no File API,

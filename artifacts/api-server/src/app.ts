@@ -33,7 +33,6 @@ app.use(cors());
 // (e.g. 51k medicine records as JSON ≈ 15–25 MB)
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 

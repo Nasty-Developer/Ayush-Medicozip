@@ -11,16 +11,22 @@
  *       companies → categories → drug_groups → medicines → stock
  *  4. Frontend polls GET /api/sync/status for live progress
  *
+ * Job state is persisted to PostgreSQL (settings table, key "sync:current_job")
+ * so that Vercel serverless invocations (which may land on different instances)
+ * can all read/write the same job state. On Replit (persistent process) the
+ * in-memory currentJob is the fast path; DB is the authoritative fallback.
+ *
  * PostgreSQL upserts are idempotent (ON CONFLICT product_code DO UPDATE).
  * Re-importing the same files is safe — admin-managed flags (featured,
  * newArrival, special, imageUrl) are NEVER overwritten by the importer.
  *
  * Performance: ~13k medicines import in ~5–15 seconds with no throttling.
+ * No Firestore is used or referenced anywhere in this file.
  */
 
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
-import { sql, inArray } from "drizzle-orm";
+import { sql, inArray, eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   companiesTable,
@@ -28,6 +34,7 @@ import {
   drugGroupsTable,
   medicinesTable,
   stockTable,
+  settingsTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware";
@@ -83,7 +90,53 @@ export interface SyncJob {
   };
 }
 
+/** In-memory fast path — valid within a single long-lived process (Replit). */
 let currentJob: SyncJob | null = null;
+
+// ── DB persistence helpers ─────────────────────────────────────────────────────
+
+const SYNC_JOB_KEY = "sync:current_job";
+
+/**
+ * Persist job snapshot to PostgreSQL settings table.
+ * Called after each major phase change so Vercel serverless invocations
+ * that land on a different instance can read the current state.
+ * Fire-and-forget (errors are non-fatal — in-memory state still works).
+ */
+async function saveJobToDb(job: SyncJob): Promise<void> {
+  try {
+    await db
+      .insert(settingsTable)
+      .values({ key: SYNC_JOB_KEY, value: job as unknown as Record<string, unknown> })
+      .onConflictDoUpdate({
+        target: settingsTable.key,
+        set: {
+          value: job as unknown as Record<string, unknown>,
+          updatedAt: new Date(),
+        },
+      });
+  } catch (err) {
+    logger.warn({ err }, "Failed to persist sync job state to DB (non-fatal)");
+  }
+}
+
+/**
+ * Load job state from PostgreSQL settings table.
+ * Used as fallback when currentJob is null (different serverless instance).
+ */
+async function loadJobFromDb(): Promise<SyncJob | null> {
+  try {
+    const rows = await db
+      .select()
+      .from(settingsTable)
+      .where(eq(settingsTable.key, SYNC_JOB_KEY));
+    if (!rows.length || !rows[0]) return null;
+    return rows[0].value as unknown as SyncJob;
+  } catch (err) {
+    logger.warn({ err }, "Failed to load sync job state from DB");
+    return null;
+  }
+}
 
 function makeJob(): SyncJob {
   return {
@@ -137,6 +190,7 @@ async function runImport(
     // ── 1. Parse ─────────────────────────────────────────────────────────────
     job.phase   = "parsing";
     job.message = "Parsing SDF files…";
+    await saveJobToDb(job);
 
     const { medicines, allCategoryNames, allBrandNames, stats, parseErrors } =
       parseSdfBuffers(buffers);
@@ -150,14 +204,16 @@ async function runImport(
     if (medicines.length === 0) {
       job.status  = "error";
       job.message = "No valid medicines found in PRODUCT.SDF. Check the file format.";
+      await saveJobToDb(job);
       return;
     }
 
-    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; return; }
+    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; await saveJobToDb(job); return; }
 
     // ── 2. Upsert companies ───────────────────────────────────────────────────
     job.phase   = "companies";
     job.message = `Upserting ${allBrandNames.length} companies…`;
+    await saveJobToDb(job);
 
     const uniqueCompanies = [...new Set(allBrandNames.filter(Boolean))];
     if (uniqueCompanies.length) {
@@ -172,11 +228,12 @@ async function runImport(
     job.report.companies = companyRows.length;
     job.message = `${uniqueCompanies.length} companies upserted.`;
 
-    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; return; }
+    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; await saveJobToDb(job); return; }
 
     // ── 3. Upsert categories ──────────────────────────────────────────────────
     job.phase   = "categories";
     job.message = `Upserting ${allCategoryNames.length} categories…`;
+    await saveJobToDb(job);
 
     const uniqueCategories = [...new Set(allCategoryNames.filter(Boolean))];
     if (uniqueCategories.length) {
@@ -200,7 +257,7 @@ async function runImport(
     job.report.categories = categoryRows.length;
     job.message = `${uniqueCategories.length} categories upserted.`;
 
-    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; return; }
+    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; await saveJobToDb(job); return; }
 
     // ── 4. Upsert drug groups (from unique genericNames) ──────────────────────
     job.phase   = "drug_groups";
@@ -208,6 +265,7 @@ async function runImport(
       medicines.map((m) => m.description).filter((d): d is string => !!d && d.trim().length > 0)
     )];
     job.message = `Upserting ${uniqueGenerics.length} drug groups…`;
+    await saveJobToDb(job);
 
     if (uniqueGenerics.length) {
       for (const batch of chunks(uniqueGenerics, 500)) {
@@ -223,12 +281,13 @@ async function runImport(
     job.report.drugGroups = drugGroupRows.length;
     job.message = `${uniqueGenerics.length} drug groups upserted.`;
 
-    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; return; }
+    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; await saveJobToDb(job); return; }
 
     // ── 5. Upsert medicines ───────────────────────────────────────────────────
     job.phase        = "medicines";
     job.totalBatches = Math.ceil(medicines.length / MEDICINE_BATCH);
     job.message      = `Importing ${medicines.length.toLocaleString()} medicines in ${job.totalBatches} batches…`;
+    await saveJobToDb(job);
 
     const medBatches = chunks(medicines, MEDICINE_BATCH);
     const allInsertedIds: number[] = [];
@@ -237,6 +296,7 @@ async function runImport(
       if (job.cancelRequested) {
         job.status  = "cancelled";
         job.message = `Cancelled at batch ${i + 1}/${job.totalBatches}. ${job.processed} medicines imported.`;
+        await saveJobToDb(job);
         return;
       }
 
@@ -292,13 +352,18 @@ async function runImport(
       for (const r of inserted) allInsertedIds.push(r.id);
       job.processed      += batch.length;
       job.report.medicines = job.processed;
+
+      // Save progress to DB every 10 batches so polls see live progress
+      // even if they land on a different serverless instance.
+      if (i % 10 === 0) await saveJobToDb(job);
     }
 
-    if (job.cancelRequested) { job.status = "cancelled"; return; }
+    if (job.cancelRequested) { job.status = "cancelled"; await saveJobToDb(job); return; }
 
     // ── 6. Replace stock ──────────────────────────────────────────────────────
     job.phase   = "stock";
     job.message = `Writing stock records for ${allInsertedIds.length.toLocaleString()} medicines…`;
+    await saveJobToDb(job);
 
     // Build productCode → medicine DB id map for stock writes
     const productCodeToDbId: Record<number, number> = {};
@@ -345,6 +410,8 @@ async function runImport(
     // zero-count categories are stale and safe to remove.
     job.phase   = "done";
     job.message = "Cleaning up orphaned categories…";
+    await saveJobToDb(job);
+
     try {
       const emptyCats = await db.execute(
         sql`DELETE FROM categories WHERE id NOT IN (
@@ -377,12 +444,14 @@ async function runImport(
       `${job.report.stockRecords.toLocaleString()} stock records.`;
 
     logger.info({ report: job.report }, "SDF PostgreSQL import finished");
+    await saveJobToDb(job);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error({ err }, "SDF PostgreSQL import crashed");
     job.status  = "error";
     job.phase   = "done";
     job.message = `Import failed: ${msg}`;
+    await saveJobToDb(job);
   }
 }
 
@@ -393,8 +462,15 @@ router.get(
   "/status",
   requireAuth,
   requireAdminEmail,
-  (_req: Request, res: Response): void => {
-    res.json({ running: currentJob?.status === "running", job: currentJob });
+  async (_req: Request, res: Response): Promise<void> => {
+    // Fast path: in-memory (Replit persistent process, same instance on Vercel)
+    if (currentJob) {
+      res.json({ running: currentJob.status === "running", job: currentJob });
+      return;
+    }
+    // Fallback: read from DB (Vercel — status poll landed on a different instance)
+    const dbJob = await loadJobFromDb();
+    res.json({ running: dbJob?.status === "running", job: dbJob });
   }
 );
 
@@ -408,6 +484,16 @@ router.post(
     if (currentJob?.status === "running") {
       res.status(409).json({
         error: "A sync is already running. Cancel it first or wait.",
+        code: "already_running",
+      });
+      return;
+    }
+
+    // Also guard against a job running on another serverless instance
+    const dbJob = await loadJobFromDb();
+    if (dbJob?.status === "running") {
+      res.status(409).json({
+        error: "A sync is already running on another instance. Wait for it to finish.",
         code: "already_running",
       });
       return;
@@ -427,6 +513,9 @@ router.post(
 
     logger.info({ product: productFile.size, stock: stockFile.size }, "Starting PostgreSQL import job");
 
+    // Persist initial state immediately so status polls see it right away
+    await saveJobToDb(job);
+
     runImport(job, {
       product:  productFile.buffer,
       stock:    stockFile.buffer,
@@ -438,6 +527,7 @@ router.post(
       if (currentJob) {
         currentJob.status  = "error";
         currentJob.message = err instanceof Error ? err.message : "Unknown error";
+        void saveJobToDb(currentJob);
       }
     });
 
@@ -453,12 +543,16 @@ router.delete(
   "/cancel",
   requireAuth,
   requireAdminEmail,
-  (_req: Request, res: Response): void => {
-    if (!currentJob || currentJob.status !== "running") {
+  async (_req: Request, res: Response): Promise<void> => {
+    const job = currentJob ?? await loadJobFromDb();
+    if (!job || job.status !== "running") {
       res.status(404).json({ error: "No running sync job to cancel." });
       return;
     }
-    currentJob.cancelRequested = true;
+    // Signal cancellation in both in-memory state and DB
+    job.cancelRequested = true;
+    if (currentJob) currentJob.cancelRequested = true;
+    await saveJobToDb(job);
     res.json({ message: "Cancellation requested — job will stop after the current batch." });
   }
 );
