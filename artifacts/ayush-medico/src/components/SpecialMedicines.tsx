@@ -134,7 +134,7 @@ function ExclusiveCard({ item, index }: { item: Medicine; index: number }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, delay: Math.min(index * 0.07, 0.42) }}
       whileHover={{ y: -8, scale: 1.02 }}
@@ -197,7 +197,7 @@ function ExclusiveCard({ item, index }: { item: Medicine; index: number }) {
             {inCart ? (
               <motion.div
                 key="qty"
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
@@ -219,7 +219,7 @@ function ExclusiveCard({ item, index }: { item: Medicine; index: number }) {
             ) : canAdd ? (
               <motion.button
                 key="add"
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
@@ -231,7 +231,7 @@ function ExclusiveCard({ item, index }: { item: Medicine; index: number }) {
             ) : (
               <motion.button
                 key="request"
-                initial={{ opacity: 0 }}
+                initial={{}}
                 animate={{ opacity: 1 }}
                 onClick={(e) => { e.stopPropagation(); triggerRequest(item.name, item.brand, item.categoryName); }}
                 className="w-full flex items-center justify-center gap-1.5 h-9 rounded-xl text-xs font-semibold border border-dashed border-muted-foreground/40 bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all duration-200"
@@ -253,7 +253,7 @@ const DEFAULTS = {
 
 export default function SpecialMedicines() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
   const [items, setItems] = useState<Medicine[]>([]);
   const [loading, setLoading] = useState(true);
   const [sectionEnabled, setSectionEnabled] = useState(true);
@@ -299,8 +299,8 @@ export default function SpecialMedicines() {
     <section id="special-medicines" ref={ref} className="py-20 lg:py-24 bg-muted/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          initial={{ y: 30 }}
+          animate={inView ? { y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >

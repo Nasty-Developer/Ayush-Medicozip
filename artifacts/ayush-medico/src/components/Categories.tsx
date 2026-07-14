@@ -79,9 +79,9 @@ function CategoryCard({ cat, index, inView }: { cat: ReturnType<typeof useCatego
   return (
     <Link href={href} className="flex-shrink-0 w-40 sm:w-44 lg:w-auto block">
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={inView ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.45, delay: index * 0.05 }}
+        initial={{ y: 16 }}
+        animate={inView ? { y: 0 } : {}}
+        transition={{ duration: 0.4, delay: index * 0.04 }}
         whileHover={{ y: -6, scale: 1.02 }}
         className="group relative bg-card dark:bg-card border border-border/60 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-black/10 transition-all duration-300 cursor-pointer h-full"
       >
@@ -160,7 +160,7 @@ function CategoryCard({ cat, index, inView }: { cat: ReturnType<typeof useCatego
 /* ── Main component ───────────────────────────────────────────────────────── */
 export default function Categories() {
   const ref    = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
   const { categories, loading } = useCategories(true);
 
   if (loading)                 return <SkeletonGrid />;
@@ -172,9 +172,9 @@ export default function Categories() {
 
         {/* Heading */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
+          initial={{ y: 24 }}
+          animate={inView ? { y: 0 } : {}}
+          transition={{ duration: 0.5 }}
           className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10"
         >
           <div>
@@ -225,9 +225,9 @@ export default function Categories() {
 
         {/* View All button — mobile only (desktop has it inline with heading) */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5, delay: 0.4 }}
+          initial={{ y: 16 }}
+          animate={inView ? { y: 0 } : {}}
+          transition={{ duration: 0.4, delay: 0.2 }}
           className="flex justify-center mt-8 sm:hidden"
         >
           <Link

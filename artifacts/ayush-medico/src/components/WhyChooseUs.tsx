@@ -61,14 +61,14 @@ const reasons = [
 
 export default function WhyChooseUs() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
 
   return (
     <section id="why-us" ref={ref} className="py-20 lg:py-28 bg-muted/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          initial={{ y: 24 }}
+          animate={inView ? { y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
@@ -91,9 +91,9 @@ export default function WhyChooseUs() {
             <motion.div
               key={i}
               data-testid={`why-card-${i}`}
-              initial={{ opacity: 0, y: 40 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
+              initial={{ y: 24 }}
+              animate={inView ? { y: 0 } : {}}
+              transition={{ duration: 0.45, delay: i * 0.07 }}
               whileHover={{ y: -6 }}
               className={`group relative bg-card border ${r.border} rounded-2xl p-7 shadow-sm hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 overflow-hidden`}
             >

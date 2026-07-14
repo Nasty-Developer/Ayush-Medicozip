@@ -42,7 +42,7 @@ function CountUp({ target, suffix }: { target: number; suffix: string }) {
 
 export default function About() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
 
   return (
     <section id="about" ref={ref} className="py-20 lg:py-28">
@@ -50,9 +50,9 @@ export default function About() {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           {/* Visual */}
           <motion.div
-            initial={{ opacity: 0, x: -40 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.7 }}
+            initial={{ y: 24 }}
+            animate={inView ? { y: 0 } : {}}
+            transition={{ duration: 0.6 }}
             className="relative"
           >
             <div className="relative rounded-3xl bg-gradient-to-br from-primary/10 via-card to-secondary/10 border border-border p-8 lg:p-12 shadow-xl shadow-primary/5 overflow-hidden">
@@ -87,9 +87,9 @@ export default function About() {
               {stats.map((stat, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={inView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
+                  initial={{ y: 20 }}
+                  animate={inView ? { y: 0 } : {}}
+                  transition={{ duration: 0.5, delay: 0.1 + i * 0.07 }}
                   className="bg-card border border-border rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
                 >
                   <div className={`inline-flex p-2 rounded-xl ${stat.bg} mb-3`}>
@@ -106,9 +106,9 @@ export default function About() {
 
           {/* Content */}
           <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.7, delay: 0.1 }}
+            initial={{ y: 24 }}
+            animate={inView ? { y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.08 }}
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold border border-primary/20 mb-6">
               About Us
@@ -138,9 +138,9 @@ export default function About() {
               ].map((point, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={inView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.5, delay: 0.4 + i * 0.1 }}
+                  initial={{ y: 12 }}
+                  animate={inView ? { y: 0 } : {}}
+                  transition={{ duration: 0.4, delay: 0.1 + i * 0.06 }}
                   className="flex items-start gap-3"
                 >
                   <div className="w-5 h-5 rounded-full bg-secondary/20 flex items-center justify-center flex-shrink-0 mt-0.5">

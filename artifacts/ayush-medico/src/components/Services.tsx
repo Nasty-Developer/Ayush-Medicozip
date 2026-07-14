@@ -17,14 +17,14 @@ const services = [
 
 export default function Services() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
 
   return (
     <section id="services" ref={ref} className="py-20 lg:py-28 bg-muted/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          initial={{ y: 24 }}
+          animate={inView ? { y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
@@ -47,9 +47,9 @@ export default function Services() {
             <motion.div
               key={i}
               data-testid={`service-card-${i}`}
-              initial={{ opacity: 0, y: 30 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: i * 0.05 }}
+              initial={{ y: 20 }}
+              animate={inView ? { y: 0 } : {}}
+              transition={{ duration: 0.4, delay: i * 0.04 }}
               whileHover={{ y: -6, scale: 1.02 }}
               className={`group relative bg-card border ${s.border} rounded-2xl p-5 shadow-sm hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 cursor-pointer overflow-hidden`}
             >

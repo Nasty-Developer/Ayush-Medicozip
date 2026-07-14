@@ -50,7 +50,7 @@ const highlights = [
 
 export default function DeliveryFeatures() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
   const { triggerRequest } = useRequestMedicine();
 
   return (
@@ -65,8 +65,8 @@ export default function DeliveryFeatures() {
 
           {/* Left — heading + highlights + CTAs */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
+            initial={{ y: 24 }}
+            animate={inView ? { y: 0 } : {}}
             transition={{ duration: 0.6 }}
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/10 text-secondary text-sm font-semibold border border-secondary/20 mb-5">
@@ -91,8 +91,8 @@ export default function DeliveryFeatures() {
               {highlights.map((h, i) => (
                 <motion.div
                   key={h}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={inView ? { opacity: 1, x: 0 } : {}}
+                  initial={{ y: 10 }}
+                  animate={inView ? { y: 0 } : {}}
                   transition={{ duration: 0.4, delay: 0.2 + i * 0.08 }}
                   className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border"
                 >
@@ -125,8 +125,8 @@ export default function DeliveryFeatures() {
             {features.map((f, i) => (
               <motion.div
                 key={f.title}
-                initial={{ opacity: 0, x: 30 }}
-                animate={inView ? { opacity: 1, x: 0 } : {}}
+                initial={{ y: 20 }}
+                animate={inView ? { y: 0 } : {}}
                 transition={{ duration: 0.45, delay: i * 0.1 }}
                 className="group flex items-start gap-4 p-5 rounded-2xl bg-card border border-border shadow-sm hover:shadow-lg hover:shadow-primary/8 hover:-translate-y-0.5 hover:border-primary/25 transition-all duration-300"
               >

@@ -4,14 +4,14 @@ import { MapPin, Phone, MessageCircle, Clock, ExternalLink } from "lucide-react"
 
 export default function Contact() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
 
   return (
     <section id="contact" ref={ref} className="py-20 lg:py-28">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          initial={{ y: 24 }}
+          animate={inView ? { y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
@@ -32,9 +32,9 @@ export default function Contact() {
         <div className="grid lg:grid-cols-5 gap-8">
           {/* Contact info */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            initial={{ y: 20 }}
+            animate={inView ? { y: 0 } : {}}
+            transition={{ duration: 0.5, delay: 0.08 }}
             className="lg:col-span-2 space-y-4"
           >
             {/* Address Card */}
@@ -131,9 +131,9 @@ export default function Contact() {
 
           {/* Map */}
           <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            initial={{ y: 20 }}
+            animate={inView ? { y: 0 } : {}}
+            transition={{ duration: 0.5, delay: 0.12 }}
             className="lg:col-span-3 rounded-2xl overflow-hidden border border-border shadow-lg shadow-primary/5 min-h-[400px]"
           >
             <iframe

@@ -15,15 +15,15 @@ const steps = [
 
 export default function HowItWorks() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
 
   return (
     <section ref={ref} id="how-it-works" className="py-20 lg:py-28 bg-muted/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          initial={{ y: 24 }}
+          animate={inView ? { y: 0 } : {}}
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
@@ -70,8 +70,8 @@ export default function HowItWorks() {
 
         {/* Bottom CTA */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          initial={{ y: 16 }}
+          animate={inView ? { y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.8 }}
           className="mt-14 text-center"
         >
@@ -92,8 +92,8 @@ function StepCard({ step, index, inView }: { step: typeof steps[0]; index: numbe
   const isEven = index % 2 === 0;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 32 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
+      initial={{ y: 20 }}
+      animate={inView ? { y: 0 } : {}}
       transition={{ duration: 0.45, delay: index * 0.07 }}
       className="group relative flex flex-col gap-4 p-6 rounded-2xl border border-border bg-card shadow-sm hover:shadow-xl hover:shadow-primary/8 hover:-translate-y-1.5 hover:border-primary/20 transition-all duration-300"
     >

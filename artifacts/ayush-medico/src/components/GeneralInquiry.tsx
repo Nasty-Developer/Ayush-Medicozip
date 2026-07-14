@@ -45,7 +45,7 @@ const CONTACT_OPTIONS = [
 
 export default function GeneralInquiry() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState<"send" | "whatsapp" | "email" | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -208,8 +208,8 @@ export default function GeneralInquiry() {
     <section id="general-inquiry" ref={ref} className="py-20 lg:py-28">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          initial={{ y: 30 }}
+          animate={inView ? { y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
@@ -232,8 +232,8 @@ export default function GeneralInquiry() {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          initial={{ y: 40 }}
+          animate={inView ? { y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.15 }}
           className="relative rounded-3xl border border-border bg-card/70 backdrop-blur-xl shadow-xl shadow-secondary/5 p-6 sm:p-10 overflow-hidden"
         >
@@ -244,7 +244,7 @@ export default function GeneralInquiry() {
             {submitted ? (
               <motion.div
                 key="success"
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="relative flex flex-col items-center justify-center py-12 text-center"

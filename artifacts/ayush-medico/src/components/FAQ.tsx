@@ -42,9 +42,9 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.06 }}
+      initial={{ y: 16 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.35, delay: index * 0.04 }}
       className={`border rounded-2xl overflow-hidden transition-all duration-300 ${
         open ? "border-primary/30 shadow-md shadow-primary/5 bg-card" : "border-border bg-card hover:border-primary/20"
       }`}
@@ -87,7 +87,7 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
 
 export default function FAQ() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -100,8 +100,8 @@ export default function FAQ() {
     <section id="faq" ref={ref} className="py-20 lg:py-28 bg-muted/30">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          initial={{ y: 24 }}
+          animate={inView ? { y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
@@ -140,27 +140,23 @@ export default function FAQ() {
         </motion.div>
 
         <div className="space-y-3">
-          {inView && filtered.length > 0 && filtered.map((faq, i) => (
+          {filtered.length > 0 && filtered.map((faq, i) => (
             <FAQItem key={faq.q} faq={faq} index={i} />
           ))}
-          {inView && filtered.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-12"
-            >
+          {filtered.length === 0 && (
+            <div className="text-center py-12">
               <p className="text-muted-foreground text-sm">No questions found for "{query}". Try different keywords.</p>
               <button onClick={() => setQuery("")} className="mt-3 text-primary text-sm font-medium hover:underline">
                 Clear search
               </button>
-            </motion.div>
+            </div>
           )}
         </div>
 
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={inView ? { opacity: 1 } : {}}
-          transition={{ delay: 0.7 }}
+          initial={{ y: 16 }}
+          animate={inView ? { y: 0 } : {}}
+          transition={{ delay: 0.3 }}
           className="mt-10 text-center"
         >
           <p className="text-muted-foreground text-sm mb-4">Have more questions? We're happy to help.</p>

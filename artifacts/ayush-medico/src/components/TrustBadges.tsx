@@ -20,7 +20,7 @@ const badges = [
 
 export default function TrustBadges() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const inView = useInView(ref, { once: true, margin: "0px" });
 
   return (
     <section ref={ref} className="relative overflow-hidden">
@@ -33,8 +33,8 @@ export default function TrustBadges() {
             {stats.map((s, i) => (
               <motion.div
                 key={s.label}
-                initial={{ opacity: 0, y: 16 }}
-                animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+                initial={{ y: 16 }}
+                animate={inView ? { y: 0 } : {}}
                 transition={{ duration: 0.45, delay: i * 0.07 }}
                 className="flex flex-col items-center text-center"
               >
@@ -63,8 +63,8 @@ export default function TrustBadges() {
             {badges.map((b, i) => (
               <motion.div
                 key={b.label}
-                initial={{ opacity: 0, y: 8 }}
-                animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+                initial={{ y: 8 }}
+                animate={inView ? { y: 0 } : {}}
                 transition={{ duration: 0.4, delay: 0.25 + i * 0.06 }}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border ${b.border} ${b.bg} flex-shrink-0`}
               >
