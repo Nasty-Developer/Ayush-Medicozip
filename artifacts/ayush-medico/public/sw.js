@@ -10,7 +10,7 @@
  * Version bump SW_VERSION to force re-install on next deploy.
  */
 
-const SW_VERSION = '1.1.0';
+const SW_VERSION = '1.2.0';
 const STATIC_CACHE  = `ayush-medico-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `ayush-medico-runtime-${SW_VERSION}`;
 
