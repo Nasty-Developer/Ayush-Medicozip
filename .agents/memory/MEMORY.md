@@ -19,3 +19,4 @@
 - [Ayush Medico fresh-env DB setup](ayush-medico-fresh-env-setup.md) — on a new Replit environment, DB tables don't exist until schema is pushed; data is empty until inventory sync runs; both must happen before dashboard shows real counts.
 - [Razorpay integration](razorpay-integration.md) — TEST MODE; HMAC verify on backend; Key ID safe for frontend; Key Secret in Replit Secrets; /api/payment routes; swap keys only to go live.
 - [wouter v3 Link renders its own anchor](wouter-v3-link-anchor.md) — don't wrap a manual `<a>` inside `<Link>` (v2 pattern); causes nested-anchor hydration errors and blank renders in v3+.
+- [Hero background photo compositing](hero-photo-compositing.md) — generateImage output path lands at workspace root not artifact dir; manual ImageMagick blur+feather-mask compositing for wide subject-right hero photos; object-position tuned empirically, not by DOM math.

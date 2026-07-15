@@ -55,9 +55,10 @@ export default function Hero() {
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5 pointer-events-none" />
 
-      {/* Hero background photo — pharmacy interior, anchored to the right so the
-          left side stays clear for text. Overlaid with a soft white/green gradient
-          for readability, and faded out in dark mode via bg-background tokens. */}
+      {/* Hero background photo — realistic pharmacy interior with a pharmacist on
+          the right; the left side is naturally soft/blurred in the source photo so
+          it stays clear for text. Overlaid with a soft white/green gradient for
+          readability, and faded out in dark mode via bg-background tokens. */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <picture>
           <source srcSet={heroBgWebp} type="image/webp" />
@@ -67,7 +68,7 @@ export default function Hero() {
             role="presentation"
             fetchPriority="high"
             decoding="async"
-            className="absolute inset-0 w-full h-full object-cover object-[78%_center] sm:object-[70%_center] lg:object-[65%_center] scale-105 lg:scale-100"
+            className="absolute inset-0 w-full h-full object-cover object-[96%_30%] sm:object-[92%_32%] lg:object-[96%_38%]"
           />
         </picture>
         {/* Left → right fade so text always sits on a clean, readable surface
@@ -206,7 +207,7 @@ export default function Hero() {
             <div className="relative w-full aspect-square max-w-[480px] mx-auto">
               <div className="absolute inset-8 rounded-3xl bg-gradient-to-br from-primary/20 via-accent/10 to-secondary/20 blur-2xl" />
 
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/5 via-card to-secondary/5 border border-border backdrop-blur-sm overflow-hidden shadow-2xl shadow-primary/10">
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/15 via-white/10 to-primary/10 dark:from-background/25 dark:via-background/15 dark:to-background/25 border border-white/40 dark:border-border backdrop-blur-md overflow-hidden shadow-2xl shadow-primary/10">
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="relative w-48 h-48">
                     <div className="absolute inset-y-8 left-1/2 -translate-x-1/2 w-16 rounded-2xl bg-gradient-to-b from-primary to-secondary opacity-20" />
