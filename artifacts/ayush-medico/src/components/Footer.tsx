@@ -91,7 +91,7 @@ export default function Footer() {
               </p>
 
               {/* Trust badge */}
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background/8 border border-background/10 mb-5 w-fit">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background/10 border border-background/10 mb-5 w-fit">
                 <ShieldCheck size={14} className="text-secondary" />
                 <span className="text-xs text-background/70 font-medium">Licensed Retail Pharmacy · Since 2013</span>
               </div>

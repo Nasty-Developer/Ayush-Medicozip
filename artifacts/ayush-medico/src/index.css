@@ -5,6 +5,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  /* Extra small breakpoint — used for tighter mobile grid/text switches
+     (e.g. 2-col medicine grids, compact sort-button labels) below `sm`. */
+  --breakpoint-xs: 30rem;
+}
+
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));

@@ -17,6 +17,7 @@ import {
   Tag, Loader2, Search, X, SlidersHorizontal,
   Package, PackageSearch, Layers, ChevronDown,
 } from "lucide-react";
+import { useAnnouncement }        from "@/context/AnnouncementContext";
 import { useCategories }          from "@/hooks/useCategories";
 import { useMedicinesByCategory } from "@/hooks/useMedicinesByCategory";
 import { useAllMedicines }        from "@/hooks/useAllMedicines";
@@ -130,6 +131,7 @@ function MedicinesGrid({
 export default function CategoriesPage() {
   const headerRef = useRef(null);
   const inView    = useInView(headerRef, { once: true, margin: "-80px" });
+  const { enabled: announcementEnabled } = useAnnouncement();
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const { categories, loading: categoriesLoading, error: categoriesError } = useCategories(true);
@@ -275,8 +277,9 @@ export default function CategoriesPage() {
         </motion.div>
 
         {/* ── Sticky category pills ─────────────────────────────────────── */}
-        <div className="sticky top-[72px] z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8
-                        bg-background/95 backdrop-blur-sm border-b border-border/50 py-3 mb-8">
+        <div className={`sticky z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8
+                        bg-background/95 backdrop-blur-sm border-b border-border/50 py-3 mb-8
+                        ${announcementEnabled ? "top-[104px] md:top-[120px]" : "top-16 md:top-20"}`}>
           <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
             <CategoryPill
               selected={selectedCatName === "all"}

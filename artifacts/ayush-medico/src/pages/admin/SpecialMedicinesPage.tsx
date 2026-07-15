@@ -83,10 +83,11 @@ export default function SpecialMedicinesPage() {
             className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50">
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
           </button>
-          <Link href="/admin/medicines">
-            <a className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-white text-sm font-semibold rounded-xl shadow-md shadow-secondary/25 hover:bg-secondary/90 transition-all flex-shrink-0">
-              <ExternalLink size={15} /> Manage in Medicines
-            </a>
+          <Link
+            href="/admin/medicines"
+            className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-white text-sm font-semibold rounded-xl shadow-md shadow-secondary/25 hover:bg-secondary/90 transition-all flex-shrink-0"
+          >
+            <ExternalLink size={15} /> Manage in Medicines
           </Link>
         </div>
       </div>

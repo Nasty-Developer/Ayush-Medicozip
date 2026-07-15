@@ -133,7 +133,7 @@ export default function OrderDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center pt-16">
         <Loader2 size={32} className="animate-spin text-primary" />
       </div>
     );
@@ -141,7 +141,7 @@ export default function OrderDetailPage() {
 
   if (!order) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 pt-16 text-center">
         <AlertCircle size={40} className="text-destructive/60" />
         <p className="text-lg font-semibold text-foreground">Order not found</p>
         <button onClick={() => navigate("/")} className="text-primary hover:underline text-sm">Go home</button>
@@ -154,7 +154,7 @@ export default function OrderDetailPage() {
   // Note: Firestore security rules should be the authoritative enforcement layer.
   if (user && order.customerId !== user.uid) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 pt-16 text-center">
         <AlertCircle size={40} className="text-destructive/60" />
         <p className="text-lg font-semibold text-foreground">Access denied</p>
         <p className="text-sm text-muted-foreground">This order does not belong to your account.</p>

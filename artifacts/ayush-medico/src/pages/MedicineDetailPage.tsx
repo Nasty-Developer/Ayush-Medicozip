@@ -75,7 +75,7 @@ export default function MedicineDetailPage() {
 
   if (loading) {
     return (
-      <main className="max-w-2xl mx-auto px-4 py-10">
+      <main className="max-w-2xl mx-auto px-4 pt-28 pb-12">
         <div className="h-64 rounded-2xl bg-muted animate-pulse mb-6" />
         <MedicineSkeleton />
       </main>
@@ -84,7 +84,7 @@ export default function MedicineDetailPage() {
 
   if (notFound || !medicine) {
     return (
-      <main className="max-w-2xl mx-auto px-4 py-16 text-center">
+      <main className="max-w-2xl mx-auto px-4 pt-32 pb-16 text-center">
         <Package size={48} className="mx-auto text-muted-foreground mb-4" />
         <h1 className="text-xl font-bold mb-2">Medicine not found</h1>
         <p className="text-muted-foreground mb-6">
@@ -134,7 +134,7 @@ export default function MedicineDetailPage() {
   };
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8">
+    <main className="max-w-2xl mx-auto px-4 pt-28 pb-12">
       {/* Back link */}
       <GoBack
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground

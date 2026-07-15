@@ -154,15 +154,15 @@ export default function Hero() {
             </motion.div>
 
             {/* Stats row */}
-            <motion.div {...fadeUp(0.38)} className="flex flex-wrap gap-4 mt-10 pt-8 border-t border-border">
+            <motion.div {...fadeUp(0.38)} className="grid grid-cols-2 xs:grid-cols-3 sm:flex sm:flex-wrap gap-x-3 gap-y-4 sm:gap-4 mt-10 pt-8 border-t border-border">
               {statCards.map((s, i) => (
-                <div key={i} className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-muted">
+                <div key={i} className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-muted flex-shrink-0">
                     <s.icon size={16} className={s.color} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className={`text-base font-bold ${s.color} leading-tight`} style={{ fontFamily: "'Poppins', sans-serif" }}>{s.value}</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">{s.label}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight truncate">{s.label}</p>
                   </div>
                 </div>
               ))}

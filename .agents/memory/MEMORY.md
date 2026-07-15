@@ -18,3 +18,4 @@
 - [Ayush Medico admin dashboard data sources](ayush-medico-admin-dashboard.md) — dashboard uses /api/admin/stats for PG counts; Firestore only for inquiries/FAQs/testimonials; BrandsPage shows PG companies; schema must be pushed before first use (pnpm --filter @workspace/db run push).
 - [Ayush Medico fresh-env DB setup](ayush-medico-fresh-env-setup.md) — on a new Replit environment, DB tables don't exist until schema is pushed; data is empty until inventory sync runs; both must happen before dashboard shows real counts.
 - [Razorpay integration](razorpay-integration.md) — TEST MODE; HMAC verify on backend; Key ID safe for frontend; Key Secret in Replit Secrets; /api/payment routes; swap keys only to go live.
+- [wouter v3 Link renders its own anchor](wouter-v3-link-anchor.md) — don't wrap a manual `<a>` inside `<Link>` (v2 pattern); causes nested-anchor hydration errors and blank renders in v3+.

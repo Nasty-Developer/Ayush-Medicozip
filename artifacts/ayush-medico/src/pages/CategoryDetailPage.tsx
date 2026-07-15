@@ -127,11 +127,12 @@ export default function CategoryDetailPage() {
           <p className="text-muted-foreground mb-8">
             This category doesn't exist or may have been removed.
           </p>
-          <Link href="/categories">
-            <a className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white
-                          rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
-              <ArrowLeft size={14} /> Browse Medicines
-            </a>
+          <Link
+            href="/categories"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white
+                       rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <ArrowLeft size={14} /> Browse Medicines
           </Link>
         </div>
       </div>
@@ -164,14 +165,6 @@ export default function CategoryDetailPage() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-
-        <Link
-          href="/categories"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary mb-6 transition-colors group"
-        >
-          <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
-          Browse Medicines
-        </Link>
 
         {/* ── Category hero ─────────────────────────────────────────── */}
         <motion.div

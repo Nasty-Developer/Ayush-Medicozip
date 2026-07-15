@@ -341,19 +341,21 @@ export default function AdminLayout() {
           {/* Mobile badges */}
           <div className="lg:hidden flex items-center gap-2">
             {pendingRequests > 0 && (
-              <Link href="/admin/medicine-requests">
-                <a className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
-                  <ClipboardList size={13} />
-                  {pendingRequests} Pending
-                </a>
+              <Link
+                href="/admin/medicine-requests"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold"
+              >
+                <ClipboardList size={13} />
+                {pendingRequests} Pending
               </Link>
             )}
             {newInquiries > 0 && (
-              <Link href="/admin/inquiries">
-                <a className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-secondary/10 text-secondary text-xs font-semibold">
-                  <MessageSquare size={13} />
-                  {newInquiries} New
-                </a>
+              <Link
+                href="/admin/inquiries"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-secondary/10 text-secondary text-xs font-semibold"
+              >
+                <MessageSquare size={13} />
+                {newInquiries} New
               </Link>
             )}
           </div>
@@ -364,19 +366,21 @@ export default function AdminLayout() {
           {(pendingRequests + newInquiries) > 0 && (
             <div className="hidden lg:flex items-center gap-2">
               {pendingRequests > 0 && (
-                <Link href="/admin/medicine-requests">
-                  <a className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-all">
-                    <ClipboardList size={13} />
-                    {pendingRequests} pending request{pendingRequests !== 1 ? "s" : ""}
-                  </a>
+                <Link
+                  href="/admin/medicine-requests"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-all"
+                >
+                  <ClipboardList size={13} />
+                  {pendingRequests} pending request{pendingRequests !== 1 ? "s" : ""}
                 </Link>
               )}
               {newInquiries > 0 && (
-                <Link href="/admin/inquiries">
-                  <a className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 text-secondary text-xs font-semibold hover:bg-secondary/20 transition-all">
-                    <MessageSquare size={13} />
-                    {newInquiries} new {newInquiries === 1 ? "inquiry" : "inquiries"}
-                  </a>
+                <Link
+                  href="/admin/inquiries"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 text-secondary text-xs font-semibold hover:bg-secondary/20 transition-all"
+                >
+                  <MessageSquare size={13} />
+                  {newInquiries} new {newInquiries === 1 ? "inquiry" : "inquiries"}
                 </Link>
               )}
             </div>
