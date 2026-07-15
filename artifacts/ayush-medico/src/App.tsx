@@ -43,6 +43,12 @@ import CartPage from "@/pages/CartPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import OrderConfirmationPage from "@/pages/OrderConfirmationPage";
 import OrderDetailPage from "@/pages/OrderDetailPage";
+import TrustCompliance from "@/components/TrustCompliance";
+import PrivacyPolicyPage from "@/pages/legal/PrivacyPolicyPage";
+import TermsPage from "@/pages/legal/TermsPage";
+import RefundPolicyPage from "@/pages/legal/RefundPolicyPage";
+import ShippingPolicyPage from "@/pages/legal/ShippingPolicyPage";
+import PrescriptionPolicyPage from "@/pages/legal/PrescriptionPolicyPage";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +92,7 @@ function HomeSections() {
       <WhyChooseUs />
       <Testimonials />
       <FAQ />
+      <TrustCompliance />
       <RequestMedicine />
       <GeneralInquiry />
       <Contact />
@@ -189,6 +196,43 @@ function App() {
                         {() => (
                           <PublicLayout>
                             <CategoryDetailPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
+
+                      {/* ── Legal pages ── */}
+                      <Route path="/privacy-policy">
+                        {() => (
+                          <PublicLayout>
+                            <PrivacyPolicyPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
+                      <Route path="/terms-conditions">
+                        {() => (
+                          <PublicLayout>
+                            <TermsPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
+                      <Route path="/refund-policy">
+                        {() => (
+                          <PublicLayout>
+                            <RefundPolicyPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
+                      <Route path="/shipping-policy">
+                        {() => (
+                          <PublicLayout>
+                            <ShippingPolicyPage />
+                          </PublicLayout>
+                        )}
+                      </Route>
+                      <Route path="/prescription-policy">
+                        {() => (
+                          <PublicLayout>
+                            <PrescriptionPolicyPage />
                           </PublicLayout>
                         )}
                       </Route>

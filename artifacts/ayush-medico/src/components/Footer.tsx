@@ -1,5 +1,6 @@
 import { Phone, MapPin, Clock, MessageCircle, Instagram, Facebook, ShieldCheck, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
+import { useStoreSettings } from "@/hooks/useStoreSettings";
 
 const quickLinks = [
   { label: "Home", href: "#home" },
@@ -24,6 +25,16 @@ const categories = [
   { label: "Personal Care", href: "/categories" },
 ];
 
+const legalLinks = [
+  { label: "Privacy Policy", href: "/privacy-policy" },
+  { label: "Terms & Conditions", href: "/terms-conditions" },
+  { label: "Refund & Cancellation Policy", href: "/refund-policy" },
+  { label: "Shipping & Delivery Policy", href: "/shipping-policy" },
+  { label: "Prescription Policy", href: "/prescription-policy" },
+  { label: "Contact Us", href: "#contact" },
+  { label: "Trust & Compliance", href: "#trust-compliance" },
+];
+
 function scrollTo(href: string) {
   if (href.startsWith("/")) return;
   const el = document.querySelector(href);
@@ -31,6 +42,8 @@ function scrollTo(href: string) {
 }
 
 export default function Footer() {
+  const { settings } = useStoreSettings();
+
   return (
     <footer className="bg-foreground text-background/80">
       {/* Top CTA strip */}
@@ -45,14 +58,14 @@ export default function Footer() {
             </div>
             <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
               <a
-                href="tel:+919833273838"
+                href={`tel:${settings.phone}`}
                 className="flex items-center gap-2 px-6 py-3 bg-white text-primary font-semibold rounded-xl text-sm hover:bg-white/90 hover:-translate-y-0.5 transition-all duration-200 shadow-lg"
               >
                 <Phone size={16} />
                 Call Now
               </a>
               <a
-                href="https://wa.me/919833273838"
+                href={`https://wa.me/${settings.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-6 py-3 bg-[#25D366] text-white font-semibold rounded-xl text-sm hover:bg-[#22c55e] hover:-translate-y-0.5 transition-all duration-200 shadow-lg"
@@ -68,9 +81,9 @@ export default function Footer() {
       {/* Main footer body */}
       <div className="pt-14 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-10">
 
-            {/* Brand — takes 2 cols */}
+            {/* Brand — 2 cols */}
             <div className="sm:col-span-2 lg:col-span-2">
               <div className="flex items-center gap-3 mb-5">
                 <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-secondary shadow-lg">
@@ -99,9 +112,9 @@ export default function Footer() {
               {/* Social icons */}
               <div className="flex items-center gap-2.5 flex-wrap">
                 {[
-                  { href: "tel:+919833273838", icon: Phone, bg: "bg-primary/25 hover:bg-primary", label: "Call" },
-                  { href: "https://wa.me/919833273838", icon: MessageCircle, bg: "bg-[#25D366]/25 hover:bg-[#25D366]", label: "WhatsApp" },
-                  { href: "https://maps.google.com/?q=Ayush+Medico+Kurla+West", icon: MapPin, bg: "bg-secondary/25 hover:bg-secondary", label: "Map" },
+                  { href: `tel:${settings.phone}`, icon: Phone, bg: "bg-primary/25 hover:bg-primary", label: "Call" },
+                  { href: `https://wa.me/${settings.whatsapp}`, icon: MessageCircle, bg: "bg-[#25D366]/25 hover:bg-[#25D366]", label: "WhatsApp" },
+                  { href: settings.mapLink || "https://maps.google.com/?q=Ayush+Medico+Kurla+West", icon: MapPin, bg: "bg-secondary/25 hover:bg-secondary", label: "Map" },
                   { href: "https://www.instagram.com/", icon: Instagram, bg: "bg-pink-500/25 hover:bg-pink-500", label: "Instagram" },
                   { href: "https://www.facebook.com/", icon: Facebook, bg: "bg-blue-500/25 hover:bg-blue-500", label: "Facebook" },
                 ].map(s => (
@@ -163,7 +176,7 @@ export default function Footer() {
               </ul>
             </div>
 
-            {/* Contact + Hours */}
+            {/* Contact + Hours + Legal */}
             <div>
               <h4 className="text-background font-semibold mb-5 text-sm tracking-wide" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 Visit Us
@@ -173,10 +186,10 @@ export default function Footer() {
                   <MapPin size={15} className="text-primary mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-xs text-background/60 leading-relaxed">
-                      Shop No 67, Halav Pool Rd,<br />Makad Wala Chawl,<br />Kurla West, Mumbai 400070
+                      {settings.address || "Shop No 67, Halav Pool Rd,\nMakad Wala Chawl,\nKurla West, Mumbai 400070"}
                     </p>
                     <a
-                      href="https://maps.google.com/?q=Ayush+Medico+Kurla+West"
+                      href={settings.mapLink || "https://maps.google.com/?q=Ayush+Medico+Kurla+West"}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-primary hover:underline mt-1 inline-block"
@@ -187,8 +200,8 @@ export default function Footer() {
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone size={15} className="text-primary flex-shrink-0" />
-                  <a href="tel:+919833273838" className="text-sm text-background/60 hover:text-background transition-colors">
-                    +91 98332 73838
+                  <a href={`tel:${settings.phone}`} className="text-sm text-background/60 hover:text-background transition-colors">
+                    {settings.phone || "+91 98332 73838"}
                   </a>
                 </div>
                 <div className="flex items-start gap-3">
@@ -204,18 +217,50 @@ export default function Footer() {
                 </div>
               </div>
 
-              {/* Legal */}
-              <div className="mt-5 pt-5 border-t border-background/10 space-y-1">
+              {/* Legal registration info — dynamic from admin settings */}
+              <div className="mt-5 pt-5 border-t border-background/10 space-y-1.5">
                 <p className="text-[10px] text-background/35 font-semibold uppercase tracking-wider">Legal</p>
-                <p className="text-[11px] text-background/45">Drug License: [DL No. Pending]</p>
-                <p className="text-[11px] text-background/45">GST: [GSTIN Pending]</p>
+                <p className="text-[11px] text-background/45">
+                  Drug Lic: {settings.drugLicenseNumber || <span className="italic opacity-60">Pending</span>}
+                </p>
+                <p className="text-[11px] text-background/45">
+                  GST: {settings.gstNumber || <span className="italic opacity-60">Pending</span>}
+                </p>
+                {settings.registeredPharmacist && (
+                  <p className="text-[11px] text-background/45">Regd. Pharmacist: {settings.registeredPharmacist}</p>
+                )}
                 <p className="text-[11px] text-background/45">Licensed Retail Pharmacy</p>
               </div>
             </div>
           </div>
 
-          {/* Bottom bar */}
-          <div className="border-t border-background/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          {/* Legal links bar */}
+          <div className="border-t border-background/10 pt-6 pb-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
+              {legalLinks.map(link => (
+                <span key={link.label}>
+                  {link.href.startsWith("/") ? (
+                    <Link
+                      href={link.href}
+                      className="text-xs text-background/40 hover:text-background/70 transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => scrollTo(link.href)}
+                      className="text-xs text-background/40 hover:text-background/70 transition-colors"
+                    >
+                      {link.label}
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Copyright bar */}
+          <div className="border-t border-background/10 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-background/35 text-center sm:text-left">
               © 2025 Ayush Medico. All rights reserved. | Trusted pharmacy in Kurla West, Mumbai.
             </p>

@@ -1,0 +1,69 @@
+import { useEffect, useState } from "react";
+
+/**
+ * Public, read-only view of the "store" settings document (GET /api/settings/store
+ * requires no auth). Used by public-facing sections that need to display
+ * admin-editable business/legal info (e.g. Trust & Compliance, Footer).
+ *
+ * Mirrors the shape maintained by src/pages/admin/SettingsPage.tsx — keep the
+ * two in sync if new editable fields are added there.
+ */
+export type StoreSettings = {
+  storeName: string;
+  phone: string;
+  whatsapp: string;
+  address: string;
+  mapLink: string;
+  hoursWeekday: string;
+  hoursWeekend: string;
+  email: string;
+  tagline: string;
+  drugLicenseNumber: string;
+  gstNumber: string;
+  shopEstablishmentReg: string;
+  registeredPharmacist: string;
+};
+
+export const STORE_SETTINGS_DEFAULTS: StoreSettings = {
+  storeName: "Ayush Medico",
+  phone: "+91 98332 73838",
+  whatsapp: "919833273838",
+  address: "Shop No. 67, Halav Pool Rd, Makad Wala Chawl, Kurla West, Mumbai – 400070",
+  mapLink: "https://maps.google.com/?q=Ayush+Medico+Kurla+West+Mumbai",
+  hoursWeekday: "Monday – Sunday: 8:00 AM – 10:00 PM",
+  hoursWeekend: "",
+  email: "ayushmedico@gmail.com",
+  tagline: "Your Trusted Health Partner in Kurla",
+  drugLicenseNumber: "",
+  gstNumber: "",
+  shopEstablishmentReg: "",
+  registeredPharmacist: "",
+};
+
+export function useStoreSettings() {
+  const [settings, setSettings] = useState<StoreSettings>(STORE_SETTINGS_DEFAULTS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/settings/store")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (data && typeof data === "object") {
+          setSettings({ ...STORE_SETTINGS_DEFAULTS, ...(data as Partial<StoreSettings>) });
+        }
+      })
+      .catch(() => {
+        /* use defaults on error */
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { settings, loading };
+}

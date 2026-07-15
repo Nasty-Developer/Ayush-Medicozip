@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, Phone, MapPin, Clock, MessageCircle } from "lucide-react";
+import { Save, Loader2, Phone, MapPin, Clock, MessageCircle, ShieldCheck, FileText } from "lucide-react";
 import { authFetch } from "@/lib/apiAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,18 +14,26 @@ type StoreSettings = {
   hoursWeekend: string;
   email: string;
   tagline: string;
+  drugLicenseNumber: string;
+  gstNumber: string;
+  shopEstablishmentReg: string;
+  registeredPharmacist: string;
 };
 
 const DEFAULTS: StoreSettings = {
   storeName: "Ayush Medico",
   phone: "+91 98332 73838",
   whatsapp: "919833273838",
-  address: "Shop No. 5, Shanti Nagar, Kurla West, Mumbai – 400 070",
+  address: "Shop No. 67, Halav Pool Rd, Makad Wala Chawl, Kurla West, Mumbai – 400070",
   mapLink: "https://maps.google.com/?q=Ayush+Medico+Kurla+West+Mumbai",
   hoursWeekday: "Monday – Sunday: 8:00 AM – 10:00 PM",
   hoursWeekend: "",
   email: "ayushmedico@gmail.com",
   tagline: "Your Trusted Health Partner in Kurla",
+  drugLicenseNumber: "",
+  gstNumber: "",
+  shopEstablishmentReg: "",
+  registeredPharmacist: "",
 };
 
 export default function SettingsPage() {
@@ -78,7 +86,7 @@ export default function SettingsPage() {
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>Store Settings</h1>
-          <p className="text-muted-foreground text-sm mt-1">Manage your store's contact and hours information</p>
+          <p className="text-muted-foreground text-sm mt-1">Manage your store's contact, hours, and legal compliance information</p>
         </div>
         <button
           onClick={handleSave} disabled={saving}
@@ -103,7 +111,7 @@ export default function SettingsPage() {
 
         <Section title="Location" icon={MapPin}>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Address</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Business Address</label>
             <textarea
               value={settings.address} onChange={update("address")}
               rows={2} placeholder="Full store address..."
@@ -119,6 +127,39 @@ export default function SettingsPage() {
           <p className="text-xs text-muted-foreground">Tip: Use format like "Monday – Saturday: 8:00 AM – 10:00 PM" — the Contact section uses these to show Open/Closed status.</p>
         </Section>
 
+        {/* ── Legal & Compliance ─────────────────────────────────────────────── */}
+        <Section title="Legal & Compliance" icon={ShieldCheck}>
+          <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 mb-2">
+            <p className="text-xs text-primary font-medium">
+              These details appear in the public Trust &amp; Compliance section and footer. Never enter PAN, Aadhaar, bank account numbers, or other sensitive financial details here.
+            </p>
+          </div>
+          <Field
+            label="Drug License Number"
+            value={settings.drugLicenseNumber}
+            onChange={update("drugLicenseNumber")}
+            placeholder="e.g. MH-MU-123456"
+          />
+          <Field
+            label="GST Number (GSTIN)"
+            value={settings.gstNumber}
+            onChange={update("gstNumber")}
+            placeholder="e.g. 27AAAAA0000A1Z5"
+          />
+          <Field
+            label="Shop & Establishment Registration Number"
+            value={settings.shopEstablishmentReg}
+            onChange={update("shopEstablishmentReg")}
+            placeholder="e.g. MH/MUM/12345"
+          />
+          <Field
+            label="Registered Pharmacist Name"
+            value={settings.registeredPharmacist}
+            onChange={update("registeredPharmacist")}
+            placeholder="e.g. Mr. Ramesh Sharma (Reg. No. PH-12345)"
+          />
+        </Section>
+
         <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/10">
           <p className="text-xs font-semibold text-foreground mb-2">Preview — Contact Card</p>
           <div className="space-y-1.5">
@@ -127,6 +168,13 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2 text-xs text-muted-foreground"><MapPin size={11} className="text-secondary" />{settings.address}</div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground"><Clock size={11} className="text-accent" />{settings.hoursWeekday}</div>
           </div>
+          {(settings.drugLicenseNumber || settings.gstNumber) && (
+            <div className="mt-3 pt-3 border-t border-border/50 space-y-1">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1"><FileText size={9} />Legal</p>
+              {settings.drugLicenseNumber && <p className="text-[11px] text-muted-foreground">DL: {settings.drugLicenseNumber}</p>}
+              {settings.gstNumber && <p className="text-[11px] text-muted-foreground">GST: {settings.gstNumber}</p>}
+            </div>
+          )}
         </div>
       </div>
     </motion.div>
