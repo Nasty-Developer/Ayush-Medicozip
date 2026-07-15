@@ -1,0 +1,137 @@
+🚨 Hero Background Redesign (Professional & Minimal)
+
+The current hero background image looks unprofessional and AI-generated.
+
+Please remove the current hero image completely.
+
+Do NOT use the existing generated image.
+
+Instead, generate a completely new premium healthcare hero background that looks realistic and modern.
+
+Requirements
+
+The hero background should feel like a real healthcare website.
+
+Do NOT create posters.
+
+Do NOT create marketing banners.
+
+Do NOT include text inside the image.
+
+Do NOT include buttons.
+
+Do NOT include logos.
+
+Do NOT include badges.
+
+Do NOT include icons floating everywhere.
+
+Do NOT include UI elements.
+
+The image should be a pure background image only.
+
+Scene
+
+Generate a modern pharmacy interior.
+
+Include:
+
+Clean pharmacy shelves
+Soft lighting
+Premium healthcare atmosphere
+Natural colors
+Minimalistic composition
+
+On the right side include
+
+A smiling professional pharmacist wearing a white lab coat.
+
+The pharmacist should look natural and realistic.
+
+Do NOT make the pharmacist pose unnaturally.
+
+Left Side
+
+Leave approximately 60% empty clean space.
+
+This empty space will be used by the website for:
+
+Heading
+Subtitle
+Search Bar
+Buttons
+Trust badges
+
+The image must support the UI instead of competing with it.
+
+Style
+
+Modern
+
+Minimal
+
+Premium
+
+Healthcare
+
+Bright
+
+Elegant
+
+Apple-level clean
+
+Natural lighting
+
+Soft depth of field
+
+Realistic photography
+
+No AI-art feeling.
+
+Colors
+
+White
+
+Light Green
+
+Soft Blue
+
+Very subtle gradients
+
+Avoid strong colors.
+
+Composition
+
+The pharmacist should occupy only the right portion.
+
+The background should remain blurred.
+
+Everything should feel soft and premium.
+
+Responsiveness
+
+Ensure the background works on
+
+Desktop
+
+Tablet
+
+Mobile
+
+The pharmacist should never be cropped awkwardly.
+
+IMPORTANT
+
+This is NOT a promotional banner.
+
+This is NOT an advertisement.
+
+This is only a premium hero background image.
+
+Generate something similar to what premium healthcare companies would use on their homepage.
+
+Do not include any text or interface elements inside the image.
+
+The website itself already contains all text, buttons, and search bars.
+
+The background image should simply enhance the homepage.
