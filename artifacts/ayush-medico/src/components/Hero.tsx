@@ -25,11 +25,11 @@ export default function Hero() {
       className={`relative min-h-[100svh] flex items-center ${topPad} pb-12 overflow-hidden`}
     >
       {/* ── Background photo ─────────────────────────────────────────────────
-          The composite wide photo has the pharmacist on the right ~65–100%.
-          We reveal more of the photo than before: the gradient runs from
-          full-opaque on the far left (text zone) to almost transparent on
-          the right (photo zone). Reduce the blur by NOT adding a backdrop
-          over the right half — the original photo is already crisp there. */}
+          A single natural photograph (no manual blur/feather compositing) —
+          shallow depth-of-field already built into the shot, with the
+          pharmacist sharp on the right and a naturally soft, quiet hallway
+          on the left where the text sits. True full-bleed cover background:
+          fills the entire hero at every breakpoint, no crop seams. */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <picture>
           <source srcSet={heroBgWebp} type="image/webp" />
@@ -39,24 +39,28 @@ export default function Hero() {
             role="presentation"
             fetchPriority="high"
             decoding="async"
-            className="absolute inset-0 w-full h-full object-cover object-[78%_28%]"
+            className="absolute inset-0 w-full h-full object-cover object-[68%_38%] sm:object-[70%_35%] lg:object-[center_38%]"
           />
         </picture>
 
-        {/* Left → right gradient: heavy cover for text legibility fading to
-            transparent so the pharmacist photo is fully revealed on the right. */}
+        {/* Left → right gradient: solid for text legibility on the left,
+            smoothly dissolving to fully transparent so the pharmacy scene
+            reads as one continuous, natural background. */}
         <div className="absolute inset-0 bg-gradient-to-r
           from-background
-          via-background/78
-          sm:via-background/68
-          lg:via-background/60
-          to-transparent" />
+          from-10%
+          via-background/90
+          via-30%
+          sm:via-background/75
+          lg:via-background/55
+          to-transparent
+          to-85%" />
 
-        {/* Soft top/bottom blend */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/25 via-transparent to-background/35" />
+        {/* Soft top/bottom blend so the photo never feels like a hard-edged box */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-transparent to-background/30" />
 
         {/* Subtle brand tint — very light so it doesn't muddy the photo */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-secondary/5 mix-blend-multiply opacity-20" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/6 via-transparent to-secondary/4 mix-blend-multiply opacity-20" />
       </div>
 
       {/* Ambient glow — top-right only to frame the photo */}
