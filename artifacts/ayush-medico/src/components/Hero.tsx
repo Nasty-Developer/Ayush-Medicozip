@@ -3,6 +3,8 @@ import { Phone, MapPin, MessageCircle, ShieldCheck, Clock, Star, Search, ArrowRi
 import { Link } from "wouter";
 import PWAInstallButtons from "@/components/PWAInstallButtons";
 import { useAnnouncement } from "@/context/AnnouncementContext";
+import heroBgWebp from "@/assets/hero-bg.webp";
+import heroBgJpg from "@/assets/hero-bg.jpg";
 
 const floatingPills = [
   { color: "from-primary/20 to-primary/10",   size: "w-16 h-6", top: "15%", left: "8%",   delay: 0,   rotate: -20 },
@@ -52,6 +54,31 @@ export default function Hero() {
     >
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5 pointer-events-none" />
+
+      {/* Hero background photo — pharmacy interior, anchored to the right so the
+          left side stays clear for text. Overlaid with a soft white/green gradient
+          for readability, and faded out in dark mode via bg-background tokens. */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <picture>
+          <source srcSet={heroBgWebp} type="image/webp" />
+          <img
+            src={heroBgJpg}
+            alt=""
+            role="presentation"
+            fetchPriority="high"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover object-[78%_center] sm:object-[70%_center] lg:object-[65%_center] scale-105 lg:scale-100"
+          />
+        </picture>
+        {/* Left → right fade so text always sits on a clean, readable surface
+            while the pharmacy scene stays clearly visible on the right */}
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 sm:via-background/75 to-background/10 dark:to-background/55" />
+        {/* Vertical fade to blend the top/bottom edges into the page */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background/40" />
+        {/* Subtle healthcare-green tint to unify the photo with the brand palette */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 mix-blend-multiply opacity-25 dark:opacity-20" />
+      </div>
+
       <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-gradient-to-bl from-primary/10 via-accent/5 to-transparent blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-gradient-to-tr from-secondary/10 to-transparent blur-3xl pointer-events-none" />
 
