@@ -277,4 +277,204 @@ router.post(
   }
 );
 
+// ── POST /api/payment/webhook ─────────────────────────────────────────────────
+// Razorpay sends async payment events here. Verify with RAZORPAY_WEBHOOK_SECRET.
+// Note: app.ts mounts express.raw() for this path so we get the raw body needed
+// for HMAC verification.
+router.post(
+  "/webhook",
+  async (req: Request, res: Response): Promise<void> => {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (!secret) {
+      logger.warn("RAZORPAY_WEBHOOK_SECRET not set — webhook verification skipped (unsafe)");
+    }
+
+    // Verify signature when secret is configured
+    if (secret) {
+      const signature = req.headers["x-razorpay-signature"] as string | undefined;
+      if (!signature) {
+        res.status(400).json({ error: "Missing x-razorpay-signature header" });
+        return;
+      }
+
+      // req.body is a Buffer because app.ts uses express.raw() for this path
+      const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+      const expected = crypto
+        .createHmac("sha256", secret)
+        .update(rawBody)
+        .digest("hex");
+
+      if (expected !== signature) {
+        logger.warn("Razorpay webhook signature mismatch");
+        res.status(400).json({ error: "Invalid webhook signature" });
+        return;
+      }
+    }
+
+    // Parse event
+    let event: Record<string, unknown>;
+    try {
+      const rawBody = Buffer.isBuffer(req.body) ? req.body.toString() : JSON.stringify(req.body);
+      event = JSON.parse(rawBody) as Record<string, unknown>;
+    } catch {
+      res.status(400).json({ error: "Invalid JSON body" });
+      return;
+    }
+
+    const eventType = event["event"] as string | undefined;
+    const payload = (event["payload"] as Record<string, unknown>) ?? {};
+    logger.info({ eventType }, "Razorpay webhook received");
+
+    try {
+      if (eventType === "payment.captured" || eventType === "payment_link.paid") {
+        // Extract order notes to find our DB order
+        const paymentEntity = (
+          (payload["payment"] as Record<string, unknown> | undefined)?.["entity"] as Record<string, unknown> | undefined
+        ) ?? {};
+        const notes = (paymentEntity["notes"] as Record<string, unknown>) ?? {};
+        const orderDbId = notes["orderDbId"] as string | undefined;
+        const razorpay_payment_id = paymentEntity["id"] as string | undefined;
+        const razorpay_order_id = paymentEntity["order_id"] as string | undefined;
+
+        if (orderDbId && razorpay_payment_id) {
+          const [order] = await db
+            .select()
+            .from(ordersTable)
+            .where(eq(ordersTable.id, Number(orderDbId)));
+
+          if (order && order.status !== "payment-verified" && order.status !== "delivered") {
+            const payment = {
+              ...(order.payment as Record<string, unknown>),
+              status: "paid",
+              razorpayPaymentId: razorpay_payment_id,
+              razorpayOrderId: razorpay_order_id ?? (order.payment as Record<string, unknown>)["razorpayOrderId"],
+              paidAt: new Date().toISOString(),
+              webhookVerified: true,
+            };
+            await db
+              .update(ordersTable)
+              .set({ payment, status: "payment-verified", updatedAt: new Date() })
+              .where(eq(ordersTable.id, Number(orderDbId)));
+            logger.info({ orderDbId, razorpay_payment_id }, "Webhook: order marked payment-verified");
+          }
+        }
+      }
+
+      if (eventType === "payment.failed") {
+        const paymentEntity = (
+          (payload["payment"] as Record<string, unknown> | undefined)?.["entity"] as Record<string, unknown> | undefined
+        ) ?? {};
+        const notes = (paymentEntity["notes"] as Record<string, unknown>) ?? {};
+        const orderDbId = notes["orderDbId"] as string | undefined;
+        if (orderDbId) {
+          const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
+          if (order) {
+            const payment = {
+              ...(order.payment as Record<string, unknown>),
+              status: "failed",
+              failedAt: new Date().toISOString(),
+              webhookVerified: true,
+            };
+            await db
+              .update(ordersTable)
+              .set({ payment, status: "payment-pending", updatedAt: new Date() })
+              .where(eq(ordersTable.id, Number(orderDbId)));
+            logger.info({ orderDbId }, "Webhook: order marked payment-failed");
+          }
+        }
+      }
+
+      res.json({ status: "ok" });
+    } catch (err) {
+      logger.error({ err }, "Razorpay webhook processing error");
+      // Always return 200 to Razorpay so it doesn't retry indefinitely
+      res.json({ status: "error", message: "Processing failed but acknowledged" });
+    }
+  }
+);
+
+// ── POST /api/payment/refund ───────────────────────────────────────────────────
+// Admin only — initiates a Razorpay refund for a paid order.
+// The order must have a razorpayPaymentId to refund via API.
+// For COD/UPI orders, use the "Mark Refunded" button (no API call needed).
+router.post(
+  "/refund",
+  requireAuth,
+  requireAdminEmail,
+  async (req: Request, res: Response): Promise<void> => {
+    const { orderDbId, amount, notes } = req.body as {
+      orderDbId?: string;
+      amount?: number;          // refund amount in ₹ (not paise). Null = full refund.
+      notes?: string;
+    };
+
+    if (!orderDbId) {
+      res.status(400).json({ error: "orderDbId is required" });
+      return;
+    }
+
+    try {
+      const [order] = await db
+        .select()
+        .from(ordersTable)
+        .where(eq(ordersTable.id, Number(orderDbId)));
+
+      if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+
+      const payment = order.payment as Record<string, unknown>;
+      const razorpayPaymentId = payment["razorpayPaymentId"] as string | undefined;
+
+      if (!razorpayPaymentId) {
+        // For non-Razorpay payments (COD, UPI), just mark as refunded without API call
+        const updatedPayment = { ...payment, status: "refunded", refundedAt: new Date().toISOString() };
+        const [updated] = await db
+          .update(ordersTable)
+          .set({ payment: updatedPayment, status: "refunded", updatedAt: new Date() })
+          .where(eq(ordersTable.id, Number(orderDbId)))
+          .returning();
+        logger.info({ orderDbId }, "Non-Razorpay order marked refunded (manual)");
+        res.json({ success: true, manual: true, order: updated });
+        return;
+      }
+
+      // Initiate Razorpay refund via API
+      const rzp = getRzp();
+      const pricing = order.pricing as Record<string, number>;
+      const refundPaise = amount
+        ? Math.round(amount * 100)
+        : Math.round(pricing.grandTotal * 100);
+
+      const refund = await (rzp as unknown as {
+        payments: {
+          refund: (id: string, opts: Record<string, unknown>) => Promise<Record<string, unknown>>;
+        };
+      }).payments.refund(razorpayPaymentId, {
+        amount: refundPaise,
+        speed: "normal",
+        notes: { reason: notes ?? "Admin-initiated refund", orderId: order.orderId },
+      });
+
+      const updatedPayment = {
+        ...payment,
+        status: "refunded",
+        refundId: refund["id"],
+        refundedAt: new Date().toISOString(),
+        refundAmount: amount ?? pricing.grandTotal,
+      };
+
+      const [updated] = await db
+        .update(ordersTable)
+        .set({ payment: updatedPayment, status: "refunded", updatedAt: new Date() })
+        .where(eq(ordersTable.id, Number(orderDbId)))
+        .returning();
+
+      logger.info({ orderDbId, refundId: refund["id"] }, "Razorpay refund initiated");
+      res.json({ success: true, refundId: refund["id"], order: updated });
+    } catch (err) {
+      logger.error({ err }, "POST /payment/refund failed");
+      res.status(500).json({ error: "Failed to initiate refund" });
+    }
+  }
+);
+
 export default router;

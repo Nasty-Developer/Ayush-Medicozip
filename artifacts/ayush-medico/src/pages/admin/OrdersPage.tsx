@@ -28,7 +28,7 @@ import {
 } from "@/lib/orderStatus";
 import { queueNotification } from "@/lib/notificationService";
 import { verifyUpiPayment, createRazorpayPaymentLink } from "@/lib/paymentService";
-import { assignDeliveryPartner } from "@/lib/deliveryService";
+import { assignDeliveryPartner, bookPorterDelivery, initiateRefund } from "@/lib/deliveryService";
 import type { Timestamp } from "@/lib/orderService";
 import { useEffect } from "react";
 
@@ -654,6 +654,36 @@ function OrderCard({ order, expanded, onToggle }: {
                 {/* Delivery assignment */}
                 {order.status === "ready-for-pickup" && (
                   <div className="w-full space-y-2">
+                    {/* Porter auto-booking */}
+                    <ActionBtn
+                      label="Book Porter Delivery"
+                      icon={<Truck size={12} />}
+                      loading={actionLoading === "porter-book"}
+                      onClick={async () => {
+                        setActionLoading("porter-book");
+                        setActionError("");
+                        const result = await bookPorterDelivery(String(order.id));
+                        setActionLoading(null);
+                        if (!result.configured) {
+                          setActionError("Porter not configured. Set PORTER_API_KEY to enable auto-booking. Use manual assignment below.");
+                        } else if (!result.success) {
+                          setActionError(result.error ?? "Porter booking failed");
+                        } else {
+                          await updateOrderDelivery(order.id, {
+                            ...(order.delivery ?? {}),
+                            status: "assigned",
+                            porterOrderId: result.porterOrderId,
+                            trackingUrl: result.trackingUrl,
+                            partnerName: "Porter",
+                            partnerPhone: "",
+                          });
+                          await updateOrderStatus(order.id, "delivery-assigned");
+                        }
+                      }}
+                      color="purple"
+                    />
+                    {/* Manual fallback */}
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mt-1">Or assign manually:</p>
                     <div className="flex gap-2">
                       <input
                         value={partnerName}
@@ -670,11 +700,11 @@ function OrderCard({ order, expanded, onToggle }: {
                       />
                     </div>
                     <ActionBtn
-                      label="Assign Delivery"
+                      label="Assign Manually"
                       icon={<Truck size={12} />}
                       loading={actionLoading === "delivery"}
                       onClick={handleAssignDelivery}
-                      color="purple"
+                      color="gray"
                     />
                   </div>
                 )}
@@ -704,13 +734,19 @@ function OrderCard({ order, expanded, onToggle }: {
                 {/* Refund */}
                 {(order.status === "cancelled" || order.status === "returned") && order.payment.method !== "cod" && order.payment.status !== "refunded" && (
                   <ActionBtn
-                    label="Mark Refunded"
+                    label={(order.payment as Record<string, unknown>)["razorpayPaymentId"] ? "Initiate Razorpay Refund" : "Mark Refunded"}
                     icon={<RefreshCw size={12} />}
-                    loading={actionLoading === "status"}
+                    loading={actionLoading === "refund"}
                     onClick={async () => {
-                      await updateOrderStatus(order.id, "refunded");
-                      await updateOrderPayment(order.id, { status: "refunded" });
-                      await queueNotification({ orderId: order.orderId, orderDocId: order.id, customerId: order.customerId, customerName: order.customerName, customerPhone, customerEmail: order.customerEmail, event: "order_refunded", channels: ["whatsapp"] });
+                      setActionLoading("refund");
+                      setActionError("");
+                      const result = await initiateRefund({ orderDbId: String(order.id) });
+                      setActionLoading(null);
+                      if (!result.success) {
+                        setActionError(result.error ?? "Refund failed. Please try again.");
+                      } else {
+                        await queueNotification({ orderId: order.orderId, orderDocId: order.id, customerId: order.customerId, customerName: order.customerName, customerPhone, customerEmail: order.customerEmail, event: "order_refunded", channels: ["whatsapp"] });
+                      }
                     }}
                     color="gray"
                   />

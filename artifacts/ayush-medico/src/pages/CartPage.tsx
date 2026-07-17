@@ -4,16 +4,11 @@
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, AlertCircle, Tag, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useCart } from "@/context/CartContext";
 import { resolveMedicineImage } from "@/lib/medicineImage";
-
-// ─── Coupon stub ──────────────────────────────────────────────────────────────
-// When a coupon system is ready, replace this with a Firestore lookup.
-const DEMO_COUPONS: Record<string, number> = {
-  AYUSH10: 50,
-  FIRST50: 50,
-};
+import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import { authFetchJson } from "@/lib/apiAuth";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -29,21 +24,49 @@ export default function CartPage() {
     couponCode,
     couponDiscount,
   } = useCart();
+  const { user } = useCustomerAuth();
   const [, navigate] = useLocation();
   const [couponInput, setCouponInput] = useState("");
   const [couponError, setCouponError] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = useCallback(async () => {
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
-    const discount = DEMO_COUPONS[code];
-    if (discount === undefined) {
-      setCouponError("Invalid coupon code.");
+    if (!user) {
+      setCouponError("Please sign in to apply a coupon.");
       return;
     }
-    applyCoupon(code, discount);
+
+    setCouponLoading(true);
     setCouponError("");
-  };
+
+    try {
+      const res = await authFetchJson<{
+        valid: boolean;
+        discountAmount: number;
+        coupon: { code: string; discountType: string; discountValue: string };
+        error?: string;
+      }>("/api/coupons/validate", {
+        method: "POST",
+        body: JSON.stringify({ code, orderAmount: summary.subtotal }),
+      });
+
+      if (!res.valid) {
+        setCouponError(res.error ?? "Invalid coupon code.");
+      } else {
+        applyCoupon(code, Math.round(res.discountAmount));
+        setCouponError("");
+      }
+    } catch (err: unknown) {
+      // Surface the server-sent error message if available
+      const message =
+        err instanceof Error ? err.message : "Could not validate coupon. Please try again.";
+      setCouponError(message);
+    } finally {
+      setCouponLoading(false);
+    }
+  }, [couponInput, user, summary.subtotal, applyCoupon]);
 
   return (
     <div className="min-h-screen pt-28 pb-20 bg-background">
@@ -221,18 +244,22 @@ export default function CartPage() {
                       type="text"
                       value={couponInput}
                       onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }}
-                      onKeyDown={(e) => e.key === "Enter" && handleApplyCoupon()}
+                      onKeyDown={(e) => e.key === "Enter" && void handleApplyCoupon()}
                       placeholder="Enter coupon code"
                       className="flex-1 px-3 py-2 rounded-xl border border-border text-sm bg-background
                                  text-foreground placeholder:text-muted-foreground/50 outline-none
                                  focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                     <button
-                      onClick={handleApplyCoupon}
+                      onClick={() => void handleApplyCoupon()}
+                      disabled={couponLoading}
                       className="px-3 py-2 rounded-xl bg-primary text-white text-sm font-semibold
-                                 hover:bg-primary/90 transition-colors"
+                                 hover:bg-primary/90 disabled:opacity-60 transition-colors min-w-[64px]
+                                 flex items-center justify-center"
                     >
-                      Apply
+                      {couponLoading
+                        ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                        : "Apply"}
                     </button>
                   </div>
                 )}

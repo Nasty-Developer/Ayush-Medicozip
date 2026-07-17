@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Route, Switch } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,53 +10,78 @@ import { RequestMedicineProvider } from "@/context/RequestMedicineContext";
 import { AnnouncementProvider } from "@/context/AnnouncementContext";
 import { CartProvider } from "@/context/CartContext";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import LoadingScreen from "@/components/LoadingScreen";
 import OfflinePage from "@/components/OfflinePage";
 import Header from "@/components/Header";
 import CartDrawer from "@/components/customer/CartDrawer";
-import Hero from "@/components/Hero";
-import NewArrivals from "@/components/NewArrivals";
-import SpecialMedicines from "@/components/SpecialMedicines";
-import About from "@/components/About";
-import Services from "@/components/Services";
-import WhyChooseUs from "@/components/WhyChooseUs";
-import Testimonials from "@/components/Testimonials";
-import FAQ from "@/components/FAQ";
-import RequestMedicine from "@/components/RequestMedicine";
-import GeneralInquiry from "@/components/GeneralInquiry";
-import DeliveryFeatures from "@/components/DeliveryFeatures";
-import TrustBadges from "@/components/TrustBadges";
-import Categories from "@/components/Categories";
-import PromoBanner from "@/components/PromoBanner";
-import HowItWorks from "@/components/HowItWorks";
-import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ScrollProgress from "@/components/ScrollProgress";
 import BackToTop from "@/components/BackToTop";
-import AdminLogin from "@/pages/admin/AdminLogin";
-import AdminLayout from "@/pages/admin/AdminLayout";
-import OrderTracker from "@/pages/OrderTracker";
-import CategoriesPage from "@/pages/CategoriesPage";
-import CategoryDetailPage from "@/pages/CategoryDetailPage";
-import MedicineDetailPage from "@/pages/MedicineDetailPage";
-import CartPage from "@/pages/CartPage";
-import CheckoutPage from "@/pages/CheckoutPage";
-import OrderConfirmationPage from "@/pages/OrderConfirmationPage";
-import OrderDetailPage from "@/pages/OrderDetailPage";
-import TrustCompliance from "@/components/TrustCompliance";
-import PrivacyPolicyPage from "@/pages/legal/PrivacyPolicyPage";
-import TermsPage from "@/pages/legal/TermsPage";
-import RefundPolicyPage from "@/pages/legal/RefundPolicyPage";
-import ShippingPolicyPage from "@/pages/legal/ShippingPolicyPage";
-import PrescriptionPolicyPage from "@/pages/legal/PrescriptionPolicyPage";
 
-const queryClient = new QueryClient();
+// ── Homepage sections (eager — above-the-fold, critical path) ─────────────────
+import Hero from "@/components/Hero";
+import TrustBadges from "@/components/TrustBadges";
+import Categories from "@/components/Categories";
+
+// ── Homepage sections (lazy — below-the-fold, non-critical) ──────────────────
+const PromoBanner       = lazy(() => import("@/components/PromoBanner"));
+const NewArrivals       = lazy(() => import("@/components/NewArrivals"));
+const SpecialMedicines  = lazy(() => import("@/components/SpecialMedicines"));
+const DeliveryFeatures  = lazy(() => import("@/components/DeliveryFeatures"));
+const HowItWorks        = lazy(() => import("@/components/HowItWorks"));
+const About             = lazy(() => import("@/components/About"));
+const Services          = lazy(() => import("@/components/Services"));
+const WhyChooseUs       = lazy(() => import("@/components/WhyChooseUs"));
+const Testimonials      = lazy(() => import("@/components/Testimonials"));
+const FAQ               = lazy(() => import("@/components/FAQ"));
+const TrustCompliance   = lazy(() => import("@/components/TrustCompliance"));
+const RequestMedicine   = lazy(() => import("@/components/RequestMedicine"));
+const GeneralInquiry    = lazy(() => import("@/components/GeneralInquiry"));
+const Contact           = lazy(() => import("@/components/Contact"));
+
+// ── Pages (all lazy-loaded — only loaded when route is visited) ───────────────
+const AdminLogin            = lazy(() => import("@/pages/admin/AdminLogin"));
+const AdminLayout           = lazy(() => import("@/pages/admin/AdminLayout"));
+const OrderTracker          = lazy(() => import("@/pages/OrderTracker"));
+const CategoriesPage        = lazy(() => import("@/pages/CategoriesPage"));
+const CategoryDetailPage    = lazy(() => import("@/pages/CategoryDetailPage"));
+const MedicineDetailPage    = lazy(() => import("@/pages/MedicineDetailPage"));
+const CartPage              = lazy(() => import("@/pages/CartPage"));
+const CheckoutPage          = lazy(() => import("@/pages/CheckoutPage"));
+const OrderConfirmationPage = lazy(() => import("@/pages/OrderConfirmationPage"));
+const OrderDetailPage       = lazy(() => import("@/pages/OrderDetailPage"));
+const NotFoundPage          = lazy(() => import("@/pages/not-found"));
+
+// Legal pages
+const PrivacyPolicyPage     = lazy(() => import("@/pages/legal/PrivacyPolicyPage"));
+const TermsPage             = lazy(() => import("@/pages/legal/TermsPage"));
+const RefundPolicyPage      = lazy(() => import("@/pages/legal/RefundPolicyPage"));
+const ShippingPolicyPage    = lazy(() => import("@/pages/legal/ShippingPolicyPage"));
+const PrescriptionPolicyPage = lazy(() => import("@/pages/legal/PrescriptionPolicyPage"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+/** Thin fallback shown while a lazy chunk loads. */
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+    </div>
+  );
+}
 
 /**
  * PublicLayout — shared shell for every public-facing page.
- * Provides the announcement banner context, header, footer, and overlays
- * so each public page only needs to supply its <main> content.
  */
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -75,6 +101,8 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 
 /**
  * Homepage — all sections in one long scroll.
+ * Above-the-fold sections (Hero, TrustBadges, Categories) load eagerly.
+ * Everything below is lazy with a lightweight skeleton fallback.
  */
 function HomeSections() {
   return (
@@ -82,28 +110,28 @@ function HomeSections() {
       <Hero />
       <TrustBadges />
       <Categories />
-      <PromoBanner />
-      <NewArrivals />
-      <SpecialMedicines />
-      <DeliveryFeatures />
-      <HowItWorks />
-      <About />
-      <Services />
-      <WhyChooseUs />
-      <Testimonials />
-      <FAQ />
-      <TrustCompliance />
-      <RequestMedicine />
-      <GeneralInquiry />
-      <Contact />
+      <Suspense fallback={<div className="h-24" />}>
+        <PromoBanner />
+        <NewArrivals />
+        <SpecialMedicines />
+        <DeliveryFeatures />
+        <HowItWorks />
+        <About />
+        <Services />
+        <WhyChooseUs />
+        <Testimonials />
+        <FAQ />
+        <TrustCompliance />
+        <RequestMedicine />
+        <GeneralInquiry />
+        <Contact />
+      </Suspense>
     </>
   );
 }
 
 /**
  * OfflineGuard — overlays OfflinePage whenever the device loses internet.
- * Keeps the React tree mounted so state is preserved; the app snaps back
- * the moment connectivity is restored (OfflinePage auto-reloads).
  */
 function OfflineGuard({ children }: { children: React.ReactNode }) {
   const isOnline = useOnlineStatus();
@@ -127,125 +155,170 @@ function App() {
                   <LoadingScreen />
 
                   <OfflineGuard>
-                    <Switch>
-                      {/* ── Admin ── */}
-                      <Route path="/admin/login" component={AdminLogin} />
-                      <Route path="/admin"       component={AdminLayout} />
-                      <Route path="/admin/:rest*" component={AdminLayout} />
+                    <ErrorBoundary label="App">
+                      <Suspense fallback={<PageLoader />}>
+                        <Switch>
+                          {/* ── Admin ── */}
+                          <Route path="/admin/login">
+                            {() => (
+                              <ErrorBoundary label="AdminLogin">
+                                <AdminLogin />
+                              </ErrorBoundary>
+                            )}
+                          </Route>
+                          <Route path="/admin">
+                            {() => (
+                              <ErrorBoundary label="AdminLayout">
+                                <AdminLayout />
+                              </ErrorBoundary>
+                            )}
+                          </Route>
+                          <Route path="/admin/:rest*">
+                            {() => (
+                              <ErrorBoundary label="AdminLayout">
+                                <AdminLayout />
+                              </ErrorBoundary>
+                            )}
+                          </Route>
 
-                      {/* ── Order tracking (legacy prescription-based) ── */}
-                      <Route path="/track/:requestId" component={OrderTracker} />
-                      <Route path="/track"            component={OrderTracker} />
+                          {/* ── Order tracking (legacy prescription-based) ── */}
+                          <Route path="/track/:requestId" component={OrderTracker} />
+                          <Route path="/track"            component={OrderTracker} />
 
-                      {/* ── Phase 2: Cart ── */}
-                      <Route path="/cart">
-                        {() => (
-                          <PublicLayout>
-                            <CartPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
+                          {/* ── Phase 2: Cart ── */}
+                          <Route path="/cart">
+                            {() => (
+                              <PublicLayout>
+                                <ErrorBoundary label="CartPage">
+                                  <CartPage />
+                                </ErrorBoundary>
+                              </PublicLayout>
+                            )}
+                          </Route>
 
-                      {/* ── Phase 2: Checkout ── */}
-                      <Route path="/checkout">
-                        {() => (
-                          <PublicLayout>
-                            <CheckoutPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
+                          {/* ── Phase 2: Checkout ── */}
+                          <Route path="/checkout">
+                            {() => (
+                              <PublicLayout>
+                                <ErrorBoundary label="CheckoutPage">
+                                  <CheckoutPage />
+                                </ErrorBoundary>
+                              </PublicLayout>
+                            )}
+                          </Route>
 
-                      {/* ── Phase 2: Order confirmation ── */}
-                      <Route path="/order-confirmation/:docId">
-                        {() => (
-                          <PublicLayout>
-                            <OrderConfirmationPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
+                          {/* ── Phase 2: Order confirmation ── */}
+                          <Route path="/order-confirmation/:docId">
+                            {() => (
+                              <PublicLayout>
+                                <ErrorBoundary label="OrderConfirmationPage">
+                                  <OrderConfirmationPage />
+                                </ErrorBoundary>
+                              </PublicLayout>
+                            )}
+                          </Route>
 
-                      {/* ── Phase 2: Order detail / tracking ── */}
-                      <Route path="/order/:docId">
-                        {() => (
-                          <PublicLayout>
-                            <OrderDetailPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
+                          {/* ── Phase 2: Order detail / tracking ── */}
+                          <Route path="/order/:docId">
+                            {() => (
+                              <PublicLayout>
+                                <ErrorBoundary label="OrderDetailPage">
+                                  <OrderDetailPage />
+                                </ErrorBoundary>
+                              </PublicLayout>
+                            )}
+                          </Route>
 
-                      {/* ── Public: categories listing ── */}
-                      <Route path="/categories">
-                        {() => (
-                          <PublicLayout>
-                            <CategoriesPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
+                          {/* ── Public: categories listing ── */}
+                          <Route path="/categories">
+                            {() => (
+                              <PublicLayout>
+                                <ErrorBoundary label="CategoriesPage">
+                                  <CategoriesPage />
+                                </ErrorBoundary>
+                              </PublicLayout>
+                            )}
+                          </Route>
 
-                      {/* ── Public: medicine detail ── */}
-                      <Route path="/medicine/:id">
-                        {() => (
-                          <PublicLayout>
-                            <MedicineDetailPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
+                          {/* ── Public: medicine detail ── */}
+                          <Route path="/medicine/:id">
+                            {() => (
+                              <PublicLayout>
+                                <ErrorBoundary label="MedicineDetailPage">
+                                  <MedicineDetailPage />
+                                </ErrorBoundary>
+                              </PublicLayout>
+                            )}
+                          </Route>
 
-                      {/* ── Public: individual category ── */}
-                      <Route path="/category/:slug">
-                        {() => (
-                          <PublicLayout>
-                            <CategoryDetailPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
+                          {/* ── Public: individual category ── */}
+                          <Route path="/category/:slug">
+                            {() => (
+                              <PublicLayout>
+                                <ErrorBoundary label="CategoryDetailPage">
+                                  <CategoryDetailPage />
+                                </ErrorBoundary>
+                              </PublicLayout>
+                            )}
+                          </Route>
 
-                      {/* ── Legal pages ── */}
-                      <Route path="/privacy-policy">
-                        {() => (
-                          <PublicLayout>
-                            <PrivacyPolicyPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
-                      <Route path="/terms-conditions">
-                        {() => (
-                          <PublicLayout>
-                            <TermsPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
-                      <Route path="/refund-policy">
-                        {() => (
-                          <PublicLayout>
-                            <RefundPolicyPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
-                      <Route path="/shipping-policy">
-                        {() => (
-                          <PublicLayout>
-                            <ShippingPolicyPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
-                      <Route path="/prescription-policy">
-                        {() => (
-                          <PublicLayout>
-                            <PrescriptionPolicyPage />
-                          </PublicLayout>
-                        )}
-                      </Route>
+                          {/* ── Legal pages ── */}
+                          <Route path="/privacy-policy">
+                            {() => (
+                              <PublicLayout>
+                                <PrivacyPolicyPage />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/terms-conditions">
+                            {() => (
+                              <PublicLayout>
+                                <TermsPage />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/refund-policy">
+                            {() => (
+                              <PublicLayout>
+                                <RefundPolicyPage />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/shipping-policy">
+                            {() => (
+                              <PublicLayout>
+                                <ShippingPolicyPage />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/prescription-policy">
+                            {() => (
+                              <PublicLayout>
+                                <PrescriptionPolicyPage />
+                              </PublicLayout>
+                            )}
+                          </Route>
 
-                      {/* ── Homepage (catch-all) ── */}
-                      <Route>
-                        {() => (
-                          <PublicLayout>
-                            <HomeSections />
-                          </PublicLayout>
-                        )}
-                      </Route>
-                    </Switch>
+                          {/* ── Homepage (catch-all) ── */}
+                          <Route path="/">
+                            {() => (
+                              <PublicLayout>
+                                <HomeSections />
+                              </PublicLayout>
+                            )}
+                          </Route>
+
+                          {/* ── 404 ── */}
+                          <Route>
+                            {() => (
+                              <PublicLayout>
+                                <NotFoundPage />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                        </Switch>
+                      </Suspense>
+                    </ErrorBoundary>
                   </OfflineGuard>
 
                   <Toaster />

@@ -1,0 +1,432 @@
+Perform a COMPLETE production audit of the entire Ayush Medico project.
+
+DO NOT only fix the current error.
+
+Review EVERY page, EVERY component, EVERY route, EVERY service, EVERY Firebase call, EVERY API, EVERY admin page and EVERY mobile screen.
+
+Your goal is to make this project production ready.
+
+==========================
+1. Fix Current Errors
+==========================
+
+• Fix every Typescript error.
+• Fix every build error.
+• Fix every runtime error.
+• Fix console warnings.
+• Fix React warnings.
+• Remove duplicate code.
+• Remove dead code.
+• Fix imports.
+• Fix lazy loading issues.
+• Fix Firebase errors.
+• Fix routing errors.
+
+Project should build with ZERO errors.
+
+==========================
+2. Mobile Responsiveness
+==========================
+
+Audit every page on:
+
+320px
+360px
+375px
+390px
+414px
+768px
+1024px
+1440px
+
+Fix:
+
+• Overflow
+• Horizontal scrolling
+• Broken grids
+• Broken cards
+• Tiny buttons
+• Navbar
+• Footer
+• Hero
+• Admin dashboard
+• Checkout
+• Cart
+• Medicine pages
+• Orders
+• Login
+• Register
+• Profile
+
+Nothing should overflow.
+
+Everything should feel like a premium mobile app.
+
+==========================
+3. UI Polish
+==========================
+
+Improve:
+
+spacing
+padding
+font hierarchy
+button sizes
+loading states
+empty states
+error states
+hover effects
+animations
+glassmorphism consistency
+icons
+shadows
+border radius
+
+Everything should have a premium Apple-level look.
+
+==========================
+4. Admin Panel Audit
+==========================
+
+Check every admin page.
+
+Products
+
+Categories
+
+Orders
+
+Customers
+
+Delivery
+
+Settings
+
+Announcements
+
+Dashboard
+
+Authentication
+
+Permissions
+
+Image uploads
+
+Search
+
+Pagination
+
+Filters
+
+Everything must work correctly.
+
+==========================
+5. Order Flow Audit
+==========================
+
+Review the COMPLETE order flow.
+
+Customer
+
+↓
+
+Cart
+
+↓
+
+Checkout
+
+↓
+
+Address
+
+↓
+
+Payment
+
+↓
+
+Order Creation
+
+↓
+
+Admin Receives Order
+
+↓
+
+Accept / Reject
+
+↓
+
+Delivery Booking
+
+↓
+
+Out for Delivery
+
+↓
+
+Delivered
+
+↓
+
+Completed
+
+↓
+
+Notification
+
+↓
+
+History
+
+Fix any missing step.
+
+==========================
+6. Razorpay Integration
+==========================
+
+Complete Razorpay integration.
+
+Implement:
+
+Server side order creation
+
+Signature verification
+
+Webhook verification
+
+Payment success
+
+Payment failure
+
+Refund support
+
+Retry payment
+
+Payment history
+
+Admin payment status
+
+No fake frontend verification.
+
+Everything must be secure.
+
+==========================
+7. Porter Integration
+==========================
+
+Complete Porter integration.
+
+When admin clicks:
+
+Book Delivery
+
+Automatically:
+
+Create Porter order
+
+Store tracking id
+
+Store delivery id
+
+Estimated arrival
+
+Tracking URL
+
+Delivery charges
+
+Driver details
+
+Live delivery status
+
+Webhook updates
+
+Update order status automatically.
+
+Handle failures gracefully.
+
+==========================
+8. Notifications
+==========================
+
+Implement notifications for:
+
+Order placed
+
+Payment received
+
+Order accepted
+
+Rejected
+
+Packed
+
+Out for delivery
+
+Delivered
+
+Cancelled
+
+Admin notifications
+
+Customer notifications
+
+==========================
+9. Security Audit
+==========================
+
+Review:
+
+Firebase Rules
+
+Authentication
+
+Admin permissions
+
+Protected routes
+
+Firestore validation
+
+Input validation
+
+XSS
+
+CSRF
+
+Rate limiting
+
+Secrets
+
+Environment variables
+
+Prevent unauthorized access.
+
+==========================
+10. Performance Audit
+==========================
+
+Improve:
+
+Code splitting
+
+Lazy loading
+
+Image optimization
+
+Caching
+
+Firestore reads
+
+Firestore writes
+
+Bundle size
+
+Memoization
+
+Loading performance
+
+Lighthouse score
+
+==========================
+11. SEO
+==========================
+
+Check:
+
+Meta tags
+
+OG tags
+
+Twitter tags
+
+Structured data
+
+Robots
+
+Sitemap
+
+Canonical
+
+Dynamic titles
+
+==========================
+12. Accessibility
+==========================
+
+Keyboard navigation
+
+ARIA labels
+
+Contrast
+
+Screen reader support
+
+Focus states
+
+==========================
+13. Customer Experience
+==========================
+
+Improve:
+
+Loading skeletons
+
+Empty states
+
+Error messages
+
+Checkout UX
+
+Search UX
+
+Medicine availability
+
+Prescription upload
+
+Address management
+
+Profile
+
+Order tracking
+
+==========================
+14. Final Verification
+==========================
+
+Verify every feature.
+
+Customer
+
+Admin
+
+Orders
+
+Payments
+
+Delivery
+
+Authentication
+
+Search
+
+Images
+
+Responsive
+
+Dark/light mode if available
+
+No placeholder logic should remain.
+
+Replace all TODOs and mock implementations with production-ready code where possible.
+
+Finally provide a detailed report containing:
+
+✓ Fixed issues
+✓ Remaining issues
+✓ Security improvements
+✓ Performance improvements
+✓ Mobile improvements
+✓ Delivery integration status
+✓ Razorpay status
+✓ Production readiness score
