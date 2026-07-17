@@ -11,6 +11,11 @@ initFirebaseAdmin();
 
 const app: Express = express();
 
+// ── Trust proxy ───────────────────────────────────────────────────────────────
+// Replit (and most PaaS providers) sit behind a reverse-proxy that sets
+// X-Forwarded-For. Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+app.set("trust proxy", 1);
+
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use(
   helmet({
