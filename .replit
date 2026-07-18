@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash"]
+modules = ["nodejs-20", "web", "bash", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -29,12 +29,12 @@ name = "artifacts/ayush-medico: web"
 author = "agent"
 
 [workflows.workflow.metadata]
-outputType = "webview"
+outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=5000 BASE_PATH=/ pnpm --filter @workspace/ayush-medico run dev"
-waitForPort = 5000
+args = "PORT=18169 BASE_PATH=/ pnpm --filter @workspace/ayush-medico run dev"
+waitForPort = 18169
 
 [[workflows.workflow]]
 name = "artifacts/api-server: API Server"
