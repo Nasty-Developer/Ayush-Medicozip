@@ -20,13 +20,25 @@ export default function PrescriptionPolicyPage() {
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Prescription Policy
           </h1>
-          <p className="text-sm text-muted-foreground mb-10">Last updated: January 2025 · Ayush Medico, Kurla West, Mumbai</p>
+          <p className="text-sm text-muted-foreground mb-10">Last updated: July 2025 · Ayush Medico &amp; General Stores, Kurla West, Mumbai</p>
+
+          {/* Prescription rules summary */}
+          <div className="p-4 rounded-xl bg-primary/5 border border-primary/15 mb-8">
+            <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Important Prescription Rules</p>
+            <ul className="space-y-1.5 text-sm text-foreground">
+              <li className="flex items-start gap-2"><span className="text-primary font-bold mt-0.5">→</span> Prescription medicines are supplied only against a valid prescription.</li>
+              <li className="flex items-start gap-2"><span className="text-primary font-bold mt-0.5">→</span> Schedule H, H1, and X medicines always require a prescription.</li>
+              <li className="flex items-start gap-2"><span className="text-primary font-bold mt-0.5">→</span> The pharmacist reserves the right to reject any order if the prescription is invalid.</li>
+              <li className="flex items-start gap-2"><span className="text-primary font-bold mt-0.5">→</span> Customers must upload their prescription during checkout when required.</li>
+              <li className="flex items-start gap-2"><span className="text-primary font-bold mt-0.5">→</span> All orders are verified by our Registered Pharmacist before dispatch.</li>
+            </ul>
+          </div>
 
           <div className="space-y-8">
-            <PolicyNote />
 
             <PolicySection title="1. Legal Requirement">
               <p>Under the Drugs and Cosmetics Act, 1940 and the Pharmacy Act, 1948, certain medicines classified as Schedule H, H1, and X (prescription-only drugs) may only be dispensed against a valid prescription from a registered medical practitioner (RMP).</p>
+              <p>All prescription dispensing at Ayush Medico &amp; General Stores is supervised by our Registered Pharmacist: <strong>Khan Aqsa Tasadduk Hussain</strong> (D.Pharm, Registration No. 492012, Maharashtra State Pharmacy Council).</p>
             </PolicySection>
 
             <PolicySection title="2. Prescription Requirements">
@@ -70,9 +82,11 @@ export default function PrescriptionPolicyPage() {
             <PolicySection title="8. Contact">
               <p>
                 For prescription-related queries:<br />
-                <strong>Ayush Medico</strong><br />
-                Shop No. 67, Halav Pool Rd, Makad Wala Chawl, Kurla West, Mumbai – 400070<br />
-                Phone / WhatsApp: +91 98332 73838
+                <strong>Ayush Medico &amp; General Stores</strong><br />
+                Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl,<br />
+                Halav Pool, Near Rolex Hotel, CTS No.451, Kurla West, Mumbai – 400070<br />
+                Phone / WhatsApp: +91 98332 73838 / +91 97021 65965<br />
+                Email: aqsakhan7654@gmail.com
               </p>
             </PolicySection>
           </div>
@@ -89,14 +103,6 @@ function PolicySection({ title, children }: { title: string; children: React.Rea
       <div className="space-y-3 text-muted-foreground text-sm leading-relaxed [&_strong]:text-foreground [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1">
         {children}
       </div>
-    </div>
-  );
-}
-
-function PolicyNote() {
-  return (
-    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs">
-      <strong>Sample Policy Template — </strong>This is a placeholder document. Please review and update with a qualified legal professional before going live.
     </div>
   );
 }

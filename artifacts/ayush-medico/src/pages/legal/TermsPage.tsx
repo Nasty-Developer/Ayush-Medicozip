@@ -20,28 +20,34 @@ export default function TermsPage() {
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Terms &amp; Conditions
           </h1>
-          <p className="text-sm text-muted-foreground mb-10">Last updated: January 2025 · Ayush Medico, Kurla West, Mumbai</p>
+          <p className="text-sm text-muted-foreground mb-10">Last updated: July 2025 · Ayush Medico &amp; General Stores, Kurla West, Mumbai</p>
 
           <div className="space-y-8">
-            <PolicyNote />
 
             <PolicySection title="1. Acceptance of Terms">
-              <p>By accessing or using the Ayush Medico website and services, you agree to be bound by these Terms and Conditions. If you do not agree, please discontinue use immediately.</p>
+              <p>By accessing or using the Ayush Medico &amp; General Stores website and services, you agree to be bound by these Terms and Conditions. If you do not agree, please discontinue use immediately.</p>
             </PolicySection>
 
-            <PolicySection title="2. Services Provided">
-              <p>Ayush Medico provides retail pharmacy services including sale of over-the-counter (OTC) medicines, prescription medicines (subject to valid prescription), healthcare products, and same-day delivery within eligible pincodes in Mumbai.</p>
+            <PolicySection title="2. Business Details">
+              <p><strong>Ayush Medico &amp; General Stores</strong><br />
+              Proprietor: Govind Ram Chitara<br />
+              Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl, Halav Pool, Near Rolex Hotel, CTS No.451, Kurla West, Mumbai – 400070<br />
+              Registered Pharmacist: Khan Aqsa Tasadduk Hussain (D.Pharm, Reg. No. 492012, Maharashtra State Pharmacy Council)</p>
             </PolicySection>
 
-            <PolicySection title="3. Prescription Medicines">
+            <PolicySection title="3. Services Provided">
+              <p>Ayush Medico &amp; General Stores provides retail pharmacy services including sale of over-the-counter (OTC) medicines, prescription medicines (subject to valid prescription), healthcare products, and same-day delivery within eligible pincodes in Mumbai.</p>
+            </PolicySection>
+
+            <PolicySection title="4. Prescription Medicines">
               <p>Prescription-only medicines (Schedule H, H1, and X) will only be dispensed against a valid, current prescription from a registered medical practitioner. Submitting a forged or expired prescription is a violation of the Drugs and Cosmetics Act, 1940, and may result in cancellation of your order and reporting to relevant authorities.</p>
             </PolicySection>
 
-            <PolicySection title="4. Pricing and Availability">
+            <PolicySection title="5. Pricing and Availability">
               <p>All prices displayed are inclusive of applicable taxes. Prices are subject to change without prior notice. Product availability is subject to stock levels. We reserve the right to cancel orders for out-of-stock products with a full refund.</p>
             </PolicySection>
 
-            <PolicySection title="5. User Responsibilities">
+            <PolicySection title="6. User Responsibilities">
               <ul>
                 <li>Provide accurate personal and delivery information.</li>
                 <li>Upload genuine and valid prescriptions where required.</li>
@@ -50,19 +56,21 @@ export default function TermsPage() {
               </ul>
             </PolicySection>
 
-            <PolicySection title="6. Limitation of Liability">
-              <p>Ayush Medico shall not be liable for any indirect, incidental, or consequential damages arising out of your use of our services. Our liability is limited to the value of the products purchased in any single transaction.</p>
+            <PolicySection title="7. Limitation of Liability">
+              <p>Ayush Medico &amp; General Stores shall not be liable for any indirect, incidental, or consequential damages arising out of your use of our services. Our liability is limited to the value of the products purchased in any single transaction.</p>
             </PolicySection>
 
-            <PolicySection title="7. Governing Law">
+            <PolicySection title="8. Governing Law">
               <p>These Terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in Mumbai, Maharashtra.</p>
             </PolicySection>
 
-            <PolicySection title="8. Contact">
+            <PolicySection title="9. Contact">
               <p>
-                <strong>Ayush Medico</strong><br />
-                Shop No. 67, Halav Pool Rd, Makad Wala Chawl, Kurla West, Mumbai – 400070<br />
-                Phone: +91 98332 73838
+                <strong>Ayush Medico &amp; General Stores</strong><br />
+                Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl,<br />
+                Halav Pool, Near Rolex Hotel, CTS No.451, Kurla West, Mumbai – 400070<br />
+                Phone: +91 98332 73838 / +91 97021 65965<br />
+                Email: aqsakhan7654@gmail.com
               </p>
             </PolicySection>
           </div>
@@ -79,14 +87,6 @@ function PolicySection({ title, children }: { title: string; children: React.Rea
       <div className="space-y-3 text-muted-foreground text-sm leading-relaxed [&_strong]:text-foreground [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1">
         {children}
       </div>
-    </div>
-  );
-}
-
-function PolicyNote() {
-  return (
-    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs">
-      <strong>Sample Policy Template — </strong>This is a placeholder document. Please review and update this policy with the help of a qualified legal professional before going live.
     </div>
   );
 }

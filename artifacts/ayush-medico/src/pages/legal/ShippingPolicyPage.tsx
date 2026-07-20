@@ -20,10 +20,9 @@ export default function ShippingPolicyPage() {
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Shipping &amp; Delivery Policy
           </h1>
-          <p className="text-sm text-muted-foreground mb-10">Last updated: January 2025 · Ayush Medico, Kurla West, Mumbai</p>
+          <p className="text-sm text-muted-foreground mb-10">Last updated: July 2025 · Ayush Medico &amp; General Stores, Kurla West, Mumbai</p>
 
           <div className="space-y-8">
-            <PolicyNote />
 
             <PolicySection title="1. Delivery Area">
               <p>We currently deliver to select pincodes within the Kurla West area and surrounding Mumbai localities. Delivery eligibility is confirmed at checkout based on your pincode.</p>
@@ -55,9 +54,11 @@ export default function ShippingPolicyPage() {
 
             <PolicySection title="7. Contact">
               <p>
-                <strong>Ayush Medico</strong><br />
-                Shop No. 67, Halav Pool Rd, Makad Wala Chawl, Kurla West, Mumbai – 400070<br />
-                Phone / WhatsApp: +91 98332 73838
+                <strong>Ayush Medico &amp; General Stores</strong><br />
+                Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl,<br />
+                Halav Pool, Near Rolex Hotel, CTS No.451, Kurla West, Mumbai – 400070<br />
+                Phone / WhatsApp: +91 98332 73838 / +91 97021 65965<br />
+                Email: aqsakhan7654@gmail.com
               </p>
             </PolicySection>
           </div>
@@ -74,14 +75,6 @@ function PolicySection({ title, children }: { title: string; children: React.Rea
       <div className="space-y-3 text-muted-foreground text-sm leading-relaxed [&_strong]:text-foreground [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1">
         {children}
       </div>
-    </div>
-  );
-}
-
-function PolicyNote() {
-  return (
-    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs">
-      <strong>Sample Policy Template — </strong>This is a placeholder document. Please review and update with a qualified legal professional before going live.
     </div>
   );
 }

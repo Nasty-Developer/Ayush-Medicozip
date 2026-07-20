@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { MapPin, Phone, MessageCircle, Clock, ExternalLink } from "lucide-react";
+import { MapPin, Phone, MessageCircle, Clock, ExternalLink, Mail } from "lucide-react";
 
 export default function Contact() {
   const ref = useRef(null);
@@ -46,12 +46,13 @@ export default function Contact() {
                 <div>
                   <p className="font-semibold text-foreground mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>Store Address</p>
                   <p className="text-muted-foreground text-sm leading-relaxed">
-                    Shop No 67, Halav Pool Rd,<br />
-                    Makad Wala Chawl, Kurla West,<br />
-                    Mumbai, Maharashtra 400070
+                    Shop No.1, Hut No.67 1/1, Ground Floor,<br />
+                    Gangaram Makad Wala Chawl, Halav Pool,<br />
+                    Near Rolex Hotel, Kurla West,<br />
+                    Mumbai – 400070
                   </p>
                   <a
-                    href="https://maps.google.com/?q=Shop+No+67,+Halav+Pool+Rd,+Makad+Wala+Chawl,+Kurla+West,+Mumbai"
+                    href="https://maps.google.com/?q=Ayush+Medico+Gangaram+Makad+Wala+Chawl+Halav+Pool+Kurla+West+Mumbai"
                     target="_blank"
                     rel="noopener noreferrer"
                     data-testid="contact-directions-btn"
@@ -66,20 +67,39 @@ export default function Contact() {
 
             {/* Phone Card */}
             <div className="bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-secondary/20 transition-all duration-300">
-              <div className="flex items-center gap-4">
+              <div className="flex items-start gap-4">
                 <div className="p-3 rounded-xl bg-secondary/10 flex-shrink-0">
                   <Phone size={20} className="text-secondary" />
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold text-foreground mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>Phone</p>
-                  <p className="text-muted-foreground text-sm">+91 98332 73838</p>
+                  <div className="flex flex-wrap gap-3 mt-1">
+                    <a href="tel:+919833273838" data-testid="contact-call-btn"
+                      className="px-4 py-2 bg-secondary text-white text-sm font-semibold rounded-xl shadow-sm shadow-secondary/25 hover:bg-secondary/90 hover:-translate-y-0.5 transition-all duration-200">
+                      +91 98332 73838
+                    </a>
+                    <a href="tel:+919702165965"
+                      className="px-4 py-2 bg-secondary/10 text-secondary text-sm font-semibold rounded-xl border border-secondary/20 hover:bg-secondary/20 hover:-translate-y-0.5 transition-all duration-200">
+                      +91 97021 65965
+                    </a>
+                  </div>
                 </div>
-                <a
-                  href="tel:+919833273838"
-                  data-testid="contact-call-btn"
-                  className="px-4 py-2 bg-secondary text-white text-sm font-semibold rounded-xl shadow-sm shadow-secondary/25 hover:bg-secondary/90 hover:-translate-y-0.5 transition-all duration-200"
-                >
-                  Call Now
+              </div>
+            </div>
+
+            {/* Email Card */}
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-primary/10 flex-shrink-0">
+                  <Mail size={20} className="text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>Email</p>
+                  <p className="text-muted-foreground text-sm">aqsakhan7654@gmail.com</p>
+                </div>
+                <a href="mailto:aqsakhan7654@gmail.com"
+                  className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl shadow-sm shadow-primary/25 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200">
+                  Email Us
                 </a>
               </div>
             </div>
@@ -139,7 +159,7 @@ export default function Contact() {
             <iframe
               title="Ayush Medico Location"
               data-testid="contact-map"
-              src="https://maps.google.com/maps?q=Ayush+Medico,+Shop+No+67+Halav+Pool+Rd,+Kurla+West+Mumbai+400070&output=embed&z=16"
+              src="https://maps.google.com/maps?q=Ayush+Medico,+Gangaram+Makad+Wala+Chawl,+Halav+Pool,+Kurla+West,+Mumbai+400070&output=embed&z=16"
               width="100%"
               height="100%"
               style={{ border: 0, minHeight: "420px" }}

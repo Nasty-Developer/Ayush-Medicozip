@@ -20,10 +20,9 @@ export default function PrivacyPolicyPage() {
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Privacy Policy
           </h1>
-          <p className="text-sm text-muted-foreground mb-10">Last updated: January 2025 · Ayush Medico, Kurla West, Mumbai</p>
+          <p className="text-sm text-muted-foreground mb-10">Last updated: July 2025 · Ayush Medico &amp; General Stores, Kurla West, Mumbai</p>
 
           <div className="prose prose-sm max-w-none text-foreground space-y-8">
-            <PolicyNote />
 
             <PolicySection title="1. Information We Collect">
               <p>We collect information you provide directly when you place an order, upload a prescription, or contact us. This may include your name, phone number, delivery address, and prescription details.</p>
@@ -40,7 +39,7 @@ export default function PrivacyPolicyPage() {
             </PolicySection>
 
             <PolicySection title="3. Prescription Data">
-              <p>Prescription images are stored securely and accessed only by our registered pharmacist for verification purposes. We retain prescription records as mandated by Rule 65 of the Drugs and Cosmetics Rules, 1945. We do not share your prescription with any third party without your consent.</p>
+              <p>Prescription images are stored securely and accessed only by our registered pharmacist (Khan Aqsa Tasadduk Hussain, D.Pharm, Reg. No. 492012, Maharashtra State Pharmacy Council) for verification purposes. We retain prescription records as mandated by Rule 65 of the Drugs and Cosmetics Rules, 1945. We do not share your prescription with any third party without your consent.</p>
             </PolicySection>
 
             <PolicySection title="4. Data Sharing">
@@ -61,10 +60,15 @@ export default function PrivacyPolicyPage() {
             </PolicySection>
 
             <PolicySection title="7. Contact Us">
-              <p>For privacy-related queries:<br />
-                <strong>Ayush Medico</strong><br />
-                Shop No. 67, Halav Pool Rd, Makad Wala Chawl, Kurla West, Mumbai – 400070<br />
-                Phone: +91 98332 73838
+              <p>
+                For privacy-related queries:<br />
+                <strong>Ayush Medico &amp; General Stores</strong><br />
+                Proprietor: Govind Ram Chitara<br />
+                Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl,<br />
+                Halav Pool, Near Rolex Hotel, CTS No.451,<br />
+                Kurla West, Mumbai – 400070<br />
+                Phone: +91 98332 73838 / +91 97021 65965<br />
+                Email: aqsakhan7654@gmail.com
               </p>
             </PolicySection>
           </div>
@@ -81,14 +85,6 @@ function PolicySection({ title, children }: { title: string; children: React.Rea
       <div className="space-y-3 text-muted-foreground text-sm leading-relaxed [&_strong]:text-foreground [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1">
         {children}
       </div>
-    </div>
-  );
-}
-
-function PolicyNote() {
-  return (
-    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs">
-      <strong>Sample Policy Template — </strong>This is a placeholder document. Please review and update this policy with the help of a qualified legal professional before going live.
     </div>
   );
 }

@@ -62,6 +62,7 @@ export default function CheckoutPage() {
   const [placing, setPlacing]             = useState(false);
   const [error, setError]                 = useState<string | null>(null);
   const [showSignIn, setShowSignIn]       = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [tempOrderId] = useState(
     () => `temp-${user?.uid?.slice(-6) ?? "guest"}-${Date.now()}`
@@ -523,6 +524,26 @@ export default function CheckoutPage() {
 
                   {error && <p className="text-sm text-destructive">{error}</p>}
 
+                  {/* Legal consent checkbox — mandatory before placing order */}
+                  <div className={`p-4 rounded-2xl border transition-colors ${termsAccepted ? "border-primary/30 bg-primary/5" : "border-border bg-muted/30"}`}>
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={termsAccepted}
+                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 rounded accent-primary flex-shrink-0"
+                      />
+                      <span className="text-xs text-foreground leading-relaxed">
+                        I have read and agree to the{" "}
+                        <a href="/privacy-policy" target="_blank" className="text-primary underline underline-offset-2 hover:text-primary/80">Privacy Policy</a>,{" "}
+                        <a href="/terms-conditions" target="_blank" className="text-primary underline underline-offset-2 hover:text-primary/80">Terms &amp; Conditions</a>,{" "}
+                        <a href="/shipping-policy" target="_blank" className="text-primary underline underline-offset-2 hover:text-primary/80">Shipping Policy</a>,{" "}
+                        <a href="/refund-policy" target="_blank" className="text-primary underline underline-offset-2 hover:text-primary/80">Refund Policy</a> and{" "}
+                        <a href="/prescription-policy" target="_blank" className="text-primary underline underline-offset-2 hover:text-primary/80">Prescription Policy</a>.
+                      </span>
+                    </label>
+                  </div>
+
                   <div className="flex gap-3">
                     <button
                       onClick={() => { setStep("payment"); setError(null); }}
@@ -532,10 +553,10 @@ export default function CheckoutPage() {
                     </button>
                     <button
                       onClick={handlePlaceOrder}
-                      disabled={placing || !prescriptionReady}
+                      disabled={placing || !prescriptionReady || !termsAccepted}
                       className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl
                                  bg-primary text-white font-bold text-sm hover:bg-primary/90
-                                 disabled:opacity-60 transition-colors shadow-lg shadow-primary/20"
+                                 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-lg shadow-primary/20"
                     >
                       {placing
                         ? <><Loader2 size={15} className="animate-spin" /> Opening Razorpay…</>

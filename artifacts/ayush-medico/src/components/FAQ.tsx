@@ -9,7 +9,7 @@ const faqs = [
   },
   {
     q: "Can I call before visiting to check medicine availability?",
-    a: "Yes, you can! Call us at +91 98332 73838 before your visit and we'll check availability immediately. If we don't have a specific medicine in stock, we can usually arrange it within 24 hours from our network.",
+    a: "Yes, you can! Call us at +91 98332 73838 or +91 97021 65965 before your visit and we'll check availability immediately. If we don't have a specific medicine in stock, we can usually arrange it within 24 hours from our network.",
   },
   {
     q: "Do you stock daily-use medicines and healthcare products?",
@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     q: "Where are you located?",
-    a: "We are located at Shop No 67, Halav Pool Rd, Makad Wala Chawl, Kurla West, Mumbai, Maharashtra 400070. We are easily accessible from Kurla Station and surrounding areas. You can also get directions via Google Maps.",
+    a: "We are located at Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl, Halav Pool, Near Rolex Hotel, CTS No.451, Kurla West, Mumbai – 400070. We are easily accessible from Kurla Station and surrounding areas. You can also get directions via Google Maps.",
   },
   {
     q: "What are your working hours?",

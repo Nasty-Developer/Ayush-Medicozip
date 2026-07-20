@@ -21,19 +21,19 @@ type StoreSettings = {
 };
 
 const DEFAULTS: StoreSettings = {
-  storeName: "Ayush Medico",
+  storeName: "Ayush Medico & General Stores",
   phone: "+91 98332 73838",
   whatsapp: "919833273838",
-  address: "Shop No. 67, Halav Pool Rd, Makad Wala Chawl, Kurla West, Mumbai – 400070",
+  address: "Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl, Halav Pool, Near Rolex Hotel, CTS No.451, Kurla West, Mumbai – 400070",
   mapLink: "https://maps.google.com/?q=Ayush+Medico+Kurla+West+Mumbai",
   hoursWeekday: "Monday – Sunday: 8:00 AM – 10:00 PM",
   hoursWeekend: "",
-  email: "ayushmedico@gmail.com",
-  tagline: "Your Trusted Health Partner in Kurla",
+  email: "aqsakhan7654@gmail.com",
+  tagline: "Your Trusted Health Partner in Kurla West",
   drugLicenseNumber: "",
   gstNumber: "",
   shopEstablishmentReg: "",
-  registeredPharmacist: "",
+  registeredPharmacist: "Khan Aqsa Tasadduk Hussain (D.Pharm, Reg. No. 492012, Maharashtra State Pharmacy Council)",
 };
 
 export default function SettingsPage() {
@@ -106,7 +106,7 @@ export default function SettingsPage() {
         <Section title="Contact Information" icon={Phone}>
           <Field label="Phone Number" value={settings.phone} onChange={update("phone")} placeholder="+91 98332 73838" />
           <Field label="WhatsApp (digits only, with country code)" value={settings.whatsapp} onChange={update("whatsapp")} placeholder="919833273838" />
-          <Field label="Email Address" value={settings.email} onChange={update("email")} placeholder="ayushmedico@gmail.com" type="email" />
+          <Field label="Email Address" value={settings.email} onChange={update("email")} placeholder="aqsakhan7654@gmail.com" type="email" />
         </Section>
 
         <Section title="Location" icon={MapPin}>

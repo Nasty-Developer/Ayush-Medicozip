@@ -72,8 +72,8 @@ export default function About() {
 
               <div className="relative text-center">
                 <h3 className="text-2xl font-bold text-foreground mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>Ayush Medico</h3>
-                <p className="text-muted-foreground text-sm font-medium mb-1">Shop No 67, Halav Pool Rd, Makad Wala Chawl</p>
-                <p className="text-muted-foreground text-sm">Kurla West, Mumbai — 400070</p>
+                <p className="text-muted-foreground text-sm font-medium mb-1">Gangaram Makad Wala Chawl, Halav Pool</p>
+                <p className="text-muted-foreground text-sm">Near Rolex Hotel, Kurla West, Mumbai – 400070</p>
 
                 <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-secondary/10 text-secondary rounded-full text-sm font-semibold border border-secondary/20">
                   <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
@@ -151,13 +151,27 @@ export default function About() {
               ))}
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            {/* Pharmacist credential */}
+            <div className="mt-6 p-4 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800">
+              <p className="text-xs font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wider mb-1">Registered Pharmacist</p>
+              <p className="text-sm font-semibold text-foreground">Khan Aqsa Tasadduk Hussain</p>
+              <p className="text-xs text-muted-foreground">D.Pharm · Reg. No. 492012</p>
+              <p className="text-xs text-muted-foreground">Maharashtra State Pharmacy Council</p>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
               <a
                 href="tel:+919833273838"
                 data-testid="about-call-btn"
                 className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg shadow-primary/25 hover:bg-primary/90 hover:-translate-y-0.5 transition-all duration-200"
               >
-                Call: +91 98332 73838
+                +91 98332 73838
+              </a>
+              <a
+                href="tel:+919702165965"
+                className="flex items-center gap-2 px-6 py-3 bg-secondary/10 text-secondary font-semibold rounded-xl border border-secondary/20 hover:bg-secondary/20 hover:-translate-y-0.5 transition-all duration-200"
+              >
+                +91 97021 65965
               </a>
             </div>
           </motion.div>

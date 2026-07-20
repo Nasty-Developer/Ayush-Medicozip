@@ -60,6 +60,7 @@ const TermsPage             = lazy(() => import("@/pages/legal/TermsPage"));
 const RefundPolicyPage      = lazy(() => import("@/pages/legal/RefundPolicyPage"));
 const ShippingPolicyPage    = lazy(() => import("@/pages/legal/ShippingPolicyPage"));
 const PrescriptionPolicyPage = lazy(() => import("@/pages/legal/PrescriptionPolicyPage"));
+const DisclaimerPage        = lazy(() => import("@/pages/legal/DisclaimerPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -295,6 +296,13 @@ function App() {
                             {() => (
                               <PublicLayout>
                                 <PrescriptionPolicyPage />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/disclaimer">
+                            {() => (
+                              <PublicLayout>
+                                <DisclaimerPage />
                               </PublicLayout>
                             )}
                           </Route>

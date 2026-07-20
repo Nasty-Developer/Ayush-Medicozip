@@ -31,7 +31,9 @@ const legalLinks = [
   { label: "Refund & Cancellation Policy", href: "/refund-policy" },
   { label: "Shipping & Delivery Policy", href: "/shipping-policy" },
   { label: "Prescription Policy", href: "/prescription-policy" },
+  { label: "Disclaimer", href: "/disclaimer" },
   { label: "Contact Us", href: "#contact" },
+  { label: "FAQ", href: "#faq" },
   { label: "Trust & Compliance", href: "#trust-compliance" },
 ];
 
@@ -96,7 +98,7 @@ export default function Footer() {
                   <span className="text-lg font-bold text-background" style={{ fontFamily: "'Poppins', sans-serif" }}>
                     Ayush Medico
                   </span>
-                  <p className="text-[10px] text-background/50 tracking-widest uppercase">Kurla West · Mumbai</p>
+                  <p className="text-[10px] text-background/50 tracking-widest uppercase">& General Stores · Kurla West</p>
                 </div>
               </div>
               <p className="text-sm text-background/60 leading-relaxed mb-5 max-w-xs">
@@ -186,7 +188,7 @@ export default function Footer() {
                   <MapPin size={15} className="text-primary mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-xs text-background/60 leading-relaxed">
-                      {settings.address || "Shop No 67, Halav Pool Rd,\nMakad Wala Chawl,\nKurla West, Mumbai 400070"}
+                      {settings.address || "Shop No.1, Gangaram Makad Wala Chawl, Halav Pool, Near Rolex Hotel, Kurla West, Mumbai – 400070"}
                     </p>
                     <a
                       href={settings.mapLink || "https://maps.google.com/?q=Ayush+Medico+Kurla+West"}
@@ -262,10 +264,10 @@ export default function Footer() {
           {/* Copyright bar */}
           <div className="border-t border-background/10 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-background/35 text-center sm:text-left">
-              © 2025 Ayush Medico. All rights reserved. | Trusted pharmacy in Kurla West, Mumbai.
+              © 2025 Ayush Medico &amp; General Stores. All rights reserved. | Proprietor: Govind Ram Chitara | Licensed pharmacy in Kurla West, Mumbai.
             </p>
             <p className="text-xs text-background/35">
-              Made with ❤️ for the community · Shop No 67, Kurla West
+              Registered Pharmacist: Khan Aqsa Tasadduk Hussain · Reg. No. 492012
             </p>
           </div>
         </div>
