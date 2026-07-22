@@ -42,7 +42,7 @@ export default function DisclaimerPage() {
             </PolicySection>
 
             <PolicySection title="5. Limitation of Liability">
-              <p>To the fullest extent permitted by applicable law, Ayush Medico &amp; General Stores, its proprietor, pharmacist, employees, and agents shall not be liable for any indirect, incidental, consequential, or punitive damages arising from your use of this website or reliance on the information provided.</p>
+              <p>To the fullest extent permitted by applicable law, Ayush Medico &amp; General Stores, its proprietor Govind Ram Chitara, pharmacist, employees, and agents shall not be liable for any indirect, incidental, consequential, or punitive damages arising from your use of this website or reliance on the information provided.</p>
             </PolicySection>
 
             <PolicySection title="6. External Links">
@@ -50,7 +50,14 @@ export default function DisclaimerPage() {
             </PolicySection>
 
             <PolicySection title="7. Regulatory Compliance">
-              <p>Ayush Medico &amp; General Stores operates as a licensed retail pharmacy in full compliance with the Pharmacy Act, 1948, the Drugs and Cosmetics Act, 1940, and applicable Maharashtra state regulations. All statutory obligations are maintained as required by the Maharashtra Food and Drug Administration (FDA).</p>
+              <p>Ayush Medico &amp; General Stores operates as a licensed retail pharmacy in full compliance with the Pharmacy Act, 1948 and the Drugs and Cosmetics Act, 1940.</p>
+              <p>
+                <strong>Drug Licences issued by Food &amp; Drugs Administration, Mumbai-Zone4:</strong><br />
+                Form 20 Licence No: MH-MZ4-518856 (valid to 02/05/2028)<br />
+                Form 21 Licence No: MH-MZ4-518857 (valid to 02/05/2028)<br />
+                Licensing Authority: Ashok Tukaram Rathod, Assistant Commissioner, FDA Mumbai-Zone4<br />
+                FDA File No: 244432
+              </p>
             </PolicySection>
 
             <PolicySection title="8. Contact">

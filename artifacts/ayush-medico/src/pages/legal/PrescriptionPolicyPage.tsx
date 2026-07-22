@@ -38,7 +38,10 @@ export default function PrescriptionPolicyPage() {
 
             <PolicySection title="1. Legal Requirement">
               <p>Under the Drugs and Cosmetics Act, 1940 and the Pharmacy Act, 1948, certain medicines classified as Schedule H, H1, and X (prescription-only drugs) may only be dispensed against a valid prescription from a registered medical practitioner (RMP).</p>
-              <p>All prescription dispensing at Ayush Medico &amp; General Stores is supervised by our Registered Pharmacist: <strong>Khan Aqsa Tasadduk Hussain</strong> (D.Pharm, Registration No. 492012, Maharashtra State Pharmacy Council).</p>
+              <p>
+                All prescription dispensing at Ayush Medico &amp; General Stores is supervised by our Registered Pharmacist: <strong>Khan Aqsa Tasadduk Hussain</strong> (D.Pharm, Registration No. 492012, Maharashtra State Pharmacy Council).<br />
+                Drug Licences issued by FDA Mumbai-Zone4: Form 20 (MH-MZ4-518856) and Form 21 (MH-MZ4-518857), valid to 02/05/2028.
+              </p>
             </PolicySection>
 
             <PolicySection title="2. Prescription Requirements">
@@ -76,7 +79,7 @@ export default function PrescriptionPolicyPage() {
             </PolicySection>
 
             <PolicySection title="7. Schedule X Drugs">
-              <p>Schedule X controlled substances require a special prescription and are subject to strict quantity limits. We may require the original physical prescription before dispensing Schedule X medications.</p>
+              <p>Schedule X controlled substances require a special prescription and are subject to strict quantity limits. We may require the original physical prescription before dispensing Schedule X medications. Our Form 21 licence (MH-MZ4-518857) covers Schedule C and C(1) drugs excluding Schedule X.</p>
             </PolicySection>
 
             <PolicySection title="8. Contact">

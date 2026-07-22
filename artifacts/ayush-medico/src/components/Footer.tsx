@@ -1,4 +1,4 @@
-import { Phone, MapPin, Clock, MessageCircle, Instagram, Facebook, ShieldCheck, ArrowRight } from "lucide-react";
+import { Phone, MapPin, Clock, MessageCircle, ShieldCheck, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
 
@@ -111,14 +111,13 @@ export default function Footer() {
                 <span className="text-xs text-background/70 font-medium">Licensed Retail Pharmacy · Since 2013</span>
               </div>
 
-              {/* Social icons */}
+              {/* Contact icons */}
               <div className="flex items-center gap-2.5 flex-wrap">
                 {[
                   { href: `tel:${settings.phone}`, icon: Phone, bg: "bg-primary/25 hover:bg-primary", label: "Call" },
+                  { href: "tel:+919702165965", icon: Phone, bg: "bg-primary/15 hover:bg-primary", label: "Call 2" },
                   { href: `https://wa.me/${settings.whatsapp}`, icon: MessageCircle, bg: "bg-[#25D366]/25 hover:bg-[#25D366]", label: "WhatsApp" },
                   { href: settings.mapLink || "https://maps.google.com/?q=Ayush+Medico+Kurla+West", icon: MapPin, bg: "bg-secondary/25 hover:bg-secondary", label: "Map" },
-                  { href: "https://www.instagram.com/", icon: Instagram, bg: "bg-pink-500/25 hover:bg-pink-500", label: "Instagram" },
-                  { href: "https://www.facebook.com/", icon: Facebook, bg: "bg-blue-500/25 hover:bg-blue-500", label: "Facebook" },
                 ].map(s => (
                   <a
                     key={s.label}
@@ -200,11 +199,19 @@ export default function Footer() {
                     </a>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Phone size={15} className="text-primary flex-shrink-0" />
-                  <a href={`tel:${settings.phone}`} className="text-sm text-background/60 hover:text-background transition-colors">
-                    {settings.phone || "+91 98332 73838"}
-                  </a>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-3">
+                    <Phone size={15} className="text-primary flex-shrink-0" />
+                    <a href={`tel:${settings.phone}`} className="text-sm text-background/60 hover:text-background transition-colors">
+                      {settings.phone || "+91 98332 73838"}
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Phone size={15} className="text-primary flex-shrink-0 opacity-40" />
+                    <a href="tel:+919702165965" className="text-sm text-background/60 hover:text-background transition-colors">
+                      +91 97021 65965
+                    </a>
+                  </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <Clock size={15} className="text-secondary flex-shrink-0 mt-0.5" />
@@ -219,19 +226,13 @@ export default function Footer() {
                 </div>
               </div>
 
-              {/* Legal registration info — dynamic from admin settings */}
+              {/* Legal registration info */}
               <div className="mt-5 pt-5 border-t border-background/10 space-y-1.5">
-                <p className="text-[10px] text-background/35 font-semibold uppercase tracking-wider">Legal</p>
-                <p className="text-[11px] text-background/45">
-                  Drug Lic: {settings.drugLicenseNumber || <span className="italic opacity-60">Pending</span>}
-                </p>
-                <p className="text-[11px] text-background/45">
-                  GST: {settings.gstNumber || <span className="italic opacity-60">Pending</span>}
-                </p>
-                {settings.registeredPharmacist && (
-                  <p className="text-[11px] text-background/45">Regd. Pharmacist: {settings.registeredPharmacist}</p>
-                )}
-                <p className="text-[11px] text-background/45">Licensed Retail Pharmacy</p>
+                <p className="text-[10px] text-background/35 font-semibold uppercase tracking-wider">Drug Licences (FDA Mumbai-Zone4)</p>
+                <p className="text-[11px] text-background/50">Form 20: MH-MZ4-518856</p>
+                <p className="text-[11px] text-background/50">Form 21: MH-MZ4-518857</p>
+                <p className="text-[11px] text-background/40">Valid to 02/05/2028</p>
+                <p className="text-[11px] text-background/45 mt-2">Regd. Pharmacist: Khan Aqsa Tasadduk Hussain (Reg. 492012)</p>
               </div>
             </div>
           </div>
@@ -264,7 +265,7 @@ export default function Footer() {
           {/* Copyright bar */}
           <div className="border-t border-background/10 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-background/35 text-center sm:text-left">
-              © 2025 Ayush Medico &amp; General Stores. All rights reserved. | Proprietor: Govind Ram Chitara | Licensed pharmacy in Kurla West, Mumbai.
+              © 2026 Ayush Medico &amp; General Stores. All rights reserved. | Proprietor: Govind Ram Chitara | Licensed pharmacy in Kurla West, Mumbai.
             </p>
             <p className="text-xs text-background/35">
               Registered Pharmacist: Khan Aqsa Tasadduk Hussain · Reg. No. 492012

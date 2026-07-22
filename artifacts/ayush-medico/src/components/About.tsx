@@ -151,12 +151,20 @@ export default function About() {
               ))}
             </div>
 
+            {/* Drug Licence credential */}
+            <div className="mt-6 p-4 rounded-xl bg-primary/5 border border-primary/15">
+              <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Drug Licences · FDA Mumbai-Zone4</p>
+              <p className="text-xs text-foreground font-medium">Form 20: MH-MZ4-518856</p>
+              <p className="text-xs text-foreground font-medium">Form 21: MH-MZ4-518857</p>
+              <p className="text-xs text-muted-foreground mt-1">Valid to 02/05/2028 · File No. 244432</p>
+            </div>
+
             {/* Pharmacist credential */}
-            <div className="mt-6 p-4 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800">
+            <div className="mt-3 p-4 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800">
               <p className="text-xs font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wider mb-1">Registered Pharmacist</p>
               <p className="text-sm font-semibold text-foreground">Khan Aqsa Tasadduk Hussain</p>
               <p className="text-xs text-muted-foreground">D.Pharm · Reg. No. 492012</p>
-              <p className="text-xs text-muted-foreground">Maharashtra State Pharmacy Council</p>
+              <p className="text-xs text-muted-foreground">Maharashtra State Pharmacy Council · Valid to 31/12/2057</p>
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">

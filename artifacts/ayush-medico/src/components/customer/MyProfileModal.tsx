@@ -45,7 +45,7 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <p className="text-[11px] text-muted-foreground text-center mt-5">
-            Profile editing and phone number verification are coming soon.
+            To update your profile, contact us at +91 98332 73838 or aqsakhan7654@gmail.com
           </p>
         </motion.div>
       </div>

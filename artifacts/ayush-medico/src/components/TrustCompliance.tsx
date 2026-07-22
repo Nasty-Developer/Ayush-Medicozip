@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import {
   ShieldCheck, BadgeCheck, UserCheck, FileCheck, Lock, Zap,
-  FileText, Building2, MapPin, User, AlertCircle, Scale,
+  FileText, MapPin, User, Scale,
 } from "lucide-react";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
 import { Link } from "wouter";
@@ -12,7 +12,7 @@ const trustCards = [
   {
     icon: ShieldCheck,
     label: "Licensed Pharmacy",
-    sub: "Registered under Indian pharmacy regulations",
+    sub: "Registered under the Drugs & Cosmetics Act, 1940 · FDA Mumbai-Zone4",
     color: "text-primary",
     bg: "bg-primary/8",
     border: "border-primary/20",
@@ -21,7 +21,7 @@ const trustCards = [
   {
     icon: BadgeCheck,
     label: "Genuine Medicines",
-    sub: "100% authentic, sourced from verified distributors",
+    sub: "100% authentic, sourced from CDSCO-approved verified distributors",
     color: "text-emerald-600",
     bg: "bg-emerald-500/8",
     border: "border-emerald-500/20",
@@ -30,7 +30,7 @@ const trustCards = [
   {
     icon: UserCheck,
     label: "Registered Pharmacist",
-    sub: "All dispensing supervised by a qualified professional",
+    sub: "All dispensing supervised by Khan Aqsa Tasadduk Hussain (D.Pharm, Reg. 492012)",
     color: "text-violet-600",
     bg: "bg-violet-500/8",
     border: "border-violet-500/20",
@@ -65,54 +65,47 @@ const trustCards = [
   },
 ];
 
-/* ── Helpers ───────────────────────────────────────────────────────────────── */
-function Placeholder({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="italic text-muted-foreground/60 text-xs flex items-center gap-1">
-      <AlertCircle size={11} className="flex-shrink-0" />
-      {children}
-    </span>
-  );
-}
-
 /* ── Main component ────────────────────────────────────────────────────────── */
 export default function TrustCompliance() {
   const sectionRef = useRef(null);
   const inView = useInView(sectionRef, { once: true, margin: "-60px" });
   const { settings, loading } = useStoreSettings();
 
-  const legalItems = [
+  /* Only show items that have actual values — never show placeholders publicly */
+  const allLegalItems = [
     {
       icon: FileText,
-      label: "Drug License Number",
-      value: settings.drugLicenseNumber,
-      placeholder: "Add via Admin Panel → Settings → Legal & Compliance",
+      label: "Drug Licence (Form 20)",
+      value: "MH-MZ4-518856 · Valid to 02/05/2028",
     },
     {
-      icon: Building2,
-      label: "GST Number (GSTIN)",
-      value: settings.gstNumber,
-      placeholder: "Add via Admin Panel → Settings → Legal & Compliance",
-    },
-    {
-      icon: FileCheck,
-      label: "Shop & Establishment Registration",
-      value: settings.shopEstablishmentReg,
-      placeholder: "Add via Admin Panel → Settings → Legal & Compliance",
+      icon: FileText,
+      label: "Drug Licence (Form 21)",
+      value: "MH-MZ4-518857 · Valid to 02/05/2028",
     },
     {
       icon: UserCheck,
       label: "Registered Pharmacist",
       value: settings.registeredPharmacist,
-      placeholder: "Add via Admin Panel → Settings → Legal & Compliance",
     },
     {
       icon: MapPin,
       label: "Business Address",
       value: settings.address,
-      placeholder: "Add via Admin Panel → Settings → Location",
     },
+    ...(settings.gstNumber ? [{
+      icon: FileText,
+      label: "GST Number (GSTIN)",
+      value: settings.gstNumber,
+    }] : []),
+    ...(settings.shopEstablishmentReg ? [{
+      icon: FileCheck,
+      label: "Shop & Establishment Reg.",
+      value: settings.shopEstablishmentReg,
+    }] : []),
   ];
+
+  const visibleItems = loading ? allLegalItems : allLegalItems.filter(item => item.value);
 
   return (
     <section
@@ -147,7 +140,7 @@ export default function TrustCompliance() {
             </span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
-            Ayush Medico operates under strict compliance with Indian pharmacy regulations, ensuring every product and service meets the highest standards of safety and authenticity.
+            Ayush Medico &amp; General Stores operates under strict compliance with Indian pharmacy regulations, ensuring every product and service meets the highest standards of safety and authenticity.
           </p>
         </motion.div>
 
@@ -159,11 +152,9 @@ export default function TrustCompliance() {
               initial={{ y: 24, opacity: 0 }}
               animate={inView ? { y: 0, opacity: 1 } : {}}
               transition={{ duration: 0.5, delay: 0.05 + i * 0.07 }}
-              className={`group relative bg-card border ${card.border} rounded-2xl p-6 shadow-sm hover:shadow-md hover:shadow-${card.glow} hover:-translate-y-1 transition-all duration-300 overflow-hidden`}
+              className={`group relative bg-card border ${card.border} rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 overflow-hidden`}
             >
-              {/* Card glow on hover */}
               <div className={`absolute inset-0 ${card.bg} opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl`} />
-
               <div className="relative">
                 <div className={`inline-flex p-3 rounded-xl ${card.bg} ${card.border} border mb-4`}>
                   <card.icon size={22} className={card.color} />
@@ -175,8 +166,6 @@ export default function TrustCompliance() {
                   {card.label}
                 </h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{card.sub}</p>
-
-                {/* Corner checkmark */}
                 <div className={`absolute top-0 right-0 w-7 h-7 rounded-full ${card.bg} ${card.border} border flex items-center justify-center`}>
                   <BadgeCheck size={14} className={card.color} />
                 </div>
@@ -206,17 +195,17 @@ export default function TrustCompliance() {
               Operating Under Indian Pharmacy Regulations
             </h3>
             <p className="text-muted-foreground leading-relaxed mb-4 text-sm">
-              Ayush Medico is a licensed retail pharmacy operating in full compliance with applicable Indian pharmacy laws, including the <strong className="text-foreground">Pharmacy Act, 1948</strong>, the <strong className="text-foreground">Drugs and Cosmetics Act, 1940</strong>, and state-level Shop &amp; Establishment regulations.
+              Ayush Medico &amp; General Stores is a licensed retail pharmacy operating in full compliance with the <strong className="text-foreground">Pharmacy Act, 1948</strong>, the <strong className="text-foreground">Drugs and Cosmetics Act, 1940</strong>, and applicable Maharashtra state regulations.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-6 text-sm">
-              All prescription medicines are dispensed exclusively under the supervision of our registered pharmacist. We stock only genuine products from CDSCO-approved distributors and maintain all statutory records as required by the Maharashtra Food and Drug Administration.
+              Drug licences issued by the Food &amp; Drugs Administration, Mumbai-Zone4 (Licence Nos. MH-MZ4-518856 &amp; MH-MZ4-518857). All prescription medicines are dispensed exclusively under the supervision of our registered pharmacist, <strong className="text-foreground">Khan Aqsa Tasadduk Hussain</strong> (D.Pharm, Reg. No. 492012, MSPC).
             </p>
 
             <div className="space-y-3">
               {[
-                "Licensed &amp; regulated retail pharmacy since 2013",
-                "Dispensing supervised by a qualified registered pharmacist",
-                "100% genuine products from approved distributors",
+                "Drug licences granted by FDA Mumbai-Zone4 (MH-MZ4-518856 &amp; MH-MZ4-518857)",
+                "Dispensing supervised by a qualified registered pharmacist (Reg. 492012)",
+                "100% genuine products from CDSCO-approved distributors",
                 "Full statutory records maintained as required by law",
               ].map((point, i) => (
                 <div key={i} className="flex items-start gap-2.5">
@@ -234,10 +223,10 @@ export default function TrustCompliance() {
             <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/10">
               <div className="flex items-center gap-2 mb-1">
                 <ShieldCheck size={14} className="text-primary" />
-                <span className="text-xs font-semibold text-foreground">Verified Retail Pharmacy</span>
+                <span className="text-xs font-semibold text-foreground">Verified Retail Pharmacy · FDA Mumbai-Zone4</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Kurla West, Mumbai — serving the community with genuine medicines and trusted healthcare since 2013.
+                Proprietor: Govind Ram Chitara · Kurla West, Mumbai – 400070
               </p>
             </div>
           </motion.div>
@@ -258,17 +247,13 @@ export default function TrustCompliance() {
             </p>
 
             <div className="grid sm:grid-cols-2 gap-4">
-              {legalItems.map((item, i) => (
+              {visibleItems.map((item, i) => (
                 <motion.div
                   key={item.label}
                   initial={{ y: 16, opacity: 0 }}
                   animate={inView ? { y: 0, opacity: 1 } : {}}
                   transition={{ duration: 0.4, delay: 0.3 + i * 0.06 }}
-                  className={`rounded-2xl p-5 border transition-all duration-200 ${
-                    item.value
-                      ? "bg-card border-border shadow-sm"
-                      : "bg-muted/30 border-dashed border-border/60"
-                  }`}
+                  className="rounded-2xl p-5 border bg-card border-border shadow-sm"
                 >
                   <div className="flex items-center gap-2 mb-2.5">
                     <div className="p-1.5 rounded-lg bg-primary/10">
@@ -280,10 +265,8 @@ export default function TrustCompliance() {
                   </div>
                   {loading ? (
                     <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
-                  ) : item.value ? (
-                    <p className="text-sm font-semibold text-foreground">{item.value}</p>
                   ) : (
-                    <Placeholder>{item.placeholder}</Placeholder>
+                    <p className="text-sm font-semibold text-foreground">{item.value}</p>
                   )}
                 </motion.div>
               ))}
@@ -292,7 +275,7 @@ export default function TrustCompliance() {
               <motion.div
                 initial={{ y: 16, opacity: 0 }}
                 animate={inView ? { y: 0, opacity: 1 } : {}}
-                transition={{ duration: 0.4, delay: 0.3 + legalItems.length * 0.06 }}
+                transition={{ duration: 0.4, delay: 0.3 + visibleItems.length * 0.06 }}
                 className="rounded-2xl p-5 bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/10 sm:col-span-2"
               >
                 <div className="flex items-center gap-2 mb-3">
@@ -306,6 +289,7 @@ export default function TrustCompliance() {
                     { label: "Refund Policy", href: "/refund-policy" },
                     { label: "Shipping Policy", href: "/shipping-policy" },
                     { label: "Prescription Policy", href: "/prescription-policy" },
+                    { label: "Disclaimer", href: "/disclaimer" },
                   ].map((link) => (
                     <Link
                       key={link.label}
@@ -334,7 +318,7 @@ export default function TrustCompliance() {
           <div>
             <p className="text-sm font-semibold text-foreground mb-1">Responsible Dispensing Commitment</p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              We do not dispense Schedule H, H1, or X drugs without a valid prescription. Our pharmacy records are maintained in accordance with Rule 65 of the Drugs and Cosmetics Rules, 1945. For queries about our compliance status, please contact us directly.
+              We do not dispense Schedule H, H1, or X drugs without a valid prescription. Our pharmacy records are maintained in accordance with Rule 65 of the Drugs and Cosmetics Rules, 1945. Drug licences granted by Ashok Tukaram Rathod, Assistant Commissioner, Food &amp; Drugs Administration, Mumbai-Zone4 (FDA File No. 244432).
             </p>
           </div>
         </motion.div>

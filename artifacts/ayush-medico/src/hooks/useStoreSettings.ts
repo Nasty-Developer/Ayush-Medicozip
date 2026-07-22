@@ -34,7 +34,7 @@ export const STORE_SETTINGS_DEFAULTS: StoreSettings = {
   hoursWeekend: "",
   email: "aqsakhan7654@gmail.com",
   tagline: "Your Trusted Health Partner in Kurla West",
-  drugLicenseNumber: "",
+  drugLicenseNumber: "Form 20: MH-MZ4-518856 · Form 21: MH-MZ4-518857 (Valid to 02/05/2028 · FDA Mumbai-Zone4)",
   gstNumber: "",
   shopEstablishmentReg: "",
   registeredPharmacist: "Khan Aqsa Tasadduk Hussain (D.Pharm, Reg. No. 492012, Maharashtra State Pharmacy Council)",

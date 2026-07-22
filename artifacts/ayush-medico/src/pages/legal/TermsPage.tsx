@@ -29,18 +29,28 @@ export default function TermsPage() {
             </PolicySection>
 
             <PolicySection title="2. Business Details">
-              <p><strong>Ayush Medico &amp; General Stores</strong><br />
-              Proprietor: Govind Ram Chitara<br />
-              Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl, Halav Pool, Near Rolex Hotel, CTS No.451, Kurla West, Mumbai – 400070<br />
-              Registered Pharmacist: Khan Aqsa Tasadduk Hussain (D.Pharm, Reg. No. 492012, Maharashtra State Pharmacy Council)</p>
+              <p>
+                <strong>Ayush Medico &amp; General Stores</strong><br />
+                Proprietor: Govind Ram Chitara<br />
+                Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl, Halav Pool, Near Rolex Hotel, CTS No.451, Kurla West, Mumbai – 400070<br />
+                Phone: +91 98332 73838 / +91 97021 65965<br />
+                Email: aqsakhan7654@gmail.com<br />
+                <br />
+                <strong>Drug Licences (FDA Mumbai-Zone4):</strong><br />
+                Form 20 Licence No: MH-MZ4-518856 (valid to 02/05/2028)<br />
+                Form 21 Licence No: MH-MZ4-518857 (valid to 02/05/2028)<br />
+                FDA File No: 244432<br />
+                <br />
+                <strong>Registered Pharmacist:</strong> Khan Aqsa Tasadduk Hussain (D.Pharm, Reg. No. 492012, Maharashtra State Pharmacy Council)
+              </p>
             </PolicySection>
 
             <PolicySection title="3. Services Provided">
-              <p>Ayush Medico &amp; General Stores provides retail pharmacy services including sale of over-the-counter (OTC) medicines, prescription medicines (subject to valid prescription), healthcare products, and same-day delivery within eligible pincodes in Mumbai.</p>
+              <p>Ayush Medico &amp; General Stores provides licensed retail pharmacy services including sale of over-the-counter (OTC) medicines, prescription medicines (subject to valid prescription), healthcare products, and same-day delivery within eligible pincodes in Mumbai.</p>
             </PolicySection>
 
             <PolicySection title="4. Prescription Medicines">
-              <p>Prescription-only medicines (Schedule H, H1, and X) will only be dispensed against a valid, current prescription from a registered medical practitioner. Submitting a forged or expired prescription is a violation of the Drugs and Cosmetics Act, 1940, and may result in cancellation of your order and reporting to relevant authorities.</p>
+              <p>Prescription-only medicines (Schedule H, H1, and X) will only be dispensed against a valid, current prescription from a registered medical practitioner. Submitting a forged or expired prescription is a violation of the Drugs and Cosmetics Act, 1940, and may result in cancellation of your order and reporting to the relevant authorities.</p>
             </PolicySection>
 
             <PolicySection title="5. Pricing and Availability">
@@ -67,6 +77,7 @@ export default function TermsPage() {
             <PolicySection title="9. Contact">
               <p>
                 <strong>Ayush Medico &amp; General Stores</strong><br />
+                Proprietor: Govind Ram Chitara<br />
                 Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl,<br />
                 Halav Pool, Near Rolex Hotel, CTS No.451, Kurla West, Mumbai – 400070<br />
                 Phone: +91 98332 73838 / +91 97021 65965<br />
