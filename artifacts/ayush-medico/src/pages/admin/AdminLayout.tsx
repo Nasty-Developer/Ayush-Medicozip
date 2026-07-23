@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Pill, Megaphone, MessageSquare, HelpCircle,
   Star, Settings, LogOut, Menu, X, ChevronRight, ExternalLink,
   Shield, Tag, Building2, Sparkles, Award, Home, ClipboardList, ShoppingCart,
-  RefreshCw,
+  RefreshCw, Scale,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import DashboardPage from "./DashboardPage";
@@ -22,6 +22,7 @@ import OrdersPage from "./OrdersPage";
 import FAQPage from "./FAQPage";
 import TestimonialsPage from "./TestimonialsPage";
 import SettingsPage from "./SettingsPage";
+import LegalCompliancePage from "./LegalCompliancePage";
 import AdminLogin from "./AdminLogin";
 import InventorySyncPage from "./InventorySyncPage";
 
@@ -49,6 +50,7 @@ function buildNavItems(newInquiries: number, pendingRequests: number): NavItemDe
     { icon: ClipboardList,  label: "Medicine Requests", href: "/admin/medicine-requests", badge: pendingRequests },
     { icon: MessageSquare,  label: "Inquiries",          href: "/admin/inquiries",          badge: newInquiries },
     { divider: "Content" },
+    { icon: Scale,       label: "Legal & Compliance", href: "/admin/legal" },
     { icon: Megaphone,   label: "Announcement", href: "/admin/announcement" },
     { icon: HelpCircle,  label: "FAQ",          href: "/admin/faq" },
     { icon: Star,        label: "Testimonials", href: "/admin/testimonials" },
@@ -400,6 +402,7 @@ export default function AdminLayout() {
             <Route path="/admin/orders" component={OrdersPage} />
             <Route path="/admin/medicine-requests" component={MedicineRequestsPage} />
             <Route path="/admin/inquiries" component={InquiriesPage} />
+            <Route path="/admin/legal" component={LegalCompliancePage} />
             <Route path="/admin/faq" component={FAQPage} />
             <Route path="/admin/testimonials" component={TestimonialsPage} />
             <Route path="/admin/settings" component={SettingsPage} />

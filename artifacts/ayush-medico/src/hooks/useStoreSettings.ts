@@ -1,43 +1,79 @@
 import { useEffect, useState } from "react";
 
 /**
- * Public, read-only view of the "store" settings document (GET /api/settings/store
- * requires no auth). Used by public-facing sections that need to display
- * admin-editable business/legal info (e.g. Trust & Compliance, Footer).
- *
- * Mirrors the shape maintained by src/pages/admin/SettingsPage.tsx — keep the
- * two in sync if new editable fields are added there.
+ * Public, read-only view of the "store" settings document.
+ * Extended to include all individual business/legal fields required by legal pages.
  */
 export type StoreSettings = {
-  storeName: string;
-  phone: string;
-  whatsapp: string;
-  address: string;
-  mapLink: string;
-  hoursWeekday: string;
-  hoursWeekend: string;
-  email: string;
-  tagline: string;
-  drugLicenseNumber: string;
-  gstNumber: string;
-  shopEstablishmentReg: string;
-  registeredPharmacist: string;
+  // ── Basic identity ────────────────────────────────────────────────────────
+  storeName:              string;
+  tagline:               string;
+  proprietorName:        string;
+  // ── Contact ───────────────────────────────────────────────────────────────
+  phone:                 string;
+  phone2:                string;
+  whatsapp:              string;
+  email:                 string;
+  // ── Location ──────────────────────────────────────────────────────────────
+  address:               string;
+  mapLink:               string;
+  deliveryRadius:        string;
+  // ── Hours ─────────────────────────────────────────────────────────────────
+  hoursWeekday:          string;
+  hoursWeekend:          string;
+  // ── Pharmacist (individual fields) ────────────────────────────────────────
+  pharmacistName:        string;
+  pharmacistRegNumber:   string;
+  pharmacistQualification: string;
+  pharmacistCouncil:     string;
+  pharmacistValidUpto:   string;
+  // ── Drug licences (individual fields) ─────────────────────────────────────
+  drugLicenseForm20:     string;
+  drugLicenseForm21:     string;
+  licenceValidity:       string;
+  fdaFileNumber:         string;
+  licensingAuthority:    string;
+  // ── Footer ────────────────────────────────────────────────────────────────
+  footerCopyright:       string;
+  // ── Legacy combined fields (keep for backward compat) ─────────────────────
+  drugLicenseNumber:     string;
+  gstNumber:             string;
+  shopEstablishmentReg:  string;
+  registeredPharmacist:  string;
 };
 
 export const STORE_SETTINGS_DEFAULTS: StoreSettings = {
-  storeName: "Ayush Medico & General Stores",
-  phone: "+91 98332 73838",
-  whatsapp: "919833273838",
-  address: "Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl, Halav Pool, Near Rolex Hotel, CTS No.451, Kurla West, Mumbai – 400070",
-  mapLink: "https://maps.google.com/?q=Ayush+Medico+Kurla+West+Mumbai",
-  hoursWeekday: "Monday – Sunday: 8:00 AM – 10:00 PM",
-  hoursWeekend: "",
-  email: "aqsakhan7654@gmail.com",
-  tagline: "Your Trusted Health Partner in Kurla West",
-  drugLicenseNumber: "Form 20: MH-MZ4-518856 · Form 21: MH-MZ4-518857 (Valid to 02/05/2028 · FDA Mumbai-Zone4)",
-  gstNumber: "",
-  shopEstablishmentReg: "",
-  registeredPharmacist: "Khan Aqsa Tasadduk Hussain (D.Pharm, Reg. No. 492012, Maharashtra State Pharmacy Council)",
+  storeName:              "Ayush Medico & General Stores",
+  tagline:               "Your Trusted Health Partner in Kurla West",
+  proprietorName:        "Govind Ram Chitara",
+  phone:                 "+91 98332 73838",
+  phone2:                "+91 97021 65965",
+  whatsapp:              "919833273838",
+  email:                 "aqsakhan7654@gmail.com",
+  address:               "Shop No.1, Hut No.67 1/1, Ground Floor, Gangaram Makad Wala Chawl, Halav Pool, Near Rolex Hotel, CTS No.451, Kurla West, Mumbai – 400070",
+  mapLink:               "https://maps.google.com/?q=Ayush+Medico+Gangaram+Makad+Wala+Chawl+Halav+Pool+Kurla+West+Mumbai",
+  deliveryRadius:        "Kurla West and surrounding areas, Mumbai",
+  hoursWeekday:          "Monday – Sunday: 8:00 AM – 10:00 PM",
+  hoursWeekend:          "",
+  // Pharmacist
+  pharmacistName:        "Khan Aqsa Tasadduk Hussain",
+  pharmacistRegNumber:   "492012",
+  pharmacistQualification: "D.Pharm",
+  pharmacistCouncil:     "Maharashtra State Pharmacy Council",
+  pharmacistValidUpto:   "31/12/2057",
+  // Drug licences
+  drugLicenseForm20:     "MH-MZ4-518856",
+  drugLicenseForm21:     "MH-MZ4-518857",
+  licenceValidity:       "02/05/2028",
+  fdaFileNumber:         "244432",
+  licensingAuthority:    "Ashok Tukaram Rathod, Assistant Commissioner, Food & Drugs Administration, Mumbai-Zone4",
+  // Footer
+  footerCopyright:       "© 2026 Ayush Medico & General Stores. All rights reserved. | Proprietor: Govind Ram Chitara",
+  // Legacy combined (derived / backward compat)
+  drugLicenseNumber:     "Form 20: MH-MZ4-518856 · Form 21: MH-MZ4-518857 (Valid to 02/05/2028 · FDA Mumbai-Zone4)",
+  gstNumber:             "",
+  shopEstablishmentReg:  "",
+  registeredPharmacist:  "Khan Aqsa Tasadduk Hussain (D.Pharm, Reg. No. 492012, Maharashtra State Pharmacy Council)",
 };
 
 export function useStoreSettings() {
@@ -54,15 +90,9 @@ export function useStoreSettings() {
           setSettings({ ...STORE_SETTINGS_DEFAULTS, ...(data as Partial<StoreSettings>) });
         }
       })
-      .catch(() => {
-        /* use defaults on error */
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .catch(() => { /* use defaults on error */ })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   return { settings, loading };

@@ -16,7 +16,12 @@ import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware";
 
 const router = Router();
 
-const ALLOWED_KEYS = new Set(["store", "homepage", "announcement"]);
+const ALLOWED_KEYS = new Set([
+  "store", "homepage", "announcement",
+  // Legal page content — each stores { sections: [{ heading, body }] }
+  "legal_privacy", "legal_terms", "legal_shipping",
+  "legal_refund", "legal_prescription", "legal_disclaimer", "legal_about",
+]);
 
 // ── GET /api/settings/:key ────────────────────────────────────────────────────
 router.get("/:key", async (req: Request, res: Response): Promise<void> => {
