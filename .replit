@@ -33,3 +33,4 @@ VITE_FIREBASE_STORAGE_BUCKET = "ayush-medico.firebasestorage.app"
 
 [nix]
 channel = "stable-25_05"
+packages = ["git"]
