@@ -1,2 +1,28 @@
+# Ayush Medico — robots.txt
+# https://YOUR-DOMAIN.com/robots.txt
+# Replace YOUR-DOMAIN.com with the real domain before launch.
+
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /admin/
+
+# Block common nuisance paths
+Disallow: /src/
+Disallow: /.git/
+Disallow: /node_modules/
+
+# Sitemap — update YOUR-DOMAIN.com before launch
+Sitemap: https://YOUR-DOMAIN.com/sitemap.xml
+
+# Google
+User-agent: Googlebot
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /admin/
