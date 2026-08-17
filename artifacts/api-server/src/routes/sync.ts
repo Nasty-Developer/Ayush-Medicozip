@@ -262,7 +262,12 @@ async function claimPersistedJobLease(job: SyncJob): Promise<{
   });
 }
 
-const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+// Upload sessions are short-lived while files are being sent. Every accepted
+// chunk renews this inactivity lease. Once the import starts, the longer
+// running lease is renewed by the importer heartbeat below.
+const UPLOADING_SESSION_TTL_MINUTES = 15;
+const RUNNING_SESSION_TTL_HOURS = 2;
+const RUNNING_SESSION_HEARTBEAT_INTERVAL_MS = 30 * 1000;
 const ACTIVE_SESSION_STATUSES = ["uploading", "running"] as const;
 type ActiveSessionStatus = (typeof ACTIVE_SESSION_STATUSES)[number];
 type TerminalSessionStatus = "completed" | "failed" | "cancelled" | "expired";
@@ -373,7 +378,7 @@ async function createSyncSession(firebaseUid: string): Promise<
         ${sessionId},
         ${firebaseUid},
         'uploading',
-        CURRENT_TIMESTAMP + interval '2 hours'
+        CURRENT_TIMESTAMP + interval '15 minutes'
       )
     `);
 
@@ -447,7 +452,7 @@ async function storeChunkForSession(input: {
       .update(syncSessionsTable)
       .set({
         updatedAt: sql`CURRENT_TIMESTAMP`,
-        expiresAt: sql`CURRENT_TIMESTAMP + interval '2 hours'`,
+        expiresAt: sql`CURRENT_TIMESTAMP + interval '15 minutes'`,
       })
       .where(
         and(
@@ -645,11 +650,25 @@ async function runImport(
 ): Promise<void> {
   const t0 = Date.now();
   let terminalSessionStatus: TerminalSessionStatus = "failed";
+  let lastSessionHeartbeatAt = 0;
 
-  try {
+  const refreshRunningLeaseIfDue = async (force = false): Promise<void> => {
+    const now = Date.now();
+    if (
+      !force &&
+      now - lastSessionHeartbeatAt < RUNNING_SESSION_HEARTBEAT_INTERVAL_MS
+    ) {
+      return;
+    }
+
     if (!(await refreshRunningSyncSessionLease(session.id, session.firebaseUid))) {
       throw new SyncLeaseLostError();
     }
+    lastSessionHeartbeatAt = now;
+  };
+
+  try {
+    await refreshRunningLeaseIfDue(true);
 
     // ── 1. Parse ─────────────────────────────────────────────────────────────
     job.phase   = "parsing";
@@ -755,6 +774,7 @@ async function runImport(
           .insert(drugGroupsTable)
           .values(batch.map((name) => ({ name })))
           .onConflictDoNothing();
+        await refreshRunningLeaseIfDue();
       }
     }
 
@@ -841,14 +861,12 @@ async function runImport(
       for (const r of inserted) allInsertedIds.push(r.id);
       job.processed      += batch.length;
       job.report.medicines = job.processed;
+      await refreshRunningLeaseIfDue();
 
       // Save progress to DB every 10 batches so polls see live progress
       // even if they land on a different serverless instance.
       if (i % 10 === 0) {
         await saveJobToDb(job);
-        if (!(await refreshRunningSyncSessionLease(session.id, session.firebaseUid))) {
-          throw new SyncLeaseLostError();
-        }
       }
     }
 
@@ -877,6 +895,7 @@ async function runImport(
     if (allInsertedIds.length > 0) {
       for (const idBatch of chunks(allInsertedIds, 1000)) {
         await db.delete(stockTable).where(inArray(stockTable.medicineId, idBatch));
+        await refreshRunningLeaseIfDue();
       }
     }
 
@@ -897,6 +916,7 @@ async function runImport(
     if (stockValues.length) {
       for (const batch of chunks(stockValues, 500)) {
         await db.insert(stockTable).values(batch);
+        await refreshRunningLeaseIfDue();
       }
     }
 
@@ -1027,7 +1047,9 @@ router.post(
         {
           firebaseUid,
           sessionId: result.sessionId,
-          expiresAt: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
+          uploadingLeaseMinutes: UPLOADING_SESSION_TTL_MINUTES,
+          runningLeaseHours: RUNNING_SESSION_TTL_HOURS,
+          heartbeatIntervalSeconds: RUNNING_SESSION_HEARTBEAT_INTERVAL_MS / 1000,
         },
         "Sync upload session created",
       );
