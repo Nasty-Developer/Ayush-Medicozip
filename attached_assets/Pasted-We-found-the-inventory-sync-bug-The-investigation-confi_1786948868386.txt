@@ -1,0 +1,61 @@
+We found the inventory sync bug.
+
+The investigation confirms that settings.sync:current_job can remain permanently stuck at status="running" because it has no TTL, expiration, heartbeat, or stale-job recovery.
+
+The production UI currently says:
+
+"A sync is already running on another instance. Wait for it to finish."
+
+Implement the SAFEST MINIMAL FIX.
+
+Requirements:
+
+1. Keep the existing concurrency protection.
+2. Do NOT simply remove the "running" check.
+3. Do NOT delete production sync records manually.
+4. Do NOT modify Firebase authentication.
+5. Do NOT change the Vercel/Render deployment architecture unnecessarily.
+
+Fix the persisted sync job in PostgreSQL so it behaves like a lease.
+
+Add appropriate fields such as:
+- startedAt
+- updatedAt / heartbeatAt
+- leaseExpiresAt
+- owner/instance identifier if useful
+
+When /api/sync/start checks sync:current_job:
+
+- If status is running AND the lease is still valid:
+    reject the new sync as before.
+
+- If status is running BUT the lease has expired:
+    treat the previous job as stale/abandoned,
+    safely recover/finalize that stale job,
+    then allow the new sync to start.
+
+Make the state transition atomic so two instances cannot simultaneously claim the job.
+
+During a long import, renew the lease/heartbeat periodically.
+
+Ensure success, failure, cancellation, and timeout paths finalize the job correctly.
+
+Also address the existing issue where /api/sync/start launches runImport() in a fire-and-forget manner and immediately returns HTTP 202.
+
+Because the backend runs on Render, do not assume background work after the HTTP response is guaranteed to survive process suspension/termination.
+
+For this phase, make the smallest safe improvement possible without rewriting the entire import architecture.
+
+IMPORTANT:
+Before changing code, inspect the existing syncSessions.ts and related sync routes/services and explain exactly which files/functions will be modified.
+
+After implementing:
+- run TypeScript checks
+- run the production build
+- verify the sync lock logic
+- verify that an active sync still blocks a second sync
+- verify that an expired/stale sync can be recovered
+- verify that a successful sync clears/finalizes the job
+
+Do NOT clear the production database yourself.
+Do NOT move to another feature.
