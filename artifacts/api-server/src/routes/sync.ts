@@ -83,6 +83,7 @@ export interface SyncJob {
   id: string;
   sessionId: string;
   firebaseUid: string;
+  ownerId: string;
   status: "running" | "done" | "cancelled" | "error";
   phase: JobPhase;
   message: string;
@@ -92,6 +93,9 @@ export interface SyncJob {
   totalBatches: number;
   cancelRequested: boolean;
   startedAt: number;
+  updatedAt: number;
+  heartbeatAt: number;
+  leaseExpiresAt: number;
   report: {
     medicines: number;
     companies: number;
@@ -110,27 +114,75 @@ let currentJob: SyncJob | null = null;
 // ── DB persistence helpers ─────────────────────────────────────────────────────
 
 const SYNC_JOB_KEY = "sync:current_job";
+const JOB_LEASE_MS = 5 * 60 * 1000;
+
+class SyncLeaseLostError extends Error {
+  constructor() {
+    super("The inventory sync lease was claimed by another instance.");
+    this.name = "SyncLeaseLostError";
+  }
+}
+
+function parsePersistedJob(value: unknown): SyncJob | null {
+  if (!value || typeof value !== "object") return null;
+  return value as SyncJob;
+}
+
+function hasValidJobLease(job: SyncJob | null, now = Date.now()): boolean {
+  return Boolean(
+    job?.status === "running" &&
+      Number.isFinite(job.leaseExpiresAt) &&
+      job.leaseExpiresAt > now,
+  );
+}
+
+function touchJobLease(job: SyncJob, now = Date.now()): void {
+  job.updatedAt = now;
+  job.heartbeatAt = now;
+  job.leaseExpiresAt = job.status === "running" ? now + JOB_LEASE_MS : now;
+}
 
 /**
  * Persist job snapshot to PostgreSQL settings table.
- * Called after each major phase change so Vercel serverless invocations
- * that land on a different instance can read the current state.
- * Fire-and-forget (errors are non-fatal — in-memory state still works).
+ * Called after each major phase change and during the import heartbeat so
+ * another instance can observe the current lease.
+ *
+ * The owner check is important: if this process loses its lease and another
+ * instance recovers the job, the old process must not overwrite the new job
+ * snapshot when it eventually finishes a database operation.
  */
-async function saveJobToDb(job: SyncJob): Promise<void> {
+async function saveJobToDb(job: SyncJob): Promise<boolean> {
   try {
-    await db
-      .insert(settingsTable)
-      .values({ key: SYNC_JOB_KEY, value: job as unknown as Record<string, unknown> })
-      .onConflictDoUpdate({
-        target: settingsTable.key,
-        set: {
-          value: job as unknown as Record<string, unknown>,
-          updatedAt: new Date(),
-        },
-      });
+    touchJobLease(job);
+    const updated = await db
+      .update(settingsTable)
+      .set({
+        value: job as unknown as Record<string, unknown>,
+        updatedAt: new Date(job.updatedAt),
+      })
+      .where(
+        and(
+          eq(settingsTable.key, SYNC_JOB_KEY),
+          sql`value->>'ownerId' = ${job.ownerId}`,
+        ),
+      )
+      .returning({ key: settingsTable.key });
+
+    if (updated.length > 0) return true;
+
+    if (job.status === "running") {
+      throw new SyncLeaseLostError();
+    }
+
+    logger.warn(
+      { jobId: job.id, ownerId: job.ownerId, status: job.status },
+      "Skipped persisting a terminal sync job after its lease was replaced",
+    );
+    return false;
   } catch (err) {
+    if (err instanceof SyncLeaseLostError) throw err;
     logger.warn({ err }, "Failed to persist sync job state to DB (non-fatal)");
+    return false;
   }
 }
 
@@ -152,16 +204,76 @@ async function loadJobFromDb(): Promise<SyncJob | null> {
   }
 }
 
+/**
+ * Atomically claim the single persisted import-job lease.
+ *
+ * The advisory transaction lock serializes claims across API instances.
+ * Existing jobs without lease metadata are treated as stale for backwards
+ * compatibility with the old permanently-running format.
+ */
+async function claimPersistedJobLease(job: SyncJob): Promise<{
+  claimed: boolean;
+  activeJob: SyncJob | null;
+  staleJob: SyncJob | null;
+}> {
+  touchJobLease(job);
+
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${SYNC_JOB_KEY}, 0))`,
+    );
+
+    const rows = await tx.execute(
+      sql`SELECT value FROM settings WHERE key = ${SYNC_JOB_KEY} FOR UPDATE`,
+    );
+    const row = rows.rows[0] as { value?: unknown } | undefined;
+    const existingJob = parsePersistedJob(row?.value);
+
+    if (hasValidJobLease(existingJob)) {
+      return {
+        claimed: false,
+        activeJob: existingJob,
+        staleJob: null,
+      };
+    }
+
+    const staleJob =
+      existingJob?.status === "running" ? existingJob : null;
+
+    await tx
+      .insert(settingsTable)
+      .values({
+        key: SYNC_JOB_KEY,
+        value: job as unknown as Record<string, unknown>,
+      })
+      .onConflictDoUpdate({
+        target: settingsTable.key,
+        set: {
+          value: job as unknown as Record<string, unknown>,
+          updatedAt: new Date(job.updatedAt),
+        },
+      });
+
+    return {
+      claimed: true,
+      activeJob: null,
+      staleJob,
+    };
+  });
+}
+
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const ACTIVE_SESSION_STATUSES = ["uploading", "running"] as const;
 type ActiveSessionStatus = (typeof ACTIVE_SESSION_STATUSES)[number];
 type TerminalSessionStatus = "completed" | "failed" | "cancelled" | "expired";
 
 function makeJob(sessionId: string, firebaseUid: string): SyncJob {
+  const now = Date.now();
   return {
-    id: `sync_${Date.now()}`,
+    id: `sync_${randomUUID()}`,
     sessionId,
     firebaseUid,
+    ownerId: randomUUID(),
     status: "running",
     phase: "idle",
     message: "Initialising…",
@@ -170,7 +282,10 @@ function makeJob(sessionId: string, firebaseUid: string): SyncJob {
     currentBatch: 0,
     totalBatches: 0,
     cancelRequested: false,
-    startedAt: Date.now(),
+    startedAt: now,
+    updatedAt: now,
+    heartbeatAt: now,
+    leaseExpiresAt: now + JOB_LEASE_MS,
     report: {
       medicines: 0, companies: 0, categories: 0,
       drugGroups: 0, stockRecords: 0, parseErrors: 0,
