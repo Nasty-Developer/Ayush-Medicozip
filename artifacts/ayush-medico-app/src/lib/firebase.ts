@@ -23,6 +23,8 @@ export const isFirebaseConfigured =
   isValidEnv(firebaseConfig.projectId) &&
   isValidEnv(firebaseConfig.appId);
 
+export const firebaseProjectId = firebaseConfig.projectId;
+
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let storage: FirebaseStorage | undefined;
