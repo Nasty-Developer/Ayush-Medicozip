@@ -323,7 +323,10 @@ async function createSyncSession(firebaseUid: string): Promise<
 
     // The data-modifying CTE is intentionally part of the same statement as
     // the active-session read. It retires expired rows before the partial
-    // unique index is checked by the insert below.
+    // unique index is checked by the insert below. Uploading sessions created
+    // before the inactivity lease was introduced may still have a legacy
+    // expires_at far in the future, so their real deadline is updated_at plus
+    // the current uploading inactivity lease.
     const activeRows = await tx.execute(sql`
       WITH expired AS (
         UPDATE sync_sessions
@@ -334,14 +337,36 @@ async function createSyncSession(firebaseUid: string): Promise<
           expires_at = CURRENT_TIMESTAMP
         WHERE firebase_uid = ${firebaseUid}
           AND status IN ('uploading', 'running')
-          AND expires_at <= CURRENT_TIMESTAMP
+          AND (
+            (
+              status = 'uploading'
+              AND updated_at
+                + (${UPLOADING_SESSION_TTL_MINUTES} * interval '1 minute')
+                <= CURRENT_TIMESTAMP
+            )
+            OR (
+              status = 'running'
+              AND expires_at <= CURRENT_TIMESTAMP
+            )
+          )
         RETURNING id
       )
       SELECT id, status, expires_at
       FROM sync_sessions
       WHERE firebase_uid = ${firebaseUid}
         AND status IN ('uploading', 'running')
-        AND expires_at > CURRENT_TIMESTAMP
+        AND (
+          (
+            status = 'uploading'
+            AND updated_at
+              + (${UPLOADING_SESSION_TTL_MINUTES} * interval '1 minute')
+              > CURRENT_TIMESTAMP
+          )
+          OR (
+            status = 'running'
+            AND expires_at > CURRENT_TIMESTAMP
+          )
+        )
       ORDER BY created_at DESC
       LIMIT 1
       FOR UPDATE
