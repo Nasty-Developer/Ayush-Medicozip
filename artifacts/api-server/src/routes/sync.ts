@@ -267,6 +267,10 @@ const ACTIVE_SESSION_STATUSES = ["uploading", "running"] as const;
 type ActiveSessionStatus = (typeof ACTIVE_SESSION_STATUSES)[number];
 type TerminalSessionStatus = "completed" | "failed" | "cancelled" | "expired";
 
+function isActiveSessionStatus(status: string): status is ActiveSessionStatus {
+  return status === "uploading" || status === "running";
+}
+
 function makeJob(sessionId: string, firebaseUid: string): SyncJob {
   const now = Date.now();
   return {
@@ -349,7 +353,15 @@ async function createSyncSession(firebaseUid: string): Promise<
       .limit(1);
 
     const existing = activeRows[0];
-    if (existing) return { existing };
+    if (existing && isActiveSessionStatus(existing.status)) {
+      return {
+        existing: {
+          id: existing.id,
+          status: existing.status,
+          expiresAt: existing.expiresAt,
+        },
+      };
+    }
 
     const sessionId = randomUUID();
     await tx.insert(syncSessionsTable).values({
@@ -408,7 +420,14 @@ async function loadOwnedSession(
     )
     .limit(1);
 
-  return rows[0] ?? null;
+  const session = rows[0];
+  return session && isActiveSessionStatus(session.status)
+    ? {
+        id: session.id,
+        status: session.status,
+        expiresAt: session.expiresAt,
+      }
+    : null;
 }
 
 async function storeChunkForSession(input: {
