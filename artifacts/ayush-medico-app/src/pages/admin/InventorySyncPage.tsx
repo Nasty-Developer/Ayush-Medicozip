@@ -245,13 +245,13 @@ function ProgressDisplay({
   const isCancelled = job.status === "cancelled";
 
   const phaseLabel: Record<string, string> = {
-    parsing:    "Parsing SDF files…",
+    parsing:    "Importing into PostgreSQL…",
     companies:  "Upserting companies…",
     categories: "Upserting categories…",
     drug_groups: "Upserting drug groups…",
     medicines:  `Medicines: batch ${job.currentBatch}/${job.totalBatches}`,
     stock:      "Writing stock records…",
-    done:       "Complete",
+    done:       "Completed",
   };
 
   return (
@@ -335,7 +335,7 @@ function ProgressDisplay({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-type PageStage = "idle" | "uploading" | "running" | "done";
+type PageStage = "idle" | "starting" | "uploading" | "running" | "done";
 
 export default function InventorySyncPage() {
   const [files, setFiles] = useState<Record<SdfFileKey, File | null>>({
@@ -346,6 +346,8 @@ export default function InventorySyncPage() {
   const [cancelling,     setCancelling]     = useState(false);
   const [pollingEnabled, setPollingEnabled] = useState(false);
   const [chunkProgress,  setChunkProgress]  = useState<ChunkProgress | null>(null);
+  const currentSessionIdRef = useRef<string | null>(null);
+  const syncInFlightRef = useRef(false);
   const queryClient = useQueryClient();
 
   const handleFile = useCallback((key: SdfFileKey, file: File | null) => {
@@ -443,10 +445,13 @@ export default function InventorySyncPage() {
   // ── Upload & start handler ────────────────────────────────────────────────
 
   const handleUpload = async () => {
-    if (!canStart) return;
+    if (!canStart || syncInFlightRef.current) return;
+    syncInFlightRef.current = true;
     setUploadError(null);
     setChunkProgress(null);
-    setStage("uploading");
+    setStage("starting");
+    currentSessionIdRef.current = null;
+    let importStarted = false;
 
     try {
       await getFreshIdToken();
@@ -456,9 +461,20 @@ export default function InventorySyncPage() {
         method:  "POST",
       });
       if (!sessionResp.ok) {
-        throw new Error(`Failed to create upload session (${sessionResp.status})`);
+        const body = await sessionResp.json().catch(() => ({})) as {
+          error?: string;
+          retryAt?: string;
+        };
+        const retryMessage = body.retryAt
+          ? ` You can retry after ${new Date(body.retryAt).toLocaleTimeString()}.`
+          : "";
+        throw new Error(
+          `${body.error ?? `Failed to create upload session (${sessionResp.status})`}${retryMessage}`,
+        );
       }
       const { sessionId } = await sessionResp.json() as { sessionId: string };
+      currentSessionIdRef.current = sessionId;
+      setStage("uploading");
 
       // 2. Upload each file in chunks (sequentially to avoid overwhelming the server)
       const filesToUpload: Array<{ slot: FileSlot; file: File }> = FILE_SLOTS
@@ -485,15 +501,26 @@ export default function InventorySyncPage() {
         const err = await startResp.json().catch(() => ({ error: `Server error ${startResp.status}` })) as { error?: string };
         throw new Error(err.error ?? `Server error ${startResp.status}`);
       }
+      importStarted = true;
 
       // 4. Begin polling
       await queryClient.invalidateQueries({ queryKey: ["syncStatus"] });
       setPollingEnabled(true);
       setStage("running");
     } catch (err) {
+      const sessionId = currentSessionIdRef.current;
+      if (sessionId && !importStarted) {
+        await authFetch("/api/sync/cancel", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        }).catch(() => undefined);
+      }
       setUploadError(err instanceof Error ? err.message : "Upload failed");
       setChunkProgress(null);
       setStage("idle");
+    } finally {
+      syncInFlightRef.current = false;
     }
   };
 
@@ -504,6 +531,8 @@ export default function InventorySyncPage() {
     try {
       await authFetch("/api/sync/cancel", {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: currentSessionIdRef.current }),
       });
     } catch { /* non-fatal */ }
     finally { setCancelling(false); }
@@ -517,10 +546,11 @@ export default function InventorySyncPage() {
     setUploadError(null);
     setPollingEnabled(false);
     setChunkProgress(null);
+    currentSessionIdRef.current = null;
     queryClient.removeQueries({ queryKey: ["syncStatus"] });
   };
 
-  const isRunning = stage === "running" || stage === "uploading";
+  const isRunning = stage === "starting" || stage === "running" || stage === "uploading";
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
@@ -577,7 +607,7 @@ export default function InventorySyncPage() {
       </div>
 
       {/* File upload section */}
-      {(stage === "idle" || (stage === "uploading" && !chunkProgress)) && (
+      {stage === "idle" && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
             SDF Files
@@ -601,6 +631,13 @@ export default function InventorySyncPage() {
         <div className="flex items-start gap-2 bg-red-500/5 border border-red-500/20 rounded-lg p-3">
           <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-red-600">{uploadError}</p>
+        </div>
+      )}
+
+      {stage === "starting" && (
+        <div className="flex items-center justify-center gap-3 py-8 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm">Starting sync…</span>
         </div>
       )}
 

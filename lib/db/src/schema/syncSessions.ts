@@ -1,11 +1,11 @@
 import {
   index,
   pgTable,
-  sql,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const syncSessionsTable = pgTable(
   "sync_sessions",

@@ -296,20 +296,54 @@ async function loadOwnedSession(
   return rows[0] ?? null;
 }
 
-async function touchSyncSession(sessionId: string, firebaseUid: string): Promise<void> {
-  await db
-    .update(syncSessionsTable)
-    .set({
-      updatedAt: new Date(),
-      expiresAt: sessionExpiry(),
-    })
-    .where(
-      and(
-        eq(syncSessionsTable.id, sessionId),
-        eq(syncSessionsTable.firebaseUid, firebaseUid),
-        inArray(syncSessionsTable.status, [...ACTIVE_SESSION_STATUSES]),
-      ),
-    );
+async function storeChunkForSession(input: {
+  sessionId: string;
+  firebaseUid: string;
+  fileKey: string;
+  chunkIndex: number;
+  totalChunks: number;
+  data: Buffer;
+}): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const now = new Date();
+    const activeSession = await tx
+      .update(syncSessionsTable)
+      .set({
+        updatedAt: now,
+        expiresAt: sessionExpiry(),
+      })
+      .where(
+        and(
+          eq(syncSessionsTable.id, input.sessionId),
+          eq(syncSessionsTable.firebaseUid, input.firebaseUid),
+          eq(syncSessionsTable.status, "uploading"),
+          gt(syncSessionsTable.expiresAt, now),
+        ),
+      )
+      .returning({ id: syncSessionsTable.id });
+
+    if (!activeSession.length) return false;
+
+    await tx
+      .insert(uploadChunksTable)
+      .values({
+        sessionId: input.sessionId,
+        fileKey: input.fileKey,
+        chunkIndex: input.chunkIndex,
+        totalChunks: input.totalChunks,
+        data: input.data,
+      })
+      .onConflictDoUpdate({
+        target: [
+          uploadChunksTable.sessionId,
+          uploadChunksTable.fileKey,
+          uploadChunksTable.chunkIndex,
+        ],
+        set: { data: input.data, totalChunks: input.totalChunks },
+      });
+
+    return true;
+  });
 }
 
 async function claimSyncSession(
@@ -788,10 +822,51 @@ router.post(
   "/session",
   requireAuth,
   requireAdminEmail,
-  (_req: Request, res: Response): void => {
-    const sessionId = randomUUID();
-    logger.info({ sessionId }, "Upload session created");
-    res.json({ sessionId });
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const firebaseUid = req.firebaseUser?.uid;
+    if (!firebaseUid) {
+      res.status(401).json({ error: "Authenticated Firebase user is required." });
+      return;
+    }
+
+    try {
+      const result = await createSyncSession(firebaseUid);
+      if ("existing" in result) {
+        const retryAt = result.existing.expiresAt.toISOString();
+        logger.warn(
+          {
+            firebaseUid,
+            sessionId: result.existing.id,
+            status: result.existing.status,
+            retryAt,
+          },
+          "Sync session creation rejected because an active session already exists",
+        );
+        res.status(409).json({
+          error: "A sync is already in progress for this user.",
+          code: "sync_session_already_active",
+          sessionId: result.existing.id,
+          retryAt,
+        });
+        return;
+      }
+
+      logger.info(
+        {
+          firebaseUid,
+          sessionId: result.sessionId,
+          expiresAt: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
+        },
+        "Sync upload session created",
+      );
+      res.json({ sessionId: result.sessionId });
+    } catch (err) {
+      logger.error({ err, firebaseUid }, "Failed to create sync upload session");
+      res.status(500).json({
+        error: "Failed to create sync upload session.",
+        code: "sync_session_creation_error",
+      });
+    }
   }
 );
 
@@ -815,7 +890,7 @@ router.post(
   requireAuth,
   requireAdminEmail,
   (req: Request, res: Response, next) => { CHUNK_UPLOAD(req, res, next); },
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { sessionId, fileKey, chunkIndex, totalChunks } = req.body as {
       sessionId: string;
       fileKey: string;
@@ -843,25 +918,66 @@ router.post(
       return;
     }
 
+    const firebaseUid = req.firebaseUser?.uid;
+    if (!firebaseUid) {
+      res.status(401).json({ error: "Authenticated Firebase user is required." });
+      return;
+    }
+
+    const fileName = req.file.originalname || fileKey;
+    logger.info(
+      {
+        firebaseUid,
+        sessionId,
+        fileName,
+        fileKey,
+        chunkIndex: idx,
+        chunkCount: total,
+        bytes: req.file.size,
+      },
+      "Sync chunk upload started",
+    );
+
     try {
-      await db
-        .insert(uploadChunksTable)
-        .values({
+      const stored = await storeChunkForSession({
+        sessionId,
+        firebaseUid,
+        fileKey,
+        chunkIndex: idx,
+        totalChunks: total,
+        data: req.file.buffer,
+      });
+
+      if (!stored) {
+        logger.warn(
+          { firebaseUid, sessionId, fileName, fileKey, chunkIndex: idx, chunkCount: total },
+          "Sync chunk rejected because the upload session is not active or owned by the user",
+        );
+        res.status(409).json({
+          error: "This sync session is no longer active. Start a new sync.",
+          code: "sync_session_inactive",
+        });
+        return;
+      }
+
+      logger.info(
+        {
+          firebaseUid,
           sessionId,
+          fileName,
           fileKey,
           chunkIndex: idx,
-          totalChunks: total,
-          data: req.file.buffer,
-        })
-        .onConflictDoUpdate({
-          target: [uploadChunksTable.sessionId, uploadChunksTable.fileKey, uploadChunksTable.chunkIndex],
-          set: { data: req.file.buffer, totalChunks: total },
-        });
-
-      logger.debug({ sessionId, fileKey, chunkIndex: idx, totalChunks: total, bytes: req.file.size }, "Chunk stored");
+          chunkCount: total,
+          bytes: req.file.size,
+        },
+        "Sync chunk upload completed",
+      );
       res.json({ received: true, sessionId, fileKey, chunkIndex: idx, totalChunks: total });
     } catch (err) {
-      logger.error({ err, sessionId, fileKey, chunkIndex: idx }, "Failed to store chunk");
+      logger.error(
+        { err, firebaseUid, sessionId, fileName, fileKey, chunkIndex: idx, chunkCount: total },
+        "Sync chunk upload failed",
+      );
       res.status(500).json({ error: "Failed to store chunk", code: "chunk_store_error" });
     }
   }
@@ -881,11 +997,26 @@ router.post(
   "/start",
   requireAuth,
   requireAdminEmail,
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { sessionId } = req.body as { sessionId?: string };
 
     if (!sessionId || typeof sessionId !== "string") {
       res.status(400).json({ error: "sessionId is required", code: "missing_session_id" });
+      return;
+    }
+
+    const firebaseUid = req.firebaseUser?.uid;
+    if (!firebaseUid) {
+      res.status(401).json({ error: "Authenticated Firebase user is required." });
+      return;
+    }
+
+    const session = await loadOwnedSession(sessionId, firebaseUid, ["uploading"]);
+    if (!session) {
+      res.status(409).json({
+        error: "This sync session is no longer active. Start a new sync.",
+        code: "sync_session_inactive",
+      });
       return;
     }
 
@@ -907,29 +1038,60 @@ router.post(
       return;
     }
 
-    // Assemble required files
-    const productBuf  = await assembleFile(sessionId, "product_sdf");
-    const stockBuf    = await assembleFile(sessionId, "stock_sdf");
+    // Claim the upload session before assembling files. This makes duplicate
+    // /start requests harmless and changes the lock state atomically.
+    const claimed = await claimSyncSession(sessionId, firebaseUid);
+    if (!claimed) {
+      res.status(409).json({
+        error: "This sync session has already started. Wait for it to finish.",
+        code: "sync_session_already_started",
+      });
+      return;
+    }
+
+    let productBuf: Buffer | null;
+    let stockBuf: Buffer | null;
+    let companyBuf: Buffer | undefined;
+    let categoryBuf: Buffer | undefined;
+    let drugBuf: Buffer | undefined;
+
+    try {
+      // Assemble required and optional files
+      productBuf = await assembleFile(sessionId, "product_sdf");
+      stockBuf = await assembleFile(sessionId, "stock_sdf");
+      companyBuf = await assembleFile(sessionId, "company_sdf") ?? undefined;
+      categoryBuf = await assembleFile(sessionId, "category_sdf") ?? undefined;
+      drugBuf = await assembleFile(sessionId, "drug_sdf") ?? undefined;
+    } catch (err) {
+      await finishSyncSession(sessionId, firebaseUid, "failed");
+      void cleanupSession(sessionId);
+      logger.error({ err, firebaseUid, sessionId }, "Failed to assemble sync session files");
+      res.status(500).json({
+        error: "Failed to assemble uploaded sync files.",
+        code: "sync_assembly_error",
+      });
+      return;
+    }
 
     if (!productBuf) {
+      await finishSyncSession(sessionId, firebaseUid, "failed");
+      void cleanupSession(sessionId);
       res.status(400).json({ error: "PRODUCT.SDF chunks not found for this session. Re-upload the file.", code: "missing_product" });
       return;
     }
     if (!stockBuf) {
+      await finishSyncSession(sessionId, firebaseUid, "failed");
+      void cleanupSession(sessionId);
       res.status(400).json({ error: "STOCK.SDF chunks not found for this session. Re-upload the file.", code: "missing_stock" });
       return;
     }
 
-    // Assemble optional files
-    const companyBuf  = await assembleFile(sessionId, "company_sdf")  ?? undefined;
-    const categoryBuf = await assembleFile(sessionId, "category_sdf") ?? undefined;
-    const drugBuf     = await assembleFile(sessionId, "drug_sdf")     ?? undefined;
-
-    const job  = makeJob();
+    const job  = makeJob(sessionId, firebaseUid);
     currentJob = job;
 
     logger.info(
       {
+        firebaseUid,
         sessionId,
         product:  productBuf.length,
         stock:    stockBuf.length,
@@ -952,6 +1114,9 @@ router.post(
       company:  companyBuf,
       category: categoryBuf,
       drug:     drugBuf,
+    }, {
+      id: sessionId,
+      firebaseUid,
     }).catch((err) => {
       logger.error({ err }, "Import job crashed unexpectedly");
       if (currentJob) {
@@ -959,6 +1124,7 @@ router.post(
         currentJob.message = err instanceof Error ? err.message : "Unknown error";
         void saveJobToDb(currentJob);
       }
+      void finishSyncSession(sessionId, firebaseUid, "failed");
     });
 
     res.status(202).json({
@@ -973,17 +1139,66 @@ router.delete(
   "/cancel",
   requireAuth,
   requireAdminEmail,
-  async (_req: Request, res: Response): Promise<void> => {
-    const job = currentJob ?? await loadJobFromDb();
-    if (!job || job.status !== "running") {
-      res.status(404).json({ error: "No running sync job to cancel." });
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const firebaseUid = req.firebaseUser?.uid;
+    if (!firebaseUid) {
+      res.status(401).json({ error: "Authenticated Firebase user is required." });
       return;
     }
-    // Signal cancellation in both in-memory state and DB
+
+    const { sessionId } = (req.body ?? {}) as { sessionId?: string };
+    const job = currentJob ?? await loadJobFromDb();
+    const requestedSessionId = sessionId ?? job?.sessionId;
+
+    if (requestedSessionId) {
+      const session = await loadOwnedSession(
+        requestedSessionId,
+        firebaseUid,
+        ["uploading", "running"],
+      );
+
+      if (!session) {
+        res.status(404).json({ error: "No active sync session found." });
+        return;
+      }
+
+      if (
+        session.status === "running" &&
+        job?.status === "running" &&
+        job.sessionId === requestedSessionId
+      ) {
+        // Signal cancellation in both in-memory state and DB. runImport's
+        // finally block releases the session lock after the current batch.
+        job.cancelRequested = true;
+        if (currentJob) currentJob.cancelRequested = true;
+        await saveJobToDb(job);
+        logger.info(
+          { firebaseUid, sessionId: requestedSessionId },
+          "Inventory sync cancellation requested",
+        );
+        res.json({ message: "Cancellation requested — sync will stop after the current batch." });
+        return;
+      }
+
+      await finishSyncSession(requestedSessionId, firebaseUid, "cancelled");
+      await cleanupSession(requestedSessionId);
+      logger.info(
+        { firebaseUid, sessionId: requestedSessionId },
+        "Upload-only sync session cancelled and released",
+      );
+      res.json({ message: "Sync session cancelled." });
+      return;
+    }
+
+    if (!job || job.status !== "running") {
+      res.status(404).json({ error: "No active sync job to cancel." });
+      return;
+    }
+
     job.cancelRequested = true;
     if (currentJob) currentJob.cancelRequested = true;
     await saveJobToDb(job);
-    res.json({ message: "Cancellation requested — job will stop after the current batch." });
+    res.json({ message: "Cancellation requested — sync will stop after the current batch." });
   }
 );
 
