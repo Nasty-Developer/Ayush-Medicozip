@@ -12,3 +12,4 @@ export * from "./testimonials";
 export * from "./faqs";
 export * from "./settings";
 export * from "./uploadChunks";
+export * from "./syncSessions";

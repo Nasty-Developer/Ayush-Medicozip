@@ -1,4 +1,4 @@
-import express, { type Application } from "express";
+import express, { type Application, type Request } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
@@ -78,18 +78,48 @@ const paymentLimiter = rateLimit({
   message: { error: "Too many payment requests. Please wait before trying again." },
 });
 
-// Stricter limiter for sync (heavy upload endpoint)
+// Stricter limiter for sync session creation only.
+// Chunk uploads are authenticated and scoped to a database-backed session;
+// one normal import can contain dozens of chunks.
 const syncLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,   // 1 hour window
   max: 20,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  message: { error: "Sync rate limit exceeded. Please wait an hour before re-syncing." },
+  handler: (req, res, _next, options) => {
+    const resetTime = (
+      req as Request & { rateLimit?: { resetTime?: Date } }
+    ).rateLimit?.resetTime ?? new Date(Date.now() + options.windowMs);
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((resetTime.getTime() - Date.now()) / 1000),
+    );
+
+    logger.warn(
+      {
+        ip: req.ip,
+        path: req.path,
+        retryAt: resetTime.toISOString(),
+        retryAfterSeconds,
+      },
+      "Sync session creation rate limit reached",
+    );
+
+    res
+      .status(options.statusCode)
+      .setHeader("Retry-After", String(retryAfterSeconds))
+      .json({
+        error: "Sync session creation rate limit exceeded.",
+        code: "sync_session_rate_limited",
+        retryAt: resetTime.toISOString(),
+        retryAfterSeconds,
+      });
+  },
 });
 
 app.use("/api", generalLimiter);
 app.use("/api/payment", paymentLimiter);
-app.use("/api/sync", syncLimiter);
+app.use("/api/sync/session", syncLimiter);
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api", router);

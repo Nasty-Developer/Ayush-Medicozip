@@ -33,7 +33,7 @@
 import { randomUUID } from "crypto";
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
-import { sql, inArray, eq, and } from "drizzle-orm";
+import { sql, inArray, eq, and, gt, lte } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   companiesTable,
@@ -42,10 +42,15 @@ import {
   medicinesTable,
   stockTable,
   settingsTable,
+  syncSessionsTable,
   uploadChunksTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
-import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware";
+import {
+  requireAuth,
+  requireAdminEmail,
+  type AuthenticatedRequest,
+} from "../middlewares/authMiddleware";
 import { parseSdfBuffers } from "../lib/sdf/parser";
 
 const router = Router();
@@ -76,6 +81,8 @@ type JobPhase =
 
 export interface SyncJob {
   id: string;
+  sessionId: string;
+  firebaseUid: string;
   status: "running" | "done" | "cancelled" | "error";
   phase: JobPhase;
   message: string;
@@ -145,9 +152,16 @@ async function loadJobFromDb(): Promise<SyncJob | null> {
   }
 }
 
-function makeJob(): SyncJob {
+const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+const ACTIVE_SESSION_STATUSES = ["uploading", "running"] as const;
+type ActiveSessionStatus = (typeof ACTIVE_SESSION_STATUSES)[number];
+type TerminalSessionStatus = "completed" | "failed" | "cancelled" | "expired";
+
+function makeJob(sessionId: string, firebaseUid: string): SyncJob {
   return {
     id: `sync_${Date.now()}`,
+    sessionId,
+    firebaseUid,
     status: "running",
     phase: "idle",
     message: "Initialising…",
@@ -163,6 +177,192 @@ function makeJob(): SyncJob {
       skipped: 0, durationMs: 0,
     },
   };
+}
+
+function sessionExpiry(): Date {
+  return new Date(Date.now() + SESSION_TTL_MS);
+}
+
+/**
+ * Create one upload session per authenticated Firebase user.
+ *
+ * The advisory transaction lock closes the small race where two requests for
+ * the same user arrive at the same time. The partial unique index is the
+ * database-level backstop for multiple API instances.
+ */
+async function createSyncSession(firebaseUid: string): Promise<
+  | { sessionId: string }
+  | { existing: { id: string; status: ActiveSessionStatus; expiresAt: Date } }
+> {
+  return db.transaction(async (tx) => {
+    const now = new Date();
+
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${firebaseUid}, 0))`,
+    );
+
+    await tx
+      .update(syncSessionsTable)
+      .set({
+        status: "expired",
+        updatedAt: now,
+        completedAt: now,
+        expiresAt: now,
+      })
+      .where(
+        and(
+          eq(syncSessionsTable.firebaseUid, firebaseUid),
+          inArray(syncSessionsTable.status, [...ACTIVE_SESSION_STATUSES]),
+          lte(syncSessionsTable.expiresAt, now),
+        ),
+      );
+
+    const activeRows = await tx
+      .select({
+        id: syncSessionsTable.id,
+        status: syncSessionsTable.status,
+        expiresAt: syncSessionsTable.expiresAt,
+      })
+      .from(syncSessionsTable)
+      .where(
+        and(
+          eq(syncSessionsTable.firebaseUid, firebaseUid),
+          inArray(syncSessionsTable.status, [...ACTIVE_SESSION_STATUSES]),
+          gt(syncSessionsTable.expiresAt, now),
+        ),
+      )
+      .limit(1);
+
+    const existing = activeRows[0];
+    if (existing) return { existing };
+
+    const sessionId = randomUUID();
+    await tx.insert(syncSessionsTable).values({
+      id: sessionId,
+      firebaseUid,
+      status: "uploading",
+      expiresAt: sessionExpiry(),
+    });
+
+    return { sessionId };
+  });
+}
+
+async function loadOwnedSession(
+  sessionId: string,
+  firebaseUid: string,
+  statuses: readonly ActiveSessionStatus[],
+): Promise<{
+  id: string;
+  status: ActiveSessionStatus;
+  expiresAt: Date;
+} | null> {
+  const now = new Date();
+
+  await db
+    .update(syncSessionsTable)
+    .set({
+      status: "expired",
+      updatedAt: now,
+      completedAt: now,
+      expiresAt: now,
+    })
+    .where(
+      and(
+        eq(syncSessionsTable.id, sessionId),
+        eq(syncSessionsTable.firebaseUid, firebaseUid),
+        inArray(syncSessionsTable.status, [...statuses]),
+        lte(syncSessionsTable.expiresAt, now),
+      ),
+    );
+
+  const rows = await db
+    .select({
+      id: syncSessionsTable.id,
+      status: syncSessionsTable.status,
+      expiresAt: syncSessionsTable.expiresAt,
+    })
+    .from(syncSessionsTable)
+    .where(
+      and(
+        eq(syncSessionsTable.id, sessionId),
+        eq(syncSessionsTable.firebaseUid, firebaseUid),
+        inArray(syncSessionsTable.status, [...statuses]),
+        gt(syncSessionsTable.expiresAt, now),
+      ),
+    )
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+async function touchSyncSession(sessionId: string, firebaseUid: string): Promise<void> {
+  await db
+    .update(syncSessionsTable)
+    .set({
+      updatedAt: new Date(),
+      expiresAt: sessionExpiry(),
+    })
+    .where(
+      and(
+        eq(syncSessionsTable.id, sessionId),
+        eq(syncSessionsTable.firebaseUid, firebaseUid),
+        inArray(syncSessionsTable.status, [...ACTIVE_SESSION_STATUSES]),
+      ),
+    );
+}
+
+async function claimSyncSession(
+  sessionId: string,
+  firebaseUid: string,
+): Promise<boolean> {
+  const now = new Date();
+  const rows = await db
+    .update(syncSessionsTable)
+    .set({
+      status: "running",
+      startedAt: now,
+      updatedAt: now,
+      expiresAt: sessionExpiry(),
+    })
+    .where(
+      and(
+        eq(syncSessionsTable.id, sessionId),
+        eq(syncSessionsTable.firebaseUid, firebaseUid),
+        eq(syncSessionsTable.status, "uploading"),
+        gt(syncSessionsTable.expiresAt, now),
+      ),
+    )
+    .returning({ id: syncSessionsTable.id });
+
+  return rows.length > 0;
+}
+
+async function finishSyncSession(
+  sessionId: string,
+  firebaseUid: string,
+  status: TerminalSessionStatus,
+): Promise<void> {
+  const now = new Date();
+  try {
+    await db
+      .update(syncSessionsTable)
+      .set({
+        status,
+        updatedAt: now,
+        completedAt: now,
+        expiresAt: now,
+      })
+      .where(
+        and(
+          eq(syncSessionsTable.id, sessionId),
+          eq(syncSessionsTable.firebaseUid, firebaseUid),
+          inArray(syncSessionsTable.status, [...ACTIVE_SESSION_STATUSES]),
+        ),
+      );
+  } catch (err) {
+    logger.error({ err, sessionId, firebaseUid, status }, "Failed to release sync session lock");
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -243,9 +443,11 @@ async function runImport(
     company?: Buffer;
     category?: Buffer;
     drug?: Buffer;
-  }
+  },
+  session: { id: string; firebaseUid: string },
 ): Promise<void> {
   const t0 = Date.now();
+  let terminalSessionStatus: TerminalSessionStatus = "failed";
 
   try {
     // ── 1. Parse ─────────────────────────────────────────────────────────────
@@ -269,7 +471,13 @@ async function runImport(
       return;
     }
 
-    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; await saveJobToDb(job); return; }
+    if (job.cancelRequested) {
+      terminalSessionStatus = "cancelled";
+      job.status = "cancelled";
+      job.message = "Cancelled.";
+      await saveJobToDb(job);
+      return;
+    }
 
     // ── 2. Upsert companies ───────────────────────────────────────────────────
     job.phase   = "companies";
@@ -289,7 +497,13 @@ async function runImport(
     job.report.companies = companyRows.length;
     job.message = `${uniqueCompanies.length} companies upserted.`;
 
-    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; await saveJobToDb(job); return; }
+    if (job.cancelRequested) {
+      terminalSessionStatus = "cancelled";
+      job.status = "cancelled";
+      job.message = "Cancelled.";
+      await saveJobToDb(job);
+      return;
+    }
 
     // ── 3. Upsert categories ──────────────────────────────────────────────────
     job.phase   = "categories";
@@ -318,7 +532,13 @@ async function runImport(
     job.report.categories = categoryRows.length;
     job.message = `${uniqueCategories.length} categories upserted.`;
 
-    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; await saveJobToDb(job); return; }
+    if (job.cancelRequested) {
+      terminalSessionStatus = "cancelled";
+      job.status = "cancelled";
+      job.message = "Cancelled.";
+      await saveJobToDb(job);
+      return;
+    }
 
     // ── 4. Upsert drug groups (from unique genericNames) ──────────────────────
     job.phase   = "drug_groups";
@@ -342,7 +562,13 @@ async function runImport(
     job.report.drugGroups = drugGroupRows.length;
     job.message = `${uniqueGenerics.length} drug groups upserted.`;
 
-    if (job.cancelRequested) { job.status = "cancelled"; job.message = "Cancelled."; await saveJobToDb(job); return; }
+    if (job.cancelRequested) {
+      terminalSessionStatus = "cancelled";
+      job.status = "cancelled";
+      job.message = "Cancelled.";
+      await saveJobToDb(job);
+      return;
+    }
 
     // ── 5. Upsert medicines ───────────────────────────────────────────────────
     job.phase        = "medicines";
@@ -355,6 +581,7 @@ async function runImport(
 
     for (let i = 0; i < medBatches.length; i++) {
       if (job.cancelRequested) {
+        terminalSessionStatus = "cancelled";
         job.status  = "cancelled";
         job.message = `Cancelled at batch ${i + 1}/${job.totalBatches}. ${job.processed} medicines imported.`;
         await saveJobToDb(job);
@@ -419,7 +646,12 @@ async function runImport(
       if (i % 10 === 0) await saveJobToDb(job);
     }
 
-    if (job.cancelRequested) { job.status = "cancelled"; await saveJobToDb(job); return; }
+    if (job.cancelRequested) {
+      terminalSessionStatus = "cancelled";
+      job.status = "cancelled";
+      await saveJobToDb(job);
+      return;
+    }
 
     // ── 6. Replace stock ──────────────────────────────────────────────────────
     job.phase   = "stock";
@@ -502,6 +734,7 @@ async function runImport(
 
     logger.info({ report: job.report }, "SDF PostgreSQL import finished");
     await saveJobToDb(job);
+    terminalSessionStatus = "completed";
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error({ err }, "SDF PostgreSQL import crashed");
@@ -509,6 +742,16 @@ async function runImport(
     job.phase   = "done";
     job.message = `Import failed: ${msg}`;
     await saveJobToDb(job);
+  } finally {
+    await finishSyncSession(session.id, session.firebaseUid, terminalSessionStatus);
+    logger.info(
+      {
+        sessionId: session.id,
+        firebaseUid: session.firebaseUid,
+        status: terminalSessionStatus,
+      },
+      "Inventory sync session released",
+    );
   }
 }
 
