@@ -1,0 +1,127 @@
+We are standardizing the entire application architecture.
+
+Our goal is to use PostgreSQL as the primary application database.
+
+Please perform the following migration carefully.
+
+====================================================
+PRIMARY DATABASE
+====================================================
+
+PostgreSQL should become the single source of truth for all application data.
+
+Move ALL application data to PostgreSQL, including:
+
+• Medicines
+• Categories
+• Companies / Brands
+• Drug Groups
+• Stock
+• Orders
+• Order Items
+• Customer Addresses
+• Inquiry
+• Request Medicine
+• Testimonials
+• FAQs
+• Notifications
+• Website Settings
+• Announcements
+• Coupons
+• User profile data (if applicable)
+
+====================================================
+KEEP FIREBASE ONLY FOR AUTHENTICATION
+====================================================
+
+Keep Firebase ONLY for:
+
+• Firebase Authentication
+• Login
+• Registration
+• Password Reset
+• Session Management
+
+No other application data should depend on Firestore.
+
+====================================================
+REMOVE FIRESTORE DEPENDENCIES
+====================================================
+
+After verifying that every SQL implementation works correctly:
+
+Remove every unnecessary Firestore dependency.
+
+Remove:
+
+• Firestore medicine collections
+• Categories collection
+• Brands collection
+• Orders collection
+• Payments collection
+• Inquiries collection
+• Request Medicine collection
+• Testimonials collection
+• FAQs collection
+• Notifications collection
+• Settings collection
+• Announcements collection
+• Address collections
+
+Remove all unused Firestore services, listeners and helper functions.
+
+Remove all getCountFromServer() usage.
+
+Remove all onSnapshot() listeners that are no longer required.
+
+====================================================
+VERIFY EVERYTHING
+====================================================
+
+After migration verify:
+
+✓ Medicines
+✓ Search
+✓ Categories
+✓ Orders
+✓ Checkout
+✓ Order Tracking
+✓ Customer Addresses
+✓ Inquiry
+✓ Request Medicine
+✓ Dashboard
+✓ Testimonials
+✓ FAQs
+✓ Notifications
+✓ Admin Panel
+
+Everything should read and write from PostgreSQL.
+
+====================================================
+PERFORMANCE
+====================================================
+
+Optimize SQL queries.
+
+Add indexes where required.
+
+Use pagination.
+
+Avoid duplicate API requests.
+
+Implement caching where appropriate.
+
+====================================================
+IMPORTANT
+====================================================
+
+Do NOT remove any Firestore code until the SQL replacement has been tested successfully.
+
+After everything works, safely remove the unused Firestore code.
+
+Generate a final migration report showing:
+
+• What was migrated
+• What Firestore code was removed
+• What SQL tables are used
+• Any remaining manual configuration

@@ -1,0 +1,106 @@
+🚨 STOP Adding New Features — Fix Existing Issues First
+
+Before adding any new features, stop all development and focus entirely on fixing the existing project.
+
+The website currently has multiple issues after the recent changes.
+
+IMPORTANT
+Do NOT redesign the UI.
+Do NOT remove existing features.
+Do NOT rewrite the project.
+Do NOT generate duplicate components.
+
+Instead, analyze the entire codebase and fix all errors while preserving the existing design.
+
+Issues to Fix
+1. Resolve All Build Errors
+Fix all TypeScript errors.
+Fix all React errors.
+Fix all Firebase errors.
+Fix all import/export errors.
+Fix all routing errors.
+Fix all dependency issues.
+Fix all console errors.
+Ensure the project builds successfully without warnings or errors.
+2. Fix Homepage Sync
+
+The homepage is not updating correctly after changes made in the Admin Dashboard.
+
+Ensure that:
+
+Adding a medicine updates the homepage.
+Editing updates the homepage.
+Deleting removes it.
+Price updates instantly.
+Stock status updates instantly.
+Images update instantly.
+
+The Admin Dashboard should be the single source of truth.
+
+3. Fix Dynamic Medicine Cards
+
+Currently the homepage shows fixed skeleton cards.
+
+Instead:
+
+Display only medicines that exist in Firebase.
+No empty cards.
+No blank placeholders after loading.
+Skeleton loaders should only appear while loading.
+4. Fix Firebase Integration
+
+Verify:
+
+Firestore connection
+Authentication
+Storage uploads
+Security rules
+Environment variables
+
+Ensure there are no Firebase runtime errors.
+
+5. Fix Admin Dashboard
+
+Verify every page:
+
+Dashboard
+Medicines
+Categories
+Inquiries
+Announcements
+Settings
+
+Every CRUD operation must work correctly.
+
+6. Check the Entire Project
+
+Review every component.
+
+Remove:
+
+Duplicate code
+Dead code
+Unused imports
+Broken components
+
+Optimize performance.
+
+7. Final Verification
+
+Before marking the task complete:
+
+Start the development server.
+Test every page.
+Test admin login.
+Test adding a medicine.
+Test editing.
+Test deleting.
+Test homepage updates.
+Test mobile responsiveness.
+Confirm there are zero console errors and zero build errors.
+
+Do not continue with any new feature until the project is completely stable and all existing functionality works correctly.
+
+💚 Baby ek aur tip: Agar Replit baar-baar errors de raha hai, toh usse ye bhi bolna:
+
+"Fix one issue at a time. Do not modify multiple unrelated files in parallel. After each fix, run the project, verify it works, then continue to the next issue."

@@ -1,0 +1,26 @@
+{
+  /**
+   * TypeScript configuration for Vercel serverless functions in api/.
+   *
+   * Why this file exists:
+   *   Vercel compiles api/[...path].ts in isolation. Without an explicit
+   *   tsconfig here, it falls back to the root tsconfig.json, which inherits
+   *   "types": [] from tsconfig.base.json. With no @types/node, EventEmitter
+   *   is undefined — and @types/express-serve-static-core declares
+   *   Application extends EventEmitter, so the whole chain breaks: Express
+   *   appears to have no .set() or .use() methods (TS errors on app.ts).
+   *
+   *   "moduleResolution": "bundler" is inherited from tsconfig.base.json.
+   *   This is correct: Vercel uses esbuild to bundle serverless functions, so
+   *   relative imports do NOT need explicit .js extensions (no TS2834/TS2835).
+   *
+   *   "types": ["node"] re-adds @types/node so EventEmitter is visible, which
+   *   restores the full Express type chain.
+   */
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": false
+  },
+  "include": ["."]
+}

@@ -1,0 +1,208 @@
+We imported the project into a new Replit workspace. During the previous development session, the dynamic category and brand system implementation was started but left incomplete halfway. Some code exists, but it is unfinished and inconsistent.
+
+Do not create a second implementation. First inspect the existing code, identify what was partially implemented, complete the unfinished work, remove duplicate logic, and refactor everything into one clean production-ready implementation.
+
+The current bug is that categories created from the Admin Panel are not appearing in the medicine form or on the website. Some pages are still using hardcoded values while others partially use Firestore.
+
+Please completely fix and finish this feature.
+
+1. Dynamic Categories
+
+Categories created from:
+
+Admin Panel → Categories
+
+must automatically appear everywhere:
+
+Add Medicine
+Edit Medicine
+Homepage
+Homepage category cards
+Search
+Filters
+Navigation
+Featured Sections
+Admin dropdowns
+
+There should be NO hardcoded category list anywhere in the project.
+
+Everything must come from Firestore.
+
+2. Other Category
+
+If admin selects:
+
+Other
+
+Hide the dropdown.
+
+Show:
+
+Enter Custom Category
+
+When submitted:
+
+Automatically create the category
+Generate slug
+Default icon
+Default color
+published = true
+sortOrder
+createdAt
+
+Immediately refresh the dropdown without page reload.
+
+3. Brand System
+
+Do exactly the same for Brands.
+
+Dynamic brands
+Other option
+Custom brand creation
+Auto refresh everywhere
+4. Category Icons
+
+Every category should support:
+
+Emoji
+Lucide Icon
+SVG
+Uploaded Image (optional)
+
+Show icons on:
+
+Homepage
+Category cards
+Admin
+Medicine card
+Filters
+5. Firestore Structure
+
+Collections:
+
+categories
+brands
+medicines
+
+Medicine document should contain:
+
+categoryId
+categoryName
+
+brandId
+brandName
+
+instead of storing only plain text.
+
+6. Homepage
+
+Homepage should automatically render all published categories from Firestore.
+
+If a new category is added in Admin Panel it should appear on the homepage automatically.
+
+7. Sorting
+
+Support drag & drop sorting.
+
+Store:
+
+sortOrder
+
+in Firestore.
+
+Render according to sortOrder.
+
+8. Validation
+
+Prevent:
+
+Duplicate categories
+Duplicate brands
+Empty names
+Leading/trailing spaces
+Case-sensitive duplicates
+9. Live Updates
+
+Use Firestore realtime listeners.
+
+Whenever category/brand is:
+
+Created
+Updated
+Deleted
+Published
+Unpublished
+
+all pages should update automatically.
+
+10. Current Bug
+
+Currently:
+
+Categories added in Admin Panel are not appearing inside Medicine Form.
+Homepage still uses old values.
+Some dropdowns use static arrays.
+Firestore is not the single source of truth.
+
+Fix all of these.
+
+11. Production Refactoring
+
+Inspect the entire project.
+
+Remove:
+
+old category arrays
+duplicate functions
+unused components
+duplicate Firestore queries
+temporary code
+
+Refactor into reusable hooks/services/components.
+
+12. Medicine Form Improvements
+
+While fixing this module also add support for:
+
+Category
+Brand
+Manufacturer
+Salt / Composition
+Prescription Required
+HSN Code
+GST
+Barcode
+SKU
+Pack Size
+Batch Number
+Expiry Date
+Stock
+Low Stock Alert
+Status
+Featured Medicine
+Offer Price
+Discount %
+Meta Title
+Meta Description
+
+Design the database so it will later support automatic MediVision Gold inventory synchronization without needing another database redesign.
+
+13. IMPORTANT
+
+Before writing new code:
+
+Inspect the existing implementation.
+Continue from the partially completed work.
+Do NOT restart the feature from scratch.
+Preserve existing UI and styling.
+Only replace broken or incomplete logic.
+Ensure the final implementation is clean, scalable, modular, and production-ready.
+
+Finally, verify that:
+
+✅ Creating a category instantly updates all dropdowns.
+✅ Creating a brand instantly updates all dropdowns.
+✅ "Other" creates new categories/brands automatically.
+✅ Homepage updates automatically.
+✅ No hardcoded categories remain anywhere in the project.
+✅ The feature works identically on both Replit and Vercel deployments.

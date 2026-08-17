@@ -1,0 +1,185 @@
+We are preparing Ayush Medico for production and handover to the pharmacy.
+
+Our priority is STABILITY, RELIABILITY and PERFORMANCE.
+
+Do NOT add any new features until the existing website is fully functional.
+
+====================================================
+PHASE 1 - COMPLETE PROJECT AUDIT
+====================================================
+
+Inspect the entire project.
+
+Find every bug, broken feature, missing integration and performance issue.
+
+Generate a report before changing anything.
+
+Audit:
+
+• Homepage
+• Categories
+• Medicine Catalogue
+• Search
+• Product Details
+• Add to Cart
+• Checkout
+• Orders
+• Request Medicine
+• Inquiry Form
+• Authentication
+• Admin Dashboard
+• Inventory Sync
+• MediVision Import
+• Firebase Usage
+• API Endpoints
+• Database
+• Images
+• Mobile Responsiveness
+
+====================================================
+PHASE 2 - FIX EVERYTHING
+====================================================
+
+Do NOT migrate until all current bugs are identified.
+
+Fix:
+
+✓ Request Medicine
+✓ Inquiry Form
+✓ Add to Cart
+✓ Checkout
+✓ Order Creation
+✓ Admin Order Management
+✓ Search
+✓ Categories
+✓ Category Images
+✓ Inventory Sync
+✓ Performance
+✓ Mobile Layout
+✓ Desktop Layout
+
+Everything must work end-to-end.
+
+====================================================
+PHASE 3 - SUPABASE MIGRATION PLAN
+====================================================
+
+After the audit, migrate carefully.
+
+Do NOT rewrite everything.
+
+Create a step-by-step migration.
+
+Supabase PostgreSQL will become the main database.
+
+Supabase Storage will store:
+
+• Category Images
+• Medicine Images
+• Prescription Uploads
+
+Migrate Firestore collections safely.
+
+Move:
+
+• Medicines
+• Categories
+• Companies
+• Drug Groups
+• Stock
+• Orders
+• Medicine Requests
+• Inquiry Forms
+
+Authentication may remain on Firebase temporarily if needed, but document the choice.
+
+====================================================
+PHASE 4 - PERFORMANCE
+====================================================
+
+Optimize everything.
+
+Implement:
+
+• Indexed PostgreSQL queries
+• Prisma ORM
+• Cursor pagination
+• Infinite scroll
+• Lazy loading
+• Optimized search
+• Optimized category queries
+
+The website should feel instant.
+
+====================================================
+PHASE 5 - TESTING
+====================================================
+
+Test every workflow.
+
+Customer:
+
+Search
+
+↓
+
+Add to Cart
+
+↓
+
+Checkout
+
+↓
+
+Order Created
+
+↓
+
+Admin Receives Order
+
+↓
+
+Admin Accepts
+
+↓
+
+Customer Sees Updated Status
+
+↓
+
+Request Medicine Works
+
+↓
+
+Inquiry Form Works
+
+↓
+
+Category Pages Load
+
+↓
+
+Search Works
+
+↓
+
+Images Display
+
+↓
+
+Everything Responsive
+
+====================================================
+FINAL
+====================================================
+
+Do NOT mark the project complete until every major workflow has been manually tested inside the Replit Preview.
+
+Generate a complete report listing:
+
+• Bugs found
+• Bugs fixed
+• Database migration progress
+• Remaining tasks
+• Performance improvements
+• Anything still requiring manual configuration

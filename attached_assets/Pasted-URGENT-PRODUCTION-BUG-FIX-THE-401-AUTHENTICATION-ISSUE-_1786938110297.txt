@@ -1,0 +1,203 @@
+URGENT PRODUCTION BUG — FIX THE 401 AUTHENTICATION ISSUE WITHOUT BREAKING THE WORKING REPLIT PREVIEW.
+
+The Ayush Medico Inventory Sync works in Replit Preview, but production Vercel fails when creating the SDF upload session.
+
+I inspected the browser Network request.
+
+EXACT PRODUCTION REQUEST:
+
+POST https://ayush-medico-kurla-west.vercel.app/api/sync/session
+
+PRODUCTION RESPONSE:
+
+HTTP 401 Unauthorized
+
+Response body:
+
+{"error":"Invalid or expired token"}
+
+This is the exact error currently blocking the client.
+
+IMPORTANT ARCHITECTURE:
+
+Frontend:
+artifacts/ayush-medico
+
+Vercel Root Directory:
+artifacts/ayush-medico
+
+Backend/API:
+artifacts/api-server
+
+The API server is deployed separately on Render.
+
+Vercel is configured to communicate with the Render API server.
+
+Replit Preview currently works for the Inventory Sync flow, so DO NOT blindly rewrite the working authentication or SDF implementation.
+
+GOAL:
+
+Make the exact same authenticated Inventory Sync flow work in production Vercel.
+
+Do NOT disable authentication.
+Do NOT make /api/sync/session public.
+Do NOT bypass Firebase token verification.
+Do NOT accept arbitrary tokens.
+Do NOT hardcode tokens.
+Do NOT create fake authentication.
+Do NOT change the SDF parser unnecessarily.
+
+FIRST INVESTIGATE THE COMPLETE AUTH CHAIN:
+
+1. Inspect the frontend authentication code used by Inventory Sync.
+
+2. Find exactly how the Firebase ID token is obtained before calling:
+
+POST /api/sync/session
+
+3. Verify that the frontend is obtaining a CURRENT Firebase ID token.
+
+4. Make sure the token is refreshed when necessary using the Firebase client SDK.
+
+5. Inspect the request headers sent from the Vercel frontend.
+
+6. Verify the Authorization header format is correct, for example:
+
+Authorization: Bearer <Firebase ID token>
+
+7. Inspect the Vercel /api/sync/session proxy or API route.
+
+8. Verify that it forwards the Authorization header correctly to the Render API.
+
+9. Inspect the Render API authentication middleware for /sync/session.
+
+10. Verify that the Render backend uses Firebase Admin SDK to verify the Firebase ID token.
+
+11. Verify the Firebase Admin SDK on Render is initialized with the SAME Firebase project:
+
+ayush-medico-6cf77
+
+12. Verify the Render environment variables/secrets are correct.
+
+13. Verify the Firebase Admin private key newline handling.
+
+Use the existing safe pattern where appropriate:
+
+process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n")
+
+14. Verify the Firebase Admin client email and project ID belong to the same Firebase project.
+
+15. Verify Vercel and Render are not accidentally using different Firebase projects.
+
+16. Check whether the production frontend is accidentally sending:
+- an old cached token
+- an expired token
+- a Firebase access token instead of an ID token
+- an undefined token
+- a token from a different Firebase project
+
+17. Compare the working Replit Preview request against the failing Vercel request.
+
+DO NOT ASSUME.
+
+Use the browser/network/request implementation and existing source code to determine the actual difference.
+
+IMPORTANT FIREBASE TOKEN HANDLING:
+
+Before the Inventory Sync request, make sure the currently signed-in Firebase user has a fresh ID token.
+
+Use the Firebase client SDK's supported token refresh mechanism.
+
+Do not manually construct JWTs.
+
+Do not store Firebase ID tokens permanently in localStorage.
+
+Do not expose Firebase Admin credentials to the frontend.
+
+IMPORTANT BACKEND SECURITY:
+
+The Render API must continue verifying the Firebase ID token server-side.
+
+Only authenticated authorized users should be able to create SDF upload sessions.
+
+Do not replace authentication with a simple API key or public endpoint.
+
+AFTER FIXING:
+
+Test the complete production flow:
+
+1. Open:
+https://ayush-medico-kurla-west.vercel.app/admin
+
+2. Sign in.
+
+3. Open:
+https://ayush-medico-kurla-west.vercel.app/admin/inventory-sync
+
+4. Select the real:
+
+PRODUCT.SDF
+STOCK.SDF
+DRUG.SDF
+COMPANY.SDF
+CATEGORY.SDF
+
+5. Click:
+
+Upload & Import to PostgreSQL
+
+6. Confirm that:
+
+POST /api/sync/session
+
+returns HTTP 200 instead of 401.
+
+7. Confirm the upload session is created.
+
+8. Confirm the SDF files can proceed to the existing parsing/import pipeline.
+
+9. Do not stop after fixing the token request.
+
+10. Verify the actual PostgreSQL sync starts successfully.
+
+11. Verify no existing PostgreSQL data is deleted.
+
+12. Verify Replit Preview still works.
+
+13. Run TypeScript checks.
+
+14. Run the production build.
+
+15. Verify the Vercel deployment.
+
+IMPORTANT:
+
+Do NOT tell me the issue is fixed merely because the code builds.
+
+The fix is only complete when the real production request:
+
+POST /api/sync/session
+
+no longer returns:
+
+401 {"error":"Invalid or expired token"}
+
+and the real SDF upload/import flow proceeds successfully.
+
+At the end report:
+
+1. Exact root cause of the expired/invalid token.
+2. Files changed.
+3. Vercel environment variables required.
+4. Render environment variables required.
+5. Firebase project used.
+6. Exact authentication flow after the fix.
+7. Production /api/sync/session result.
+8. SDF upload result.
+9. PostgreSQL sync result.
+10. TypeScript result.
+11. Production build result.
+12. Any remaining issue.
+
+Do not change unrelated UI or architecture.
+Fix the production authentication chain first.

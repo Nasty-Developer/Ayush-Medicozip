@@ -1,0 +1,171 @@
+FINAL FIX. DO NOT TRY TO REPAIR THE OLD INVENTORY SYNC API.
+
+The Vercel deployment loads the frontend correctly, but the old Inventory Sync system is producing server/API errors including:
+
+* 405 Failed to create upload session
+* 505 server/API error
+
+We do NOT need the old Inventory Sync system anymore.
+
+DO THIS IN ONE PASS:
+
+1. Search the entire repository for every part of the old Inventory Sync system:
+
+* inventory-sync
+* create upload session
+* upload session
+* STOCK.SDF
+* COMPANY.SDF
+* CATEGORY.SDF
+* DRUG.SDF
+* PostgreSQL upload/import endpoints
+* inventory sync API routes
+* SDF upload handlers
+* upload-session services
+* frontend calls to these endpoints
+
+2. REMOVE THE OLD INVENTORY SYNC FEATURE COMPLETELY.
+
+Remove:
+
+* Inventory Sync page
+* Inventory Sync sidebar item
+* inventory-sync route
+* upload-session creation
+* SDF upload API
+* PostgreSQL inventory upload endpoint
+* old inventory synchronization services
+* frontend calls to these APIs
+* obsolete API routes related ONLY to Inventory Sync
+
+Do NOT attempt to make these APIs work on Vercel.
+
+3. VERY IMPORTANT — DO NOT DELETE MEDICINE DATA.
+
+Before removing anything, identify where the existing medicine/product catalog is stored.
+
+PRESERVE:
+
+* medicine names
+* brands
+* manufacturers
+* categories
+* generic/salt information
+* product metadata
+* existing product images
+* existing Firestore product records
+* any already-imported medicine records
+
+If the medicine catalog is already in Firestore, KEEP IT EXACTLY AS IT IS.
+
+If the medicine catalog exists in project data files, preserve those files.
+
+Do NOT wipe the database.
+Do NOT recreate the medicine database.
+Do NOT delete SDF source files unless they are only temporary upload-session files.
+
+4. PRODUCTION ARCHITECTURE
+
+The production website should work like:
+
+Existing Medicine/Product Data
+↓
+Firebase/Firestore or stable project data
+↓
+Ayush Medico React/Vite frontend
+↓
+Vercel
+
+There must be NO dependency on:
+MedVision live Inventory API
+SDF upload-session API
+PostgreSQL upload-session API
+
+5. ADMIN PANEL
+
+Remove Inventory Sync from the Admin Panel.
+
+Keep everything else:
+
+* Medicine Requests
+* Inquiries
+* Categories
+* Products/Medicines
+* Orders
+* Settings
+* Authentication
+* existing admin functionality
+
+Do NOT redesign the Admin Panel.
+
+6. VERCEL
+
+Do NOT make unnecessary changes to the working Vercel deployment.
+
+The frontend already loads.
+
+Only ensure that removing Inventory Sync does not create broken imports or broken routes.
+
+Make sure these continue working:
+
+/
+/admin
+/products
+/checkout
+/orders
+
+7. CLEAN ALL REFERENCES
+
+After removing Inventory Sync, search the complete repository again.
+
+There must be NO remaining frontend request to:
+
+"create upload session"
+
+and no remaining code that calls the removed Inventory Sync API.
+
+8. BUILD
+
+Run the real production build.
+
+Fix all resulting:
+
+* TypeScript errors
+* missing imports
+* unused imports that break build
+* Vite errors
+* route errors
+
+Do NOT claim completion unless the production build actually passes.
+
+9. DO NOT TOUCH THESE SYSTEMS
+
+Do NOT unnecessarily modify:
+
+Firebase Authentication
+Firestore
+Medicine/Product Catalog
+Cart
+Checkout
+Orders
+WhatsApp medicine requests
+Admin authentication
+Delivery system
+Borzo/Porter architecture
+Existing UI
+
+10. FINAL REPORT
+
+After completing the work, report exactly:
+
+A. Which Inventory Sync files/routes were removed
+B. Where the existing medicine catalog is stored
+C. Whether existing medicine data was preserved
+D. Whether the production build passed
+E. Whether any API errors remain
+F. Which Vercel environment variables are still required
+
+CRITICAL:
+The objective is NOT to fix the 405/505 Inventory Sync API.
+
+The objective is to REMOVE that broken system completely while PRESERVING the existing medicine catalog and making the remaining Ayush Medico application stable on Vercel.

@@ -1,0 +1,89 @@
+Now improve the medicine display system for imported MediVision medicines.
+
+The pharmacy has approximately 51,000 medicines imported from MediVision Gold. These medicines DO NOT have individual product images, and I do NOT want to upload 51,000 images manually.
+
+Implement the following behavior:
+
+1. Every imported medicine should automatically use ONE shared default medicine placeholder image.
+   - Never leave the image blank.
+   - Every imported medicine card should display this same placeholder image by default.
+
+2. Every medicine card must still display:
+   - Medicine Name
+   - Brand / Company
+   - Category
+   - Price
+   - Stock Status
+   - Add to Cart button
+   - View Details button (if available)
+
+3. The card layout should remain identical to manually added medicines. Only the image changes.
+
+4. If an imported medicine later receives a custom uploaded image from the Admin Panel, automatically replace the placeholder image ONLY for that medicine.
+
+5. Keep the website fast by reusing the same placeholder image for all imported medicines instead of creating duplicate image files.
+
+-----------------------------------------------------
+
+SPECIAL MEDICINES
+
+Medicines manually marked as "Special Medicine" from the Admin Panel should:
+
+• Display their real uploaded image.
+• Show a premium "SPECIAL" badge on the image.
+• Continue using the same medicine card layout.
+
+-----------------------------------------------------
+
+NEW ARRIVALS
+
+Medicines manually marked as "New Arrival" from the Admin Panel should:
+
+• Display their real uploaded image.
+• Show a "NEW" badge on the image.
+• Continue using the same medicine card layout.
+
+-----------------------------------------------------
+
+CATEGORIES
+
+Category icons should remain separate from medicine images.
+
+Example:
+
+💊 Fever & Pain
+❤️ Cardiac
+🧠 Neurology
+🫁 Respiratory
+🦷 Dental
+👶 Baby Care
+
+The category icon should appear only for the category, not as the medicine image.
+
+-----------------------------------------------------
+
+MEDIVISION IMPORT
+
+After importing medicines from MediVision Gold:
+
+• Automatically assign the default placeholder image.
+• Automatically assign the correct category.
+• Automatically assign the correct brand/company.
+• Automatically assign stock.
+• Automatically assign price.
+• Automatically make the medicine searchable.
+• Automatically make the medicine visible on the Categories page.
+• Automatically enable Add to Cart.
+• Automatically enable Checkout flow.
+
+No imported medicine should require manual editing just to appear on the website.
+
+-----------------------------------------------------
+
+GOAL
+
+The website should behave like Amazon Pharmacy, Tata 1mg, Apollo Pharmacy, or Netmeds.
+
+Featured medicines (New Arrivals and Special Medicines) use real uploaded images.
+
+All other imported MediVision medicines use one shared professional placeholder medicine image while remaining fully searchable, categorized, and available for ordering.

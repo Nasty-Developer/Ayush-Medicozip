@@ -1,0 +1,151 @@
+Improve the Categories page UX to make it feel like Amazon Pharmacy, Blinkit and Tata 1mg.
+
+========================
+1. PRIORITIZE IN-STOCK PRODUCTS
+========================
+
+Currently many products shown first are Out of Stock.
+
+Change the sorting logic:
+
+Priority 1:
+In Stock products
+
+Priority 2:
+Low Stock products
+
+Priority 3:
+Out of Stock products
+
+Customers should first see products they can actually purchase.
+
+========================
+2. OUT OF STOCK EXPERIENCE
+========================
+
+Do not simply show "Out of Stock".
+
+Instead replace the bottom section with:
+
+[ Request this Medicine ]
+
+When clicked:
+
+• Open a request form
+OR
+• Pre-fill the existing Medicine Request page
+
+Include:
+- Medicine Name
+- Company
+- Category
+
+So customers can easily request unavailable medicines.
+
+Also display:
+
+"Currently unavailable. We will notify you when it is available."
+
+========================
+3. CATEGORY PLACEHOLDER IMAGES
+========================
+
+Do not use one generic placeholder for everything.
+
+Use category-specific professional placeholder images.
+
+Examples:
+
+Medicines
+→ Medicine blister/medicine box placeholder
+
+Health Foods & Nutrition
+→ Protein powder / nutrition placeholder
+
+Baby Care
+→ Baby products placeholder
+
+Personal Care
+→ Shampoo / soap placeholder
+
+Cosmetics
+→ Cosmetic placeholder
+
+Medical Devices
+→ Medical device placeholder
+
+Ayurvedic
+→ Herbal placeholder
+
+Diabetes Care
+→ Diabetes placeholder
+
+Supplements
+→ Vitamins placeholder
+
+If a category has no placeholder, use the default medicine placeholder.
+
+If an admin uploads a real image for a product, automatically replace the placeholder only for that product.
+
+========================
+4. CLEANER CARD DESIGN
+========================
+
+The current cards look too empty.
+
+Improve spacing and hierarchy.
+
+Medicine cards should display:
+
+• Placeholder Image
+• Company Name
+• Medicine Name
+• Strength / Pack Size
+• Category
+• Price
+• Stock Badge
+• Add to Cart (if in stock)
+
+If out of stock:
+
+Replace Add to Cart with:
+
+[ Request Medicine ]
+
+Avoid large empty white spaces.
+
+========================
+5. FOOD PRODUCTS
+========================
+
+Food & Nutrition products should have a different visual style.
+
+Examples:
+
+Horlicks
+Ensure
+Protein Powder
+Oats
+Nutrition Drinks
+
+Use a food/nutrition placeholder image instead of the medicine capsule image.
+
+========================
+6. STOCK BADGES
+========================
+
+Show attractive stock badges.
+
+Examples:
+
+🟢 In Stock
+
+🟡 Low Stock
+
+🔴 Out of Stock
+
+========================
+7. FUTURE READY
+========================
+
+The UI should work efficiently with 50,000+ imported MediVision products while remaining fast and responsive.

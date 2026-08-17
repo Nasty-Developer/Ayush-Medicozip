@@ -1,0 +1,220 @@
+Before making any changes, inspect the existing project, the imported MediVision SDF files, the current category mapping, medicine mapping and the image system.
+
+Do NOT create duplicate components or duplicate image logic.
+
+==================================================
+MEDICINE IMAGE ARCHITECTURE
+==================================================
+
+We do NOT want to store images for all 50,000+ medicines.
+
+Instead, build a scalable reusable image system.
+
+First analyze:
+
+• PRODUCT.SDF
+• CATEGORY.SDF
+• COMPANY.SDF
+• DRUG.SDF
+• STOCK.SDF
+
+Determine the correct category for every imported medicine.
+
+==================================================
+CATEGORY IMAGE SYSTEM
+==================================================
+
+Every category should have ONE premium reusable image.
+
+Examples:
+
+General Medicines
+Oral Care
+Skin Care
+Hair Care
+Baby Care
+Food & Nutrition
+Protein Powder
+Honey
+Biscuits
+Medical Devices
+Ayurvedic
+Personal Care
+Women's Care
+Men's Care
+Diabetes Care
+First Aid
+Supplements
+Health Drinks
+Cosmetics
+
+Create one high-quality placeholder image for each category.
+
+Do NOT use the same capsule image everywhere.
+
+==================================================
+AUTOMATIC IMAGE SELECTION
+==================================================
+
+Every medicine should follow this logic:
+
+IF medicine.imageUrl exists
+
+↓
+
+Show medicine image
+
+ELSE
+
+↓
+
+Show category image automatically.
+
+No medicine should appear without an image.
+
+==================================================
+AUTO CATEGORY SORTING
+==================================================
+
+Analyze every imported medicine.
+
+Automatically assign medicines into the correct category.
+
+If category mapping from MediVision is incomplete, intelligently infer it using:
+
+• Category
+• Product Name
+• Company
+• Drug Group
+
+Do NOT leave medicines uncategorized if they can reasonably be classified.
+
+==================================================
+SEARCH CATEGORY IMPROVEMENTS
+==================================================
+
+Review all imported medicines and improve category organization.
+
+Examples:
+
+Colgate
+
+↓
+
+Oral Care
+
+Johnson Baby Powder
+
+↓
+
+Baby Care
+
+Horlicks
+
+↓
+
+Nutrition
+
+Dabur Honey
+
+↓
+
+Food & Nutrition
+
+Cetaphil
+
+↓
+
+Skin Care
+
+Protein Powders
+
+↓
+
+Protein Powder
+
+Soap
+
+↓
+
+Personal Care
+
+The goal is to create a clean and professional catalogue.
+
+==================================================
+CATEGORY PAGE
+==================================================
+
+Each category should display:
+
+Category Banner
+
+↓
+
+Category Description
+
+↓
+
+Category Image
+
+↓
+
+Medicines
+
+The category image should be reused by medicines without their own image.
+
+==================================================
+ADMIN PANEL
+==================================================
+
+Create Category Image Management.
+
+Admin should be able to:
+
+• Upload category image
+• Replace category image
+• Preview category image
+
+Changing a category image should automatically update every medicine in that category.
+
+No individual medicine records should need updating.
+
+==================================================
+SPECIAL PRODUCTS
+==================================================
+
+Featured Medicines
+
+New Arrivals
+
+Special Medicines
+
+should continue supporting their own uploaded images.
+
+==================================================
+PERFORMANCE
+==================================================
+
+Do NOT duplicate images.
+
+Reuse category images.
+
+Store only image URLs.
+
+Medicine records should never store duplicate image data.
+
+==================================================
+FINAL VALIDATION
+==================================================
+
+Before completing:
+
+✓ Verify every imported medicine belongs to a category.
+✓ Verify every medicine displays an image.
+✓ Verify category mapping is correct.
+✓ Verify search works.
+✓ Verify categories are sorted properly.
+✓ Verify no medicine is left uncategorized unless absolutely necessary.
+✓ Generate a Preview and visually inspect the Categories page and Browse Medicines page.
+
+Do not mark the task complete until you have visually confirmed everything in the Preview.

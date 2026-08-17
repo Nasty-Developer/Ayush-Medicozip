@@ -1,0 +1,100 @@
+The Replit Preview medicine/SDF sync is now confirmed working again.
+
+Now I want you to solve the Vercel production deployment WITHOUT breaking the working Replit Preview.
+
+IMPORTANT:
+Do not modify the working SDF sync logic.
+Do not modify Firebase configuration.
+Do not modify Firestore rules.
+Do not modify Cloudinary.
+Do not modify Admin UI.
+Do not create a second API implementation.
+
+CURRENT REPOSITORY ARCHITECTURE:
+
+/
+├── api/
+│   └── [...path].ts
+├── artifacts/
+│   ├── ayush-medico/       # React/Vite frontend
+│   └── api-server/         # Express backend
+└── vercel.json
+
+CURRENT BEHAVIOR:
+
+Replit Preview:
+- frontend works
+- medicine search works
+- SDF medicine sync works
+- POST /api/sync/session works
+- chunk upload works
+
+Vercel:
+
+When Root Directory = artifacts/ayush-medico:
+- frontend builds/deploys
+- /api/sync/* returns 404
+- root-level /api/[...path].ts is outside the Vercel project root
+
+When Root Directory = .:
+- frontend builds successfully
+- Vercel fails with:
+  api/[...path].ts: Emit skipped
+
+GOAL:
+
+We want Vercel to be able to use:
+
+Root Directory = artifacts/ayush-medico
+
+IF AND ONLY IF we can safely expose the existing Express API through that project root.
+
+Investigate whether the correct minimal architecture is to place the Vercel API adapter inside:
+
+artifacts/ayush-medico/api/[...path].ts
+
+while continuing to import/use the existing backend:
+
+artifacts/api-server/src/app.ts
+
+IMPORTANT:
+Do NOT simply copy files blindly.
+
+First determine:
+
+1. Can artifacts/ayush-medico/api/[...path].ts import the existing Express app from artifacts/api-server/src/app.ts correctly?
+2. Does Vercel recognize that nested api directory when Root Directory is artifacts/ayush-medico?
+3. Will the existing pnpm workspace dependencies resolve correctly?
+4. Will the Express app still work as a Vercel Function?
+5. Will multipart/chunked SDF uploads continue working?
+6. Will POST /api/sync/session, /api/sync/chunk and /api/sync/start work?
+7. Will the Replit Preview remain unchanged?
+8. Can we remove the root-level api/[...path].ts after moving the adapter, or does it need to remain for another environment?
+9. Does vercel.json need to move into artifacts/ayush-medico or can the repository-root configuration still be used?
+10. What is the minimum safe set of changes?
+
+DO NOT CHANGE ANYTHING YET.
+
+First give me a diagnosis comparing these two architectures:
+
+A:
+Root Directory = .
+root api/[...path].ts
+
+B:
+Root Directory = artifacts/ayush-medico
+nested artifacts/ayush-medico/api/[...path].ts
+
+Tell me which is technically safer for THIS repository and why.
+
+If B is viable, provide the exact final folder structure and exact files/configuration that need to change.
+
+Remember:
+There must be ONLY ONE actual Express API implementation.
+The API adapter may move, but the backend must remain:
+
+artifacts/api-server
+
+The SDF sync must continue using the existing routes and database.
+
+Do not claim the Vercel issue is fixed until you can build and validate the resulting configuration.

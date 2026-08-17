@@ -1,0 +1,83 @@
+Implement customer conversion and retention features that increase orders WITHOUT reducing the pharmacy owner's profit margins.
+
+Add the following features:
+
+1. Smart Savings Banner
+- Show messages like:
+  • "Save your trip—get medicines delivered to your doorstep."
+  • "Free delivery above ₹499."
+  • "Trusted by local families."
+  • "Fast delivery within our service area."
+
+2. Free Delivery Threshold
+- Offer free delivery only above a configurable order amount (e.g. ₹499 or ₹599).
+- Below the threshold, show the remaining amount needed:
+  "Add ₹120 more to unlock FREE Delivery."
+
+3. Smart Cart Upsell
+- Suggest relevant products (doctor-approved/general OTC items where appropriate), such as ORS, tissues, vitamins, hand sanitizer, glucose, masks, etc.
+- Never suggest prescription medicines automatically.
+
+4. Limited-Time Offers (Admin Controlled)
+- Admin can create offers with:
+  - Start/End date
+  - Banner
+  - Coupon
+  - Minimum order value
+  - Applicable categories
+
+5. Coupon System
+- Flat discount
+- Percentage discount
+- Minimum order value
+- Maximum discount limit
+- One-time use per customer
+- Expiry date
+- Admin management
+
+6. Loyalty Rewards
+- Earn reward points on every order.
+- Redeem points on future purchases.
+- Admin controls earning and redemption rules.
+
+7. First Order Offer
+- Optional admin-controlled welcome offer for new customers.
+
+8. Bundle Offers
+- Admin can create combo packs for OTC products.
+- Example:
+  "Buy Vitamin C + Zinc and save."
+
+9. Trust Builders
+- Genuine Medicines
+- Licensed Pharmacy
+- Secure Payments
+- Fast Delivery
+- Prescription Verification
+- Customer Support
+
+10. Stock Urgency
+- Display:
+  "Limited Stock"
+  "Popular Choice"
+  "Recently Restocked"
+- Do not use fake urgency.
+
+11. Recently Viewed Products
+
+12. Frequently Bought Together
+
+13. Personalized Recommendations
+- Based on previous orders (non-prescription items only).
+
+14. Dynamic Promotional Banners
+- Admin can manage promotional banners from the dashboard.
+
+15. Exit Intent Reminder (Desktop) / Cart Reminder (Mobile)
+- Encourage users to complete checkout if they leave with items in the cart.
+
+16. Order Progress Timeline
+- Real-time status updates:
+  Order Placed → Confirmed → Packed → Out for Delivery → Delivered
+
+All promotional features must be configurable from the Admin Panel. The system should encourage larger orders and repeat purchases without relying on fake discounts or reducing profit margins.

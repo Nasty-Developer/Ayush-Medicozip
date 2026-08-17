@@ -1,0 +1,180 @@
+Prompt for Replit AI
+
+I have reviewed the current project, and the homepage layout is incorrect after the recent Categories refactoring.
+
+IMPORTANT: Before writing ANY code, inspect the existing implementation carefully.
+
+Do NOT start coding immediately.
+
+Do NOT redesign the homepage.
+
+Do NOT create duplicate components, duplicate pages, duplicate sections, duplicate hooks, or duplicate files.
+
+Reuse the existing architecture.
+
+Current Issue
+
+After the Services section there is a very large empty white space.
+
+Previously this area displayed the Categories section correctly.
+
+Now the Categories content is missing or not rendering correctly, but the layout space still exists.
+
+This makes the homepage look broken.
+
+First Inspect
+
+Please inspect:
+
+Home page component
+Categories component
+Categories section wrapper
+Firestore category loading
+useCategories hook
+Conditional rendering
+Empty state rendering
+CSS
+Tailwind classes
+Framer Motion wrappers
+Grid layout
+Height
+Min-height
+Margin
+Padding
+Loading state
+Skeleton loader
+Hidden containers
+Responsive layout
+
+Find the actual root cause.
+
+Do not apply CSS hacks.
+
+Homepage
+
+The homepage should display:
+
+Hero
+
+↓
+
+Delivery Features
+
+↓
+
+How It Works
+
+↓
+
+New Arrivals
+
+↓
+
+Special Medicines
+
+↓
+
+About
+
+↓
+
+Services
+
+↓
+
+Categories
+
+↓
+
+Why Choose Us
+
+↓
+
+Testimonials
+
+↓
+
+FAQ
+
+↓
+
+Contact
+
+There should never be a huge empty white space.
+
+Categories Section
+
+Restore the Categories section exactly where it belongs.
+
+Every published Firestore category should appear automatically.
+
+Each category should display:
+
+Icon
+Name
+Short description
+Hover animation
+
+Use the existing Firestore data.
+
+If Categories Are Loading
+
+If Firestore successfully returns categories but they are not visible:
+
+Find why they are not rendering.
+
+Check:
+
+map()
+conditional rendering
+hidden CSS
+overflow
+z-index
+parent container
+grid
+opacity
+animation
+loading state
+If Categories Are Empty
+
+Show a professional empty state.
+
+Do NOT leave a blank section.
+
+Code Quality
+
+Do NOT create:
+
+duplicate components
+duplicate pages
+duplicate category sections
+duplicate Firestore queries
+
+Reuse existing code.
+
+Fix the broken implementation.
+
+Verification
+
+After making changes:
+
+Build successfully.
+Generate a new Preview.
+Test the homepage manually.
+Verify that the blank space is completely removed.
+Verify that Categories appear correctly.
+Verify that the homepage spacing is natural.
+Verify that no existing feature is broken.
+IMPORTANT
+
+Think first.
+
+Inspect first.
+
+Understand first.
+
+Only then modify the existing code.
+
+Fix the root cause, not the symptoms.
+
+Do not stop until the homepage layout is completely correct.

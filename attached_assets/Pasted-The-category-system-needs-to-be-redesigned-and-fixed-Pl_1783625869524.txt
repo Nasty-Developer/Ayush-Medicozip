@@ -1,0 +1,108 @@
+The category system needs to be redesigned and fixed. Please implement the following:
+
+1. Dynamic Categories
+Categories created from Admin Panel → Categories must automatically appear everywhere:
+Add Medicine form
+Edit Medicine form
+Homepage category sections
+Filters
+Search
+Navigation
+Do not use a hardcoded category list anywhere.
+2. Other Category
+
+When the admin selects "Other" in the Add/Edit Medicine form:
+
+Hide the normal dropdown selection.
+Show a required text input:
+Placeholder: "Enter custom category name"
+Whatever the admin types should become the medicine's category.
+3. Auto Create Category
+
+If the admin enters a custom category that does not already exist:
+
+Automatically create that category in the Categories collection.
+Generate:
+slug
+icon (default if none selected)
+color
+published = true
+The new category must immediately appear everywhere without refreshing.
+4. Brand System
+
+Do the same for Brands:
+
+Dynamic brands only.
+If "Other" is selected, show a text field.
+Automatically create the new brand.
+5. Icons
+
+Allow every category to have:
+
+Emoji
+Lucide Icon
+SVG Icon
+Image upload (optional)
+
+Display the icon everywhere:
+
+Homepage
+Medicine card
+Admin
+Filters
+6. Sorting
+
+Allow drag & drop ordering.
+Save order in Firestore.
+Display according to sort order.
+
+7. Firestore
+
+Create proper collections:
+
+categories
+brands
+medicines
+
+Medicine should store:
+
+categoryId
+categoryName
+brandId
+brandName
+
+instead of only plain text.
+
+8. Homepage
+
+The homepage should automatically render every published category from Firestore.
+No hardcoded categories.
+
+9. Validation
+
+Prevent duplicate category names.
+Prevent duplicate brands.
+Trim spaces.
+Case insensitive comparison.
+
+10. Live Updates
+
+Whenever a category or brand is:
+
+created
+edited
+deleted
+unpublished
+
+all admin pages and the website must update automatically using Firestore realtime listeners.
+
+11. Fix Current Bug
+
+Currently newly created categories are not appearing in the medicine form or website.
+Fix the Firestore query and ensure the dropdown is always populated from the Categories collection instead of a static array.
+
+12. Production Quality
+
+Build this as a reusable production-ready module.
+No hardcoded data anywhere.
+Everything should come from Firestore.

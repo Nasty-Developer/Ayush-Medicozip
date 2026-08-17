@@ -1,0 +1,558 @@
+AYUSH MEDICO — FIX INVENTORY SYNC AUTHENTICATION AND PRODUCTION API PATH
+
+We now have Git under control.
+
+IMPORTANT CURRENT GIT STATE:
+
+GitHub repository:
+Nasty-Developer/Ayush-Medicozip
+
+Production branch:
+main
+
+There should be ONE production branch only.
+
+Vercel deploys from:
+main
+
+Vercel Root Directory:
+artifacts/ayush-medico
+
+DO NOT create another Git branch.
+DO NOT bring back replit-agent.
+DO NOT perform a rebase or merge unrelated Git histories.
+DO NOT modify the Git branch architecture.
+
+==================================================
+CURRENT PRODUCTION ARCHITECTURE
+==================================================
+
+Frontend:
+
+artifacts/ayush-medico
+
+Deployment:
+Vercel
+
+Backend:
+
+artifacts/api-server
+
+Deployment:
+Render
+
+Database:
+
+PostgreSQL
+
+The intended production flow is:
+
+Customer/Admin
+      ↓
+Vercel frontend
+      ↓
+Render API
+      ↓
+PostgreSQL
+
+Inventory Sync:
+
+Admin
+ ↓
+/admin/inventory-sync
+ ↓
+Upload SDF files
+ ↓
+Render/API upload endpoint
+ ↓
+SDF parser
+ ↓
+Validation
+ ↓
+PostgreSQL
+ ↓
+Medicine catalogue
+
+IMPORTANT:
+
+The backend/API must NOT depend permanently on Replit Preview.
+
+Replit Preview is only being used to develop and test the application.
+
+The production API must work through the Render deployment.
+
+==================================================
+CURRENT BUG
+==================================================
+
+The Inventory Sync page is:
+
+/admin/inventory-sync
+
+The admin can select the real SDF files:
+
+PRODUCT.SDF
+STOCK.SDF
+DRUG.SDF
+COMPANY.SDF
+CATEGORY.SDF
+
+The files are accepted by the frontend.
+
+However, when clicking:
+
+"Upload & Import to PostgreSQL"
+
+the upload-session request fails with:
+
+HTTP 401 Unauthorized
+
+IMPORTANT:
+
+THIS IS A 401 ERROR.
+
+DO NOT diagnose this as a 404.
+
+DO NOT assume the endpoint is missing.
+
+A 401 means the request is reaching an authentication-protected endpoint but authentication/authorization is failing.
+
+The primary task is therefore to trace and FIX the authentication path.
+
+==================================================
+FIRST PRIORITY — TRACE THE 401
+==================================================
+
+Before changing anything, inspect the complete request flow:
+
+Inventory Sync frontend
+→ upload-session request
+→ API URL
+→ request headers
+→ Firebase Auth token
+→ Render/API server
+→ authentication middleware
+→ Firebase Admin token verification
+→ upload-session route
+
+Find the exact request returning HTTP 401.
+
+Identify:
+
+1. Exact frontend API URL being called
+2. Exact HTTP method
+3. Exact endpoint/path
+4. Whether an Authorization header is being sent
+5. Whether a Firebase ID token is being obtained from the currently signed-in admin
+6. Whether the token is being sent as:
+
+Authorization: Bearer <Firebase ID token>
+
+7. Whether the backend receives the Authorization header
+8. Whether Firebase Admin SDK is initialized correctly
+9. Whether Firebase Admin is verifying the correct Firebase project
+10. Whether the authenticated Firebase user is authorized to use Inventory Sync
+11. Whether the backend environment contains the required Firebase Admin credentials
+12. Whether Render has the same required Firebase configuration
+13. Whether Replit Preview is using different environment variables from Render
+
+DO NOT guess.
+
+Trace the actual code and request.
+
+==================================================
+FIREBASE AUTHENTICATION
+==================================================
+
+The admin is already authenticated through Firebase.
+
+The Inventory Sync request must use the currently authenticated Firebase user.
+
+The frontend should obtain the current Firebase ID token from the authenticated user and send it to the API.
+
+Use the existing Firebase Auth implementation.
+
+Do NOT create a second authentication system.
+
+Do NOT remove authentication from the endpoint.
+
+Do NOT make the upload endpoint publicly accessible.
+
+Do NOT use:
+
+allow unauthenticated uploads
+
+Do NOT disable token verification just to make the error disappear.
+
+The backend must verify the Firebase ID token server-side.
+
+==================================================
+FIREBASE ADMIN SERVER CONFIGURATION
+==================================================
+
+Inspect the existing Firebase Admin initialization.
+
+Verify:
+
+- project ID
+- client email
+- private key
+- environment variable names
+- newline handling for private key
+- Render environment variables
+- Replit environment variables
+
+The private key must NEVER be committed to GitHub.
+
+Do NOT create or commit a Firebase service-account JSON file.
+
+Use environment variables / Replit Secrets / Render environment variables.
+
+If the existing implementation uses something like:
+
+process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n")
+
+preserve the correct newline handling.
+
+Do NOT expose credentials in frontend code.
+
+==================================================
+ADMIN AUTHORIZATION
+==================================================
+
+After Firebase token verification, verify that the authenticated admin is authorized to perform Inventory Sync.
+
+Inspect the existing admin authorization mechanism.
+
+Do NOT invent a new role system if one already exists.
+
+If the application currently identifies the admin through a known Firebase user/email/claim mechanism, reuse the existing mechanism.
+
+If authorization is failing separately from authentication, identify it clearly.
+
+The final result must distinguish:
+
+401 = authentication failure
+
+403 = authenticated but not authorized
+
+Do not incorrectly return 401 for every backend error.
+
+==================================================
+UPLOAD SESSION
+==================================================
+
+After authentication is fixed, verify the upload-session endpoint itself.
+
+The correct flow must be:
+
+Admin signed in
+→ Firebase ID token obtained
+→ Authorization Bearer token attached
+→ API verifies token
+→ API verifies admin authorization
+→ upload session created
+→ SDF files uploaded
+→ import starts
+
+Do NOT fake the upload-session response.
+
+Do NOT return a fake session ID.
+
+Do NOT bypass the actual upload process.
+
+==================================================
+REAL SDF FILES
+==================================================
+
+Use the actual attached SDF files.
+
+Required files:
+
+PRODUCT.SDF
+STOCK.SDF
+DRUG.SDF
+COMPANY.SDF
+CATEGORY.SDF
+
+Do not create fake SDF files.
+
+Do not alter the original files.
+
+Do not change their extensions.
+
+Do not invent fields.
+
+Use the real fixed-width SDF parser already implemented in the project.
+
+Preserve the actual field mappings discovered from the real files.
+
+==================================================
+POSTGRESQL
+==================================================
+
+After authentication/upload is fixed, verify the complete PostgreSQL path.
+
+The actual flow must work:
+
+SDF
+→ parser
+→ validation
+→ master-data relationships
+→ PostgreSQL
+→ safe upsert
+
+Do NOT put the large medicine catalogue into Firebase/Firestore.
+
+Do NOT wipe existing PostgreSQL data.
+
+Do NOT replace the database with mock data.
+
+Do NOT insert fake medicines.
+
+Do NOT duplicate existing medicines during repeated syncs.
+
+Preserve:
+
+- new
+- updated
+- unchanged
+- error
+
+tracking.
+
+Preserve import history.
+
+==================================================
+INVENTORY SYNC
+==================================================
+
+The Inventory Sync Admin page must show meaningful real status.
+
+After a successful sync, show:
+
+- files received
+- parsing status
+- validation status
+- imported records
+- new records
+- updated records
+- unchanged records
+- errors
+- import duration
+- import timestamp
+
+If a record fails, report the actual reason.
+
+Do not hide errors.
+
+==================================================
+RENDER BACKEND
+==================================================
+
+After fixing Replit Preview, verify the production API.
+
+The backend is:
+
+artifacts/api-server
+
+The intended production backend is deployed on Render.
+
+Find the configured Render API URL.
+
+Then verify that the frontend's API configuration points to the correct Render URL.
+
+IMPORTANT:
+
+Do NOT hardcode localhost.
+
+Do NOT hardcode a Replit Preview URL.
+
+Do NOT create a temporary API URL.
+
+Use the existing production environment-variable architecture.
+
+Check:
+
+- VITE API URL
+- API base URL
+- Render environment variables
+- CORS configuration
+- Firebase Admin configuration
+- database connection configuration
+
+==================================================
+CORS
+==================================================
+
+Once authentication works, verify CORS.
+
+The Render API must allow requests from the actual Vercel production domain.
+
+Do not use:
+
+Access-Control-Allow-Origin: *
+
+if the existing architecture requires restricted origins.
+
+Configure the actual Vercel production origin safely.
+
+Also allow the appropriate Replit development/preview origin when needed for development testing.
+
+Do not weaken security unnecessarily.
+
+==================================================
+VERCEL
+==================================================
+
+Keep:
+
+Vercel Root Directory:
+artifacts/ayush-medico
+
+Do NOT move the root directory.
+
+Do NOT create a separate Vercel project for api-server.
+
+The backend remains on Render.
+
+The frontend remains on Vercel.
+
+Check the existing:
+
+artifacts/ayush-medico/vercel.json
+
+Do not modify it unless absolutely required.
+
+Preserve the existing SPA routing fix.
+
+==================================================
+IMPORTANT: DO NOT BREAK EXISTING FEATURES
+==================================================
+
+Do NOT break:
+
+- Firebase authentication
+- Admin panel
+- Admin dashboard
+- Medicine catalogue
+- Medicine search
+- PostgreSQL integration
+- SDF parser
+- Inventory Sync UI
+- Vercel SPA routing
+- Render API deployment
+- existing customer website
+- existing category system
+- existing order architecture
+
+Do not redesign the UI.
+
+Do not rewrite working systems unnecessarily.
+
+Fix the actual authentication/API problem with the smallest correct changes.
+
+==================================================
+TESTING
+==================================================
+
+After fixing the 401:
+
+1. Sign in to the admin panel.
+2. Open:
+
+/admin/inventory-sync
+
+3. Select the real SDF files.
+4. Start the upload.
+5. Confirm the upload-session request returns success.
+6. Confirm the files actually upload.
+7. Confirm the parser starts.
+8. Confirm PostgreSQL sync executes.
+9. Confirm import results are displayed.
+10. Confirm repeated sync does not duplicate records.
+
+Then test:
+
+/admin
+/admin/dashboard
+/admin/inventory-sync
+/medicines
+
+==================================================
+PRODUCTION TEST
+==================================================
+
+After Replit Preview works, test the production architecture:
+
+Vercel
+→ Render
+→ PostgreSQL
+
+Verify:
+
+1. Vercel frontend loads.
+2. Admin authentication works.
+3. Inventory Sync request reaches Render.
+4. Firebase token is accepted by Render.
+5. Admin authorization succeeds.
+6. Upload session is created.
+7. SDF upload works.
+8. PostgreSQL import works.
+9. Medicine catalogue API works.
+10. Customer medicine search works.
+
+==================================================
+BUILD / TYPECHECK
+==================================================
+
+Run:
+
+- frontend TypeScript check
+- backend TypeScript check
+- frontend production build
+- backend/API production build
+
+Fix actual errors.
+
+Do not report completion merely because compilation succeeds.
+
+The actual Inventory Sync must be tested.
+
+==================================================
+FINAL REPORT
+==================================================
+
+At the end report:
+
+1. Exact cause of the HTTP 401
+2. Exact frontend endpoint
+3. Exact backend endpoint
+4. Whether Firebase ID token was missing, invalid, expired, or incorrectly verified
+5. Firebase Admin configuration status
+6. Admin authorization status
+7. Replit Preview Inventory Sync status
+8. Render API status
+9. CORS status
+10. SDF upload status
+11. PRODUCT.SDF result
+12. STOCK.SDF result
+13. DRUG.SDF result
+14. COMPANY.SDF result
+15. CATEGORY.SDF result
+16. PostgreSQL import counts
+17. New/updated/unchanged/error counts
+18. Vercel → Render connectivity status
+19. TypeScript result
+20. Production build result
+21. Any remaining environment variables or configuration I must provide
+
+IMPORTANT:
+
+Do not stop at analysis.
+
+Do not merely tell me what the problem is.
+
+Actually fix the 401 authentication problem, test the real upload flow, and verify the PostgreSQL sync.
+
+Do not claim success until the real SDF upload → PostgreSQL sync has been tested.

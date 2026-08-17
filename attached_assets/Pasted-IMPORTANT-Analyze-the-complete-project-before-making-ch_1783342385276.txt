@@ -1,0 +1,365 @@
+IMPORTANT
+
+Analyze the complete project before making changes.
+
+Do NOT redesign the UI.
+
+Do NOT modify Firebase.
+
+Do NOT modify Firestore.
+
+Do NOT modify Admin Panel.
+
+Do NOT modify Cloudinary.
+
+Do NOT break any existing functionality.
+
+This task is ONLY to make the website production-ready from an SEO perspective.
+
+==================================================
+
+GOAL
+
+Transform the website into a highly optimized Local Pharmacy website that ranks well for local searches on Google while remaining fast, accessible and scalable.
+
+The website should be prepared for both current features and future features without requiring major SEO changes later.
+
+==================================================
+
+LOCAL SEO
+
+Optimize the website for searches like:
+
+Medical Store in Kurla West
+
+Medical Store Kurla
+
+Medical Shop Kurla
+
+Pharmacy Near Kurla
+
+24 Hours Medical Store Kurla
+
+Medicine Delivery Kurla
+
+Medicine Home Delivery Kurla
+
+Medicine Shop Mumbai
+
+Chemist Near Me
+
+Prescription Medicines Kurla
+
+OTC Medicines Kurla
+
+Healthcare Products Mumbai
+
+Baby Care Products Kurla
+
+Personal Care Products Kurla
+
+Diabetic Medicines Kurla
+
+Health Supplements Kurla
+
+Healthcare Devices Kurla
+
+Medical Equipment Kurla
+
+Medical Store Near Me
+
+Nearby Pharmacy
+
+Trusted Pharmacy Mumbai
+
+Best Pharmacy Kurla
+
+Ayush Medico
+
+==================================================
+
+FUTURE SEO
+
+Prepare SEO for future modules.
+
+Even if these pages are not live yet, structure metadata so future expansion is easy.
+
+Future Keywords
+
+Medicine Delivery
+
+Medicine Delivery Near Me
+
+Home Delivery Pharmacy
+
+Order Medicines Online
+
+Upload Prescription
+
+Prescription Verification
+
+Medicine Availability
+
+Medicine Request
+
+Online Medical Store
+
+Medical Inventory
+
+Healthcare Services
+
+Online Pharmacy
+
+Order Healthcare Products
+
+Medicine Booking
+
+Medicine Search
+
+Medicine Categories
+
+Doctor Prescription Upload
+
+==================================================
+
+META TAGS
+
+Generate optimized
+
+Title
+
+Description
+
+Keywords
+
+Canonical
+
+Author
+
+Robots
+
+Theme Color
+
+Language
+
+Geo Region
+
+Geo Position
+
+ICBM
+
+Open Graph
+
+Twitter Cards
+
+==================================================
+
+STRUCTURED DATA
+
+Implement JSON-LD for
+
+MedicalBusiness
+
+Pharmacy
+
+LocalBusiness
+
+Organization
+
+Website
+
+FAQ
+
+ContactPoint
+
+Breadcrumb
+
+SearchAction
+
+PotentialAction
+
+Google Maps
+
+Business Hours
+
+==================================================
+
+SEARCH ENGINE OPTIMIZATION
+
+Improve
+
+Heading hierarchy
+
+Image alt text
+
+ARIA
+
+Accessibility
+
+Semantic HTML
+
+Internal linking
+
+Lazy Loading
+
+Image Optimization
+
+Preconnect Fonts
+
+Font Display Swap
+
+Performance
+
+CLS
+
+LCP
+
+SEO Score
+
+Accessibility Score
+
+==================================================
+
+GOOGLE READY
+
+Prepare website for
+
+Google Search Console
+
+Google Analytics
+
+Google Business Profile
+
+Google Maps
+
+Bing Webmaster
+
+==================================================
+
+ROBOTS
+
+Generate robots.txt
+
+Generate sitemap.xml
+
+Automatically include every important page.
+
+==================================================
+
+SOCIAL SHARING
+
+Generate
+
+Facebook Preview
+
+WhatsApp Preview
+
+Twitter Preview
+
+LinkedIn Preview
+
+Telegram Preview
+
+==================================================
+
+BUSINESS INFORMATION
+
+Use placeholders for now.
+
+Business Name
+
+Ayush Medico
+
+Address
+
+Kurla West Mumbai
+
+Phone
+
+Placeholder
+
+Email
+
+Placeholder
+
+Website
+
+Placeholder
+
+Domain will be added later.
+
+==================================================
+
+IMPORTANT
+
+Do NOT hardcode future domain.
+
+Use placeholder values where required.
+
+Everything should be easy to update later.
+
+==================================================
+
+DO NOT TOUCH
+
+Homepage Layout
+
+Firebase
+
+Firestore
+
+Cloudinary
+
+Admin Panel
+
+Medicine Logic
+
+Forms
+
+UI Design
+
+==================================================
+
+FINAL CHECK
+
+Before completion verify
+
+No duplicate meta tags
+
+No missing meta tags
+
+Proper H1
+
+Proper heading hierarchy
+
+robots.txt generated
+
+sitemap.xml generated
+
+JSON-LD valid
+
+Lighthouse SEO target above 95
+
+Accessibility above 95
+
+Performance above 90
+
+No console errors
+
+Mobile Friendly
+
+Production Ready
+
+==================================================
+
+Finally explain
+
+Which files were modified.
+
+Which SEO improvements were added.
+
+Which keywords are targeted.
+
+What should be done after buying the domain.
+
+What should be submitted to Google after launch.

@@ -1,0 +1,137 @@
+Before making any further changes, inspect the current Inventory Sync implementation and identify why the sync is getting stuck.
+
+==================================================
+CRITICAL ISSUE
+==================================================
+
+The Inventory Sync repeatedly gets stuck around 60% progress and never completes.
+
+Please investigate the root cause before continuing.
+
+Check for:
+
+- Firestore quota / RESOURCE_EXHAUSTED errors
+- Batch size too large
+- Infinite loops
+- Duplicate processing
+- Memory issues
+- Retry logic
+- Progress calculation
+- Parser bottlenecks
+- Failed batch recovery
+
+Do not simply restart the sync.
+
+Find the exact stage where it stops and fix the architecture.
+
+Requirements:
+
+• Process medicines in small batches.
+• Retry automatically on temporary failures.
+• Resume from the last successful batch instead of starting over.
+• Update the progress bar after every completed batch.
+• Show:
+  - Current Batch
+  - Medicines Processed
+  - Total Medicines
+  - Estimated Time Remaining
+• Generate a final Sync Report after completion.
+
+==================================================
+INVENTORY PRIORITY
+==================================================
+
+Use STOCK.SDF as the source of truth for availability.
+
+Do NOT display exact stock quantities to customers.
+
+Display only:
+
+🟢 In Stock
+
+🟡 Limited Availability (optional)
+
+🔴 Out of Stock
+
+Sort products everywhere in this order:
+
+1. In Stock
+2. Limited Availability
+3. Out of Stock
+
+Apply this sorting to:
+
+• Categories
+• Search
+• Browse Medicines
+• Related Medicines
+• Featured sections
+
+Customers should always see purchasable products first.
+
+==================================================
+OUT OF STOCK
+==================================================
+
+Do NOT hide unavailable medicines.
+
+Move them to the bottom.
+
+Replace Add to Cart with:
+
+Request Medicine
+
+Show:
+
+"Currently unavailable"
+
+==================================================
+MEDIVISION SYNC
+==================================================
+
+When STOCK.SDF changes:
+
+Automatically update:
+
+• Availability
+• Price
+• Category
+• Company
+
+If stock becomes available again:
+
+Automatically move that medicine back to the top.
+
+If stock becomes zero:
+
+Automatically move it to the bottom.
+
+==================================================
+VALIDATION
+==================================================
+
+Before importing all medicines, validate the PRODUCT.SDF ↔ STOCK.SDF mapping.
+
+Show a report with:
+
+- Total medicines
+- In Stock count
+- Out of Stock count
+- Sample mapped medicines
+
+Do not continue until the mapping is verified.
+
+==================================================
+DO NOT MARK THIS TASK COMPLETE
+==================================================
+
+Only complete the task after:
+
+✓ Inventory Sync reaches 100%.
+✓ No batch failures remain.
+✓ Products are correctly sorted by availability.
+✓ Categories show available medicines first.
+✓ Search prioritizes available medicines.
+✓ Add to Cart works for available products.
+✓ Request Medicine works for unavailable products.
+✓ A complete Sync Report is generated.

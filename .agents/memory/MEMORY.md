@@ -1,0 +1,1 @@
+- [Imported artifact registration](artifact-imports.md) — external Replit monorepos may need artifact registration restored after import.

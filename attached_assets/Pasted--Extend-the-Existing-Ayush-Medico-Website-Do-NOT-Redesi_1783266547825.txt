@@ -1,0 +1,238 @@
+
+---
+
+🚀 Extend the Existing Ayush Medico Website (Do NOT Redesign)
+
+The Admin Dashboard is working well, Firebase Authentication is configured, and the overall website looks great. Do not redesign or replace any existing functionality. Carefully analyze the current codebase and extend it while maintaining the existing UI, animations, colors, spacing, and architecture.
+
+1. Home Page - New Dynamic Sections
+
+Add two new premium homepage sections directly below the Hero section.
+
+🆕 New Medicine Arrivals
+
+Create a beautiful responsive slider/grid showcasing newly added medicines.
+
+Each medicine card should display:
+
+Medicine Image
+
+Medicine Name
+
+Brand
+
+Short Description
+
+Status Badge (New)
+
+Availability Badge (In Stock / Out of Stock)
+
+
+All content must be managed dynamically from the Admin Dashboard.
+
+The admin should be able to:
+
+Add unlimited medicines
+
+Edit medicines
+
+Delete medicines
+
+Reorder medicines
+
+Mark as "Show on Homepage"
+
+Mark as "New Arrival"
+
+
+Only medicines marked as New Arrival should appear in this section.
+
+
+---
+
+⭐ Special Medicines – Only Available at Our Medical
+
+Create another premium section with an attractive design highlighting medicines that are only available at Ayush Medico.
+
+Each card should display:
+
+Medicine Image
+
+Medicine Name
+
+Brand
+
+Short Description
+
+Availability Status
+
+"Exclusive" Badge
+
+
+Everything must be dynamic.
+
+The Admin Dashboard should allow:
+
+Add unlimited special medicines
+
+Edit/Delete medicines
+
+Reorder them
+
+Show/Hide medicines
+
+Mark In Stock / Out of Stock
+
+Display only selected medicines on the homepage
+
+
+The website should automatically update whenever the admin changes anything.
+
+
+---
+
+2. Mobile Navigation Improvements
+
+In the mobile hamburger menu (three-line menu), add the following quick navigation items:
+
+🆕 New Medicine Arrivals
+
+⭐ Special Medicines
+
+💊 Check Medicine Availability
+
+📩 Request a Medicine
+
+
+These menu items should smoothly scroll to their respective homepage sections.
+
+Do not disturb the existing navigation.
+
+
+---
+
+3. Admin Dashboard Improvements
+
+Add two new dashboard modules:
+
+New Medicine Arrivals Manager
+
+Allow the admin to:
+
+Add medicines
+
+Upload images
+
+Edit/Delete
+
+Reorder by drag-and-drop
+
+Enable/Disable display
+
+Mark In Stock / Out of Stock
+
+Schedule future arrivals (optional)
+
+
+
+---
+
+Special Medicines Manager
+
+Allow the admin to:
+
+Add unlimited medicines
+
+Upload images
+
+Edit/Delete
+
+Reorder
+
+Show/Hide
+
+Mark Available / Out of Stock
+
+Instantly update the homepage
+
+
+
+---
+
+4. Dynamic Homepage Control
+
+Create a Homepage Manager inside the Admin Dashboard.
+
+The admin should be able to control:
+
+Which medicines appear in "New Medicine Arrivals"
+
+Which medicines appear in "Special Medicines – Only Available at Our Medical"
+
+Display order
+
+Section titles
+
+Section descriptions
+
+Enable/Disable sections
+
+
+No code changes should ever be required.
+
+
+---
+
+5. User Experience
+
+Maintain the existing premium design.
+
+Add:
+
+Smooth animations
+
+Loading skeletons
+
+Beautiful hover effects
+
+Responsive cards
+
+Lazy-loaded images
+
+Proper spacing
+
+Mobile optimization
+
+
+
+---
+
+6. Performance
+
+Optimize Firestore reads.
+
+Only fetch medicines that need to be displayed.
+
+Cache homepage data.
+
+Keep the project optimized for Firebase Spark (Free Tier).
+
+
+---
+
+7. Final QA
+
+Before finishing:
+
+Ensure there are no duplicate sections.
+
+Ensure the homepage updates instantly after admin changes.
+
+Ensure the mobile menu works correctly.
+
+Ensure everything is responsive.
+
+Ensure all new features integrate seamlessly with the existing website.
+
+
+The final result should feel like a premium pharmacy website where the owner can completely manage homepage medicine highlights without touching the code. 💚

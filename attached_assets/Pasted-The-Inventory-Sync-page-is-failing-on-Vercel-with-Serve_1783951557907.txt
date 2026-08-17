@@ -1,0 +1,123 @@
+The Inventory Sync page is failing on Vercel with:
+
+Server Error 405 (Method Not Allowed)
+
+Please perform a complete audit of the Inventory Sync architecture.
+
+=================================================
+EXPECTED ARCHITECTURE
+=================================================
+
+Frontend
+↓
+
+Upload SDF files
+
+↓
+
+POST /api/sync
+
+↓
+
+Express API
+
+↓
+
+Parse SDF files
+
+↓
+
+Merge PRODUCT + STOCK + COMPANY + CATEGORY + DRUG
+
+↓
+
+Write directly to PostgreSQL
+
+NO Firestore should be involved.
+
+=================================================
+CHECK EVERYTHING
+=================================================
+
+1. Verify the frontend is calling the correct API endpoint.
+
+2. Verify the request method is POST.
+
+3. Verify the backend route exists and accepts POST.
+
+4. Verify Vercel routes are configured correctly.
+
+5. Verify multipart/form-data upload is working.
+
+6. Verify file upload middleware (multer/busboy/etc.) is working.
+
+7. Verify PostgreSQL connection succeeds.
+
+8. Verify no Firestore code is executed anywhere during Inventory Sync.
+
+=================================================
+FIRESTORE
+=================================================
+
+Inventory Sync must NOT:
+
+- initialize Firestore
+- read Firestore
+- write Firestore
+- import Firestore helpers
+- call Firestore SDK
+
+Inventory Sync should only use PostgreSQL.
+
+=================================================
+APPLICATION ARCHITECTURE
+=================================================
+
+Use PostgreSQL for:
+
+✓ Medicines
+✓ Companies
+✓ Categories
+✓ Drug Groups
+✓ Stock
+✓ Orders
+✓ Order Items
+✓ Addresses
+✓ Inquiries
+✓ Medicine Requests
+✓ Testimonials
+✓ FAQs
+✓ Notifications
+✓ Homepage Settings
+✓ Announcements
+
+Keep Firebase ONLY for:
+
+✓ Authentication
+✓ Firebase Storage (if still required)
+
+No application data should remain in Firestore.
+
+=================================================
+FINAL TEST
+=================================================
+
+Test the complete upload flow on both:
+
+• Replit
+• Vercel
+
+Upload all five SDF files.
+
+Verify:
+
+✓ Files upload successfully.
+✓ Parsing succeeds.
+✓ Merge succeeds.
+✓ PostgreSQL receives all records.
+✓ No Firestore calls occur.
+✓ No 405 errors.
+✓ No console errors.
+✓ No server errors.
+
+Do not mark the task complete until Inventory Sync works correctly on both Replit and Vercel.

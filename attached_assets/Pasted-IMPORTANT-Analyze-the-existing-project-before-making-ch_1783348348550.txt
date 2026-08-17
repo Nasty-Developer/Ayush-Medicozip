@@ -1,0 +1,303 @@
+IMPORTANT
+
+Analyze the existing project before making changes.
+
+Do NOT redesign the website.
+
+Do NOT modify Firebase configuration.
+
+Do NOT modify Firestore rules.
+
+Do NOT modify Cloudinary.
+
+Do NOT break any existing working functionality.
+
+This is the next enhancement of the existing medicine delivery system.
+
+==================================================
+
+GOAL
+
+Transform the website into a professional medicine ordering platform while keeping the current UI.
+
+==================================================
+
+CUSTOMER ACCOUNT
+
+Add a new navigation item:
+
+👤 Sign In
+
+If the customer is not logged in:
+
+Show:
+
+• Google Sign In
+
+• Email Sign In
+
+Do NOT implement Phone OTP yet.
+
+Keep the authentication architecture compatible with future Firebase Phone Authentication.
+
+==================================================
+
+AFTER LOGIN
+
+Replace "Sign In" with:
+
+👤 My Account
+
+Inside My Account provide:
+
+• My Orders
+
+• My Profile
+
+• Logout
+
+==================================================
+
+ORDER EXPERIENCE
+
+If a signed-in customer submits a medicine request,
+
+automatically associate that request with their Firebase user account.
+
+The customer should still receive an Order ID,
+
+but they should NOT need to enter the Order ID every time.
+
+Instead,
+
+inside
+
+My Account → My Orders
+
+display every order placed by that user.
+
+==================================================
+
+MY ORDERS
+
+Each order card should display:
+
+• Order ID
+
+• Medicine Name
+
+• Quantity
+
+• Date
+
+• Current Status
+
+• Payment Status
+
+• Delivery Status
+
+• Last Updated
+
+Clicking an order should open full details.
+
+==================================================
+
+ORDER STATUS
+
+Display a professional timeline.
+
+Example:
+
+✅ Request Submitted
+
+✅ Prescription Under Review
+
+🟡 Prescription Verified
+
+⚪ Medicine Reserved
+
+⚪ Payment Pending
+
+⚪ Packing
+
+⚪ Out For Delivery
+
+⚪ Delivered
+
+Alternative statuses:
+
+Cancelled
+
+Rejected
+
+Medicine Unavailable
+
+==================================================
+
+ADMIN WORKFLOW
+
+Admin updates status.
+
+↓
+
+Firestore updates.
+
+↓
+
+Customer My Orders automatically updates.
+
+↓
+
+Track Order page also updates.
+
+Firestore must remain the single source of truth.
+
+==================================================
+
+WAITING STATE
+
+If an order has not yet been reviewed by the admin,
+
+show:
+
+⏳ Waiting for Pharmacy Review
+
+If no admin action has been taken for a long period,
+
+display:
+
+Need urgent assistance?
+
+💬 Chat on WhatsApp
+
+This should open WhatsApp with the Order ID already included.
+
+Example:
+
+Hello,
+
+I would like an update regarding my order.
+
+Order ID:
+
+AYM-2026-000123
+
+==================================================
+
+PAYMENT
+
+Do NOT implement Razorpay yet.
+
+Instead,
+
+prepare the payment architecture.
+
+When the admin changes status to:
+
+Payment Pending
+
+the customer should see:
+
+💳 Payment Required
+
+Amount:
+
+₹450
+
+Button:
+
+Pay Now
+
+For now,
+
+display a placeholder.
+
+Later this button will connect to Razorpay.
+
+==================================================
+
+FUTURE RAZORPAY
+
+Prepare the architecture for:
+
+Admin
+
+↓
+
+Payment Request
+
+↓
+
+Customer receives Payment Required
+
+↓
+
+Clicks Pay Now
+
+↓
+
+Razorpay Checkout
+
+↓
+
+Payment Successful
+
+↓
+
+Firestore updates
+
+↓
+
+Packing starts automatically
+
+==================================================
+
+NOTIFICATIONS
+
+Inside My Orders,
+
+always show the latest status.
+
+Also allow the admin to send WhatsApp status updates using the existing WhatsApp feature.
+
+==================================================
+
+SECURITY
+
+Customers must only see THEIR OWN orders.
+
+Never expose another customer's orders.
+
+==================================================
+
+DO NOT
+
+❌ Break existing request forms.
+
+❌ Break Track Order.
+
+❌ Remove Order ID support.
+
+Track Order using:
+
+Order ID + Mobile Number
+
+must continue working for customers who are not signed in.
+
+Signed-in users should simply have a better experience.
+
+==================================================
+
+AFTER IMPLEMENTATION
+
+Explain:
+
+1. How customer accounts work.
+
+2. How My Orders works.
+
+3. How Firestore links orders to users.
+
+4. How the future Razorpay integration will work.
+
+5. Which files were modified.

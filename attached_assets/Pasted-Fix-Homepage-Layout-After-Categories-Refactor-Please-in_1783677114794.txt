@@ -1,0 +1,91 @@
+Fix Homepage Layout After Categories Refactor
+
+Please inspect the existing codebase before making any changes.
+
+Do NOT redesign the homepage.
+
+Do NOT create duplicate sections or duplicate components.
+
+Root Cause
+
+The Categories feature was recently moved from the Homepage to its own dedicated page (/categories).
+
+However, after this refactor, the Homepage is still reserving the layout space where the old Categories section used to exist.
+
+The content has moved to the new page, but the old Homepage wrapper/container is still being rendered, resulting in a very large blank white space between Services and Why Us.
+
+Please inspect
+
+Search the Homepage for:
+
+Old Categories component
+Categories wrapper
+Empty <section>
+Empty <div>
+Spacer containers
+Hidden components
+Conditional rendering
+Framer Motion wrappers
+Animation containers
+Fixed height
+min-height
+h-screen
+py-*
+mt-*
+mb-*
+Skeleton loaders
+Empty placeholders
+
+Also inspect any imports related to Categories that are no longer being used correctly.
+
+Required Fix
+
+If the Categories section has intentionally been moved to /categories, then:
+
+Completely remove the old Homepage Categories wrapper.
+Remove any remaining spacing that belonged to that section.
+Remove unused animation wrappers.
+Remove unused layout containers.
+Remove any reserved height.
+
+Do NOT leave an empty placeholder on the Homepage.
+
+The Homepage should flow naturally:
+
+Hero
+↓
+
+Services
+↓
+
+Why Us
+↓
+
+Testimonials
+↓
+
+FAQ
+↓
+
+Contact
+
+or, if Categories are intended to remain on the Homepage in the future, reconnect the existing component properly instead of leaving an empty container.
+
+IMPORTANT
+
+Find the root cause, not just the visual symptom.
+
+Do not hide the issue with CSS.
+
+Do not reduce margins just to make the gap look smaller.
+
+Remove the actual unused component or wrapper that is occupying the space.
+
+Verification
+
+After fixing:
+
+Generate a new Preview.
+Verify that there is no blank white space between Services and Why Us.
+Verify that the Categories page (/categories) continues to work correctly.
+Verify that no functionality has been broken.
