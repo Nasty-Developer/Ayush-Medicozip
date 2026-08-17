@@ -23,6 +23,7 @@ import {
   Loader2, X, Server, Activity, Database, CloudUpload,
 } from "lucide-react";
 import { auth } from "@/lib/firebase";
+import { authFetch, getFreshIdToken } from "@/lib/apiAuth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -359,10 +360,7 @@ export default function InventorySyncPage() {
   const { data: statusData } = useQuery<{ running: boolean; job: SyncJob | null }>({
     queryKey: ["syncStatus"],
     queryFn: async () => {
-      const token = await auth?.currentUser?.getIdToken();
-      const resp  = await fetch("/api/sync/status", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const resp = await authFetch("/api/sync/status");
       if (!resp.ok) throw new Error("Failed to fetch sync status");
       return resp.json() as Promise<{ running: boolean; job: SyncJob | null }>;
     },
@@ -390,7 +388,6 @@ export default function InventorySyncPage() {
    * Updates chunkProgress state after each piece for live UI feedback.
    */
   async function uploadFileChunked(
-    token: string,
     sessionId: string,
     fileKey: string,
     file: File,
@@ -421,9 +418,8 @@ export default function InventorySyncPage() {
       form.append("chunkIndex",  String(i));
       form.append("totalChunks", String(totalChunks));
 
-      const resp = await fetch("/api/sync/chunk", {
+      const resp = await authFetch("/api/sync/chunk", {
         method:  "POST",
-        headers: { Authorization: `Bearer ${token}` },
         body:    form,
       });
 
@@ -454,13 +450,11 @@ export default function InventorySyncPage() {
     setStage("uploading");
 
     try {
-      const token = await auth?.currentUser?.getIdToken(true);
-      if (!token) throw new Error("Not authenticated. Please sign in again.");
+      await getFreshIdToken();
 
       // 1. Create upload session
-      const sessionResp = await fetch("/api/sync/session", {
+      const sessionResp = await authFetch("/api/sync/session", {
         method:  "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!sessionResp.ok) {
         throw new Error(`Failed to create upload session (${sessionResp.status})`);
@@ -474,16 +468,15 @@ export default function InventorySyncPage() {
 
       for (let fi = 0; fi < filesToUpload.length; fi++) {
         const { slot, file } = filesToUpload[fi]!;
-        await uploadFileChunked(token, sessionId, slot.formField, file, fi, filesToUpload.length);
+        await uploadFileChunked(sessionId, slot.formField, file, fi, filesToUpload.length);
       }
 
       setChunkProgress(null);
 
       // 3. Start the import job
-      const startResp = await fetch("/api/sync/start", {
+      const startResp = await authFetch("/api/sync/start", {
         method:  "POST",
         headers: {
-          Authorization:  `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ sessionId }),
@@ -510,10 +503,8 @@ export default function InventorySyncPage() {
   const handleCancel = async () => {
     setCancelling(true);
     try {
-      const token = await auth?.currentUser?.getIdToken();
-      await fetch("/api/sync/cancel", {
+      await authFetch("/api/sync/cancel", {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
     } catch { /* non-fatal */ }
     finally { setCancelling(false); }
