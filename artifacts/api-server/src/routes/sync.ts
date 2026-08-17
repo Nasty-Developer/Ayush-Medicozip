@@ -298,78 +298,84 @@ function makeJob(sessionId: string, firebaseUid: string): SyncJob {
   };
 }
 
-function sessionExpiry(): Date {
-  return new Date(Date.now() + SESSION_TTL_MS);
-}
-
 /**
  * Create one upload session per authenticated Firebase user.
  *
  * The advisory transaction lock closes the small race where two requests for
- * the same user arrive at the same time. The partial unique index is the
- * database-level backstop for multiple API instances.
+ * the same user arrive at the same time. Expiry cleanup, active-session
+ * detection, and insertion all happen inside that same transaction using the
+ * database clock. The partial unique index is the database-level backstop for
+ * multiple API instances.
  */
 async function createSyncSession(firebaseUid: string): Promise<
   | { sessionId: string }
   | { existing: { id: string; status: ActiveSessionStatus; expiresAt: Date } }
 > {
   return db.transaction(async (tx) => {
-    const now = new Date();
-
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtextextended(${firebaseUid}, 0))`,
     );
 
-    await tx
-      .update(syncSessionsTable)
-      .set({
-        status: "expired",
-        updatedAt: now,
-        completedAt: now,
-        expiresAt: now,
-      })
-      .where(
-        and(
-          eq(syncSessionsTable.firebaseUid, firebaseUid),
-          inArray(syncSessionsTable.status, [...ACTIVE_SESSION_STATUSES]),
-          lte(syncSessionsTable.expiresAt, now),
-        ),
-      );
-
-    const activeRows = await tx
-      .select({
-        id: syncSessionsTable.id,
-        status: syncSessionsTable.status,
-        expiresAt: syncSessionsTable.expiresAt,
-      })
-      .from(syncSessionsTable)
-      .where(
-        and(
-          eq(syncSessionsTable.firebaseUid, firebaseUid),
-          inArray(syncSessionsTable.status, [...ACTIVE_SESSION_STATUSES]),
-          gt(syncSessionsTable.expiresAt, now),
-        ),
+    // The data-modifying CTE is intentionally part of the same statement as
+    // the active-session read. It retires expired rows before the partial
+    // unique index is checked by the insert below.
+    const activeRows = await tx.execute(sql`
+      WITH expired AS (
+        UPDATE sync_sessions
+        SET
+          status = 'expired',
+          updated_at = CURRENT_TIMESTAMP,
+          completed_at = CURRENT_TIMESTAMP,
+          expires_at = CURRENT_TIMESTAMP
+        WHERE firebase_uid = ${firebaseUid}
+          AND status IN ('uploading', 'running')
+          AND expires_at <= CURRENT_TIMESTAMP
+        RETURNING id
       )
-      .limit(1);
+      SELECT id, status, expires_at
+      FROM sync_sessions
+      WHERE firebase_uid = ${firebaseUid}
+        AND status IN ('uploading', 'running')
+        AND expires_at > CURRENT_TIMESTAMP
+      ORDER BY created_at DESC
+      LIMIT 1
+      FOR UPDATE
+    `);
 
-    const existing = activeRows[0];
-    if (existing && isActiveSessionStatus(existing.status)) {
+    const existingRow = activeRows.rows[0] as
+      | { id?: unknown; status?: unknown; expires_at?: unknown }
+      | undefined;
+    const existingStatus =
+      typeof existingRow?.status === "string" ? existingRow.status : "";
+    const existingExpiresAt =
+      existingRow?.expires_at instanceof Date
+        ? existingRow.expires_at
+        : new Date(String(existingRow?.expires_at ?? ""));
+
+    if (
+      typeof existingRow?.id === "string" &&
+      isActiveSessionStatus(existingStatus) &&
+      Number.isFinite(existingExpiresAt.getTime())
+    ) {
       return {
         existing: {
-          id: existing.id,
-          status: existing.status,
-          expiresAt: existing.expiresAt,
+          id: existingRow.id,
+          status: existingStatus,
+          expiresAt: existingExpiresAt,
         },
       };
     }
 
     const sessionId = randomUUID();
-    await tx.insert(syncSessionsTable).values({
-      id: sessionId,
-      firebaseUid,
-      status: "uploading",
-      expiresAt: sessionExpiry(),
-    });
+    await tx.execute(sql`
+      INSERT INTO sync_sessions (id, firebase_uid, status, expires_at)
+      VALUES (
+        ${sessionId},
+        ${firebaseUid},
+        'uploading',
+        CURRENT_TIMESTAMP + interval '2 hours'
+      )
+    `);
 
     return { sessionId };
   });
@@ -384,22 +390,20 @@ async function loadOwnedSession(
   status: ActiveSessionStatus;
   expiresAt: Date;
 } | null> {
-  const now = new Date();
-
   await db
     .update(syncSessionsTable)
     .set({
       status: "expired",
-      updatedAt: now,
-      completedAt: now,
-      expiresAt: now,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+      completedAt: sql`CURRENT_TIMESTAMP`,
+      expiresAt: sql`CURRENT_TIMESTAMP`,
     })
     .where(
       and(
         eq(syncSessionsTable.id, sessionId),
         eq(syncSessionsTable.firebaseUid, firebaseUid),
         inArray(syncSessionsTable.status, [...statuses]),
-        lte(syncSessionsTable.expiresAt, now),
+        lte(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`),
       ),
     );
 
@@ -415,7 +419,7 @@ async function loadOwnedSession(
         eq(syncSessionsTable.id, sessionId),
         eq(syncSessionsTable.firebaseUid, firebaseUid),
         inArray(syncSessionsTable.status, [...statuses]),
-        gt(syncSessionsTable.expiresAt, now),
+        gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`),
       ),
     )
     .limit(1);
@@ -439,19 +443,18 @@ async function storeChunkForSession(input: {
   data: Buffer;
 }): Promise<boolean> {
   return db.transaction(async (tx) => {
-    const now = new Date();
     const activeSession = await tx
       .update(syncSessionsTable)
       .set({
-        updatedAt: now,
-        expiresAt: sessionExpiry(),
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+        expiresAt: sql`CURRENT_TIMESTAMP + interval '2 hours'`,
       })
       .where(
         and(
           eq(syncSessionsTable.id, input.sessionId),
           eq(syncSessionsTable.firebaseUid, input.firebaseUid),
           eq(syncSessionsTable.status, "uploading"),
-          gt(syncSessionsTable.expiresAt, now),
+          gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`),
         ),
       )
       .returning({ id: syncSessionsTable.id });
@@ -484,21 +487,48 @@ async function claimSyncSession(
   sessionId: string,
   firebaseUid: string,
 ): Promise<boolean> {
-  const now = new Date();
   const rows = await db
     .update(syncSessionsTable)
     .set({
       status: "running",
-      startedAt: now,
-      updatedAt: now,
-      expiresAt: sessionExpiry(),
+      startedAt: sql`CURRENT_TIMESTAMP`,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+      expiresAt: sql`CURRENT_TIMESTAMP + interval '2 hours'`,
     })
     .where(
       and(
         eq(syncSessionsTable.id, sessionId),
         eq(syncSessionsTable.firebaseUid, firebaseUid),
         eq(syncSessionsTable.status, "uploading"),
-        gt(syncSessionsTable.expiresAt, now),
+        gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`),
+      ),
+    )
+    .returning({ id: syncSessionsTable.id });
+
+  return rows.length > 0;
+}
+
+/**
+ * Keep a genuinely running import alive. The lease is deliberately renewed
+ * from PostgreSQL so a long import cannot outlive its lock while still making
+ * expired locks recoverable after an unexpected Vercel termination.
+ */
+async function refreshRunningSyncSessionLease(
+  sessionId: string,
+  firebaseUid: string,
+): Promise<boolean> {
+  const rows = await db
+    .update(syncSessionsTable)
+    .set({
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+      expiresAt: sql`CURRENT_TIMESTAMP + interval '2 hours'`,
+    })
+    .where(
+      and(
+        eq(syncSessionsTable.id, sessionId),
+        eq(syncSessionsTable.firebaseUid, firebaseUid),
+        eq(syncSessionsTable.status, "running"),
+        gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`),
       ),
     )
     .returning({ id: syncSessionsTable.id });
@@ -511,15 +541,14 @@ async function finishSyncSession(
   firebaseUid: string,
   status: TerminalSessionStatus,
 ): Promise<void> {
-  const now = new Date();
   try {
     await db
       .update(syncSessionsTable)
       .set({
         status,
-        updatedAt: now,
-        completedAt: now,
-        expiresAt: now,
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+        completedAt: sql`CURRENT_TIMESTAMP`,
+        expiresAt: sql`CURRENT_TIMESTAMP`,
       })
       .where(
         and(
@@ -618,6 +647,10 @@ async function runImport(
   let terminalSessionStatus: TerminalSessionStatus = "failed";
 
   try {
+    if (!(await refreshRunningSyncSessionLease(session.id, session.firebaseUid))) {
+      throw new SyncLeaseLostError();
+    }
+
     // ── 1. Parse ─────────────────────────────────────────────────────────────
     job.phase   = "parsing";
     job.message = "Parsing SDF files…";
@@ -811,7 +844,12 @@ async function runImport(
 
       // Save progress to DB every 10 batches so polls see live progress
       // even if they land on a different serverless instance.
-      if (i % 10 === 0) await saveJobToDb(job);
+      if (i % 10 === 0) {
+        await saveJobToDb(job);
+        if (!(await refreshRunningSyncSessionLease(session.id, session.firebaseUid))) {
+          throw new SyncLeaseLostError();
+        }
+      }
     }
 
     if (job.cancelRequested) {
