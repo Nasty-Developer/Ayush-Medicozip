@@ -1,0 +1,141 @@
+FINAL PRODUCTION FIX — DO NOT RE-INVESTIGATE, DO NOT START OVER
+
+We are at the final step and have very limited Replit Agent credits left.
+
+The production Render API is deployed and healthy, but Vercel still returns:
+
+{
+  "error": "A sync is already in progress for this user.",
+  "code": "sync_session_already_active",
+  "sessionId": "69b93615-860c-4b16-a35f-25b52379d039",
+  "retryAt": "2026-08-17T13:11:56.360Z"
+}
+
+Important facts already established:
+
+- Replit Preview and Render production use DIFFERENT PostgreSQL databases.
+- Firebase project is the same.
+- The 409 comes from POST /api/sync/session and specifically from sync_sessions.
+- The existing production session was created under the OLD 2-hour uploading lease.
+- The new code has already been partially implemented for a 15-minute uploading inactivity lease and longer running lease.
+- Render has already received a deployment containing the recent sync changes.
+- We must NOT manually modify or delete the production database row.
+
+YOUR TASK NOW:
+
+1. Inspect the CURRENT sync.ts implementation and the current git diff/state.
+2. Do NOT repeat the previous investigation.
+3. Do NOT redesign the architecture.
+4. Do NOT touch production data.
+5. Make only the minimal code change required to make OLD sessions compatible with the NEW lease policy.
+
+CRITICAL BUG TO FIX:
+
+An old "uploading" session can contain an old expires_at approximately 2 hours in the future.
+
+Therefore, simply checking:
+
+expires_at > CURRENT_TIMESTAMP
+
+is NOT sufficient for old uploading sessions.
+
+For an existing session with status = "uploading":
+
+- Treat its real inactivity deadline as:
+  updated_at + 15 minutes
+  (use the exact uploading lease constant already established in the current implementation if it is named differently).
+- If updated_at + uploadingLease <= PostgreSQL CURRENT_TIMESTAMP:
+  atomically mark that session as expired.
+- Then allow the new session to be created.
+- Do NOT let the old expires_at value keep an abandoned uploading session locked for 2 hours.
+- If updated_at is still within the 15-minute inactivity window, keep the concurrency lock and return the existing 409.
+- Use PostgreSQL CURRENT_TIMESTAMP for the comparison.
+- Keep the PostgreSQL advisory transaction lock and partial unique index.
+
+For status = "running":
+
+- Keep the longer running lease.
+- Do NOT expire a genuinely active running import merely because it has been running for a long time.
+- Continue refreshing/heartbeating the running session during import work.
+- A dead Vercel/Render instance must eventually allow recovery after the running lease expires.
+- Do not weaken concurrency protection.
+
+IMPORTANT:
+The fix must work for sessions CREATED BEFORE this new lease code was deployed.
+That is the exact production problem we are solving.
+
+DO NOT:
+
+- delete the production session
+- update production rows manually
+- disable or remove the unique index
+- remove the concurrency lock
+- bypass authentication
+- bypass admin authorization
+- delete inventory data
+- change Firebase
+- change the Vercel frontend architecture
+- create a new database
+- create a migration unless absolutely required by the existing code (the expected fix should NOT require one)
+- add a manual cleanup endpoint
+- tell me to simply wait 2 hours
+
+The expected behavior after this fix is:
+
+OLD abandoned uploading session
+        ↓
+updated_at older than 15 minutes
+        ↓
+atomically marked expired
+        ↓
+new upload session can be created
+        ↓
+inventory sync can start
+
+But:
+
+ACTIVE uploading session
+        ↓
+updated_at less than 15 minutes old
+        ↓
+still protected
+        ↓
+409 remains correct
+
+And:
+
+ACTIVE running session
+        ↓
+heartbeat keeps lease fresh
+        ↓
+must NOT be expired
+
+VERIFICATION:
+
+After the minimal fix:
+
+1. Run TypeScript checks.
+2. Run API production build.
+3. Check for TypeScript errors in the changed file.
+4. Inspect git diff and make sure ONLY the intended sync-session lease behavior changed.
+5. If everything passes, commit the fix with a clear message such as:
+   "Fix stale inventory sync upload lease"
+6. Push the commit to origin/main.
+7. Confirm the final commit SHA.
+8. Do NOT make unnecessary additional commits.
+
+FINAL RESPONSE MUST TELL ME:
+
+- Exactly what was changed.
+- Uploading inactivity lease value.
+- Running lease value.
+- Heartbeat/refresh interval.
+- How old sessions are handled.
+- Whether TypeScript passed.
+- Whether production build passed.
+- Final commit SHA.
+- Whether anything remains to be done.
+
+DO NOT claim the production problem is fixed unless the code change is actually present, verified, committed, and pushed.
+
+This is the final production-safe fix. Keep it minimal.
