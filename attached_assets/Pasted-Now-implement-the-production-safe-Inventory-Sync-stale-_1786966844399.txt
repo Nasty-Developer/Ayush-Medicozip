@@ -1,0 +1,58 @@
+Now implement the production-safe Inventory Sync stale-session fix based on the investigation that was just completed.
+
+IMPORTANT: The investigation confirmed that Replit Preview and Render Production use DIFFERENT PostgreSQL databases. The production 409 is therefore coming from the Render production sync_sessions table, not from Replit Preview.
+
+The current sync_sessions implementation uses a two-hour lease for BOTH uploading and running sessions. Change this safely.
+
+Requirements:
+
+1. Keep the existing PostgreSQL concurrency protection.
+2. Keep the existing partial unique index on active sync_sessions.
+3. Do NOT remove or weaken the concurrency lock.
+4. Change UPLOADING sessions to a short inactivity lease of approximately 10–15 minutes.
+5. Keep RUNNING sessions on a longer lease appropriate for the import.
+6. Refresh/heartbeat RUNNING sessions during long imports.
+7. Use PostgreSQL CURRENT_TIMESTAMP for lease comparisons and expiry decisions.
+8. When creating a new session, atomically expire only genuinely stale uploading/running sessions.
+9. Never expire an actively running import merely because it has been running for a long time.
+10. If a Vercel/Render serverless instance dies, the abandoned session must eventually become recoverable automatically.
+11. Preserve Firebase authentication and admin authorization exactly as they currently work.
+12. Do NOT delete inventory data.
+13. Do NOT manually modify or delete any production database rows.
+14. Do NOT change the Vercel frontend architecture.
+15. Do NOT change the Render deployment architecture unnecessarily.
+16. Do NOT modify the settings:sync:current_job mechanism unless required for correctness. The investigation confirmed that this particular 409 comes from sync_sessions, not settings:sync:current_job.
+17. Preserve terminal states such as completed, failed, cancelled, and expired.
+
+Use the existing sync_sessions columns if possible. Do not require a production schema migration unless absolutely necessary.
+
+Lease behavior should be approximately:
+
+- uploading: 10–15 minute inactivity lease
+- running: longer import lease
+- running heartbeat: refresh the lease periodically while the import is genuinely active
+
+Be precise about the actual values you choose and report them at the end.
+
+Also make sure the transition from uploading → running refreshes the appropriate lease.
+
+The affected production session currently reported by the frontend is:
+
+69b93615-860c-4b16-a35f-25b52379d039
+
+DO NOT manually delete, update, expire, or otherwise modify this production row. The code must handle stale sessions safely on the next session creation.
+
+After implementation:
+
+1. Run workspace TypeScript checks.
+2. Run API TypeScript checks.
+3. Run API production build.
+4. Run storefront production build.
+5. Run admin production build if applicable.
+6. Verify the sync route still requires Firebase authentication and admin authorization.
+7. Verify the partial unique index remains intact.
+8. Verify no inventory data was changed.
+9. Verify no production database records were manually modified.
+10. Report exactly which lease and heartbeat values were changed.
+
+Do not implement unrelated features.
