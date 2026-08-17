@@ -1,1 +1,1 @@
-- [Imported artifact registration](artifact-imports.md) — external Replit monorepos may need artifact registration restored after import.
+- [Repository import artifacts](repository-import-artifacts.md) — copied artifact manifests may need registration before their managed workflows exist.
