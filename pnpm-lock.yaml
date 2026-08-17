@@ -431,6 +431,10 @@ importers:
         version: 3.25.76
 
   artifacts/ayush-medico-app:
+    dependencies:
+      firebase:
+        specifier: ^11.10.0
+        version: 11.10.0
     devDependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
