@@ -1,0 +1,78 @@
+IMPORTANT BUG TO INVESTIGATE — INVENTORY SYNC STUCK ON "ANOTHER INSTANCE"
+
+The production Ayush Medico Inventory Sync page now shows:
+
+"A sync is already running on another instance. Wait for it to finish."
+
+This happened after I previously uploaded the SDF files and the sync started. The sync appeared to begin successfully, but the process/UI disappeared/interrupted before I could confirm completion.
+
+I need you to investigate the existing sync-session/locking implementation.
+
+DO NOT randomly rewrite the sync system.
+
+DO NOT delete database data.
+
+DO NOT disable the concurrency protection.
+
+First inspect:
+
+- syncSessions schema/table
+- sync session creation
+- lock acquisition
+- lock release/finalization
+- session status transitions
+- error handling
+- request timeout handling
+- upload chunk handling
+- what happens when the browser closes
+- what happens when a Vercel/Render instance dies
+- how another instance determines that a sync is already running
+
+The production error is:
+
+"A sync is already running on another instance. Wait for it to finish."
+
+Determine whether this is:
+
+A) a genuinely active sync,
+B) a stale sync lock/session left behind by the previous interrupted sync,
+C) a session belonging to an old deployment/instance,
+D) a race condition in lock acquisition,
+E) another problem.
+
+IMPORTANT ARCHITECTURE:
+
+The frontend is deployed on Vercel.
+The API/backend is on Render.
+The sync state is stored in PostgreSQL.
+
+Because Vercel/Render can have multiple instances/processes, the sync lock MUST NOT depend on in-memory state.
+
+Inspect the PostgreSQL-backed locking implementation.
+
+If the current implementation can leave a sync permanently stuck in "running", propose the safest fix:
+
+- Use a database-backed lease/lock.
+- Give the lock an expiration/TTL.
+- Store startedAt/heartbeat/updatedAt where appropriate.
+- Automatically consider an abandoned session stale after a safe timeout.
+- Allow a new sync to recover a stale session.
+- Make lock acquisition atomic/transaction-safe.
+- Always release/finalize the lock in success and failure paths.
+- Do not allow two real syncs to run concurrently.
+- Do not simply remove the lock check.
+
+Also inspect whether the current session belongs to a previous deployment/instance.
+
+Before modifying anything, report:
+
+1. Which table/collection stores the sync session.
+2. Which record is currently considered "running".
+3. Why the backend thinks another instance is running.
+4. Whether that session is actually active or stale.
+5. Exactly where the lock is acquired.
+6. Exactly where it is released.
+7. What happens if the request/process dies unexpectedly.
+8. The safest minimal code change to make the sync recoverable.
+
+Do not proceed to unrelated Firebase, Git, Vercel, or UI changes.
