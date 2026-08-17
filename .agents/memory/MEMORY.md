@@ -1,2 +1,3 @@
+- [Imported artifact registration](imported-artifact-registration.md) — keep generated artifact metadata intact when copying an existing app into a registered artifact.
 - [Imported web app previews](imported-web-app-previews.md) — imported repositories may contain duplicate root artifacts; keep one root preview path to avoid proxy conflicts.
 - [Repository import artifacts](repository-import-artifacts.md) — copied artifact manifests may need registration before their managed workflows exist.
