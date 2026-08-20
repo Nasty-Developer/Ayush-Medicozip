@@ -1,0 +1,137 @@
+We now have an important new finding.
+
+The Replit Preview database schema has been successfully provisioned, and the sync flow is now reaching the real sync-session logic.
+
+In the deployed/canonical frontend, when I attempt a new inventory sync, the API returns:
+
+{
+  "error": "A sync is already in progress for this user.",
+  "code": "sync_session_already_active",
+  "sessionId": "...",
+  "status": "running",
+  "retryAt": "..."
+}
+
+The UI also shows:
+
+"Another inventory sync is active.
+Status: running
+Retry after 9:14:13 AM."
+
+IMPORTANT:
+Do NOT simply allow multiple inventory syncs to run concurrently.
+
+We need safe stale-session recovery.
+
+Our desired behavior is:
+
+1. If the existing sync is genuinely alive and its lease/heartbeat is valid:
+   - Keep blocking a second sync.
+   - Do NOT start another import.
+   - Preserve the existing PostgreSQL/advisory-lock protections.
+
+2. If the existing sync is stale/dead and its lease has expired:
+   - Safely recover the stale session/job.
+   - Do NOT require the user to wait indefinitely.
+   - Allow the new sync to start after stale-state recovery.
+   - Recovery must be atomic and concurrency-safe.
+
+3. If the existing sync belongs to a genuinely active process but the browser that created it is gone:
+   - Use the backend lease/heartbeat state, NOT browser presence, to determine whether it is stale.
+   - Do not assume "browser closed" means the server-side sync is dead.
+
+4. Do NOT delete database rows blindly.
+5. Do NOT disable the unique protection.
+6. Do NOT remove PostgreSQL advisory locking.
+7. Do NOT allow two real inventory imports to run simultaneously.
+8. Do NOT bypass authentication or ownership validation.
+
+FIRST: inspect the CURRENT implementation before modifying anything.
+
+Trace all of these paths:
+
+- POST /api/sync/session
+- chunk upload
+- POST /api/sync/start
+- DELETE /api/sync/cancel
+- sync_sessions
+- settings key `sync:current_job`
+- `hasValidJobLease()`
+- `claimPersistedJobLease()`
+- heartbeat logic
+- 15-minute uploading-session lease
+- 2-hour running-session lease
+- persisted job lease
+- PostgreSQL advisory locks
+
+I specifically want you to determine why the UI can report:
+
+status = "running"
+
+even though I have not intentionally started another sync.
+
+Check whether the current code still has a guard like:
+
+if (dbJob?.status === "running") {
+    return 409;
+}
+
+If so, determine whether that guard is bypassing the existing lease-aware recovery logic.
+
+IMPORTANT:
+Do NOT make changes yet.
+
+First perform a READ-ONLY diagnosis and report:
+
+A. Which exact database/state record is causing the current 409.
+B. Whether it is a `sync_sessions` record, `settings.sync:current_job`, or both.
+C. The session/job ID involved.
+D. Its status.
+E. Its heartbeat timestamp.
+F. Its updated timestamp.
+G. Its lease expiration timestamp.
+H. Whether the lease is currently valid or expired.
+I. Which code path is returning the 409.
+J. Whether the existing lease-aware recovery code is actually reachable.
+K. Whether the current Replit Preview and production use different databases.
+L. Whether the current Preview sync can safely be tested without affecting production.
+
+Do NOT modify code or database during this diagnosis.
+
+After the diagnosis, propose the MINIMAL safe code change required.
+
+The intended final behavior is:
+
+VALID ACTIVE SYNC
+→ reject second sync with a clear 409
+→ show active status/retry information
+
+STALE SYNC
+→ safely acquire the appropriate PostgreSQL lock
+→ re-read the state atomically
+→ verify the lease is still expired
+→ mark/recover the stale state safely
+→ allow the new sync to claim the job
+→ start exactly one new sync
+
+RACE CONDITION
+→ whichever request safely claims the job wins
+→ the other request receives a normal "sync already running" response
+→ never run two imports concurrently.
+
+Also make sure the frontend handles the resulting response cleanly.
+
+Do NOT:
+- remove concurrency protection
+- allow simultaneous imports
+- blindly delete `sync_sessions`
+- blindly delete `settings.sync:current_job`
+- reset the database
+- create fake medicine data
+- change Firebase
+- change Vercel routing
+- change Render configuration
+- modify duplicate frontend folders
+- redesign the UI
+
+After the read-only diagnosis, STOP and report the findings before implementing anything.
