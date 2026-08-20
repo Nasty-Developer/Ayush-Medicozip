@@ -57,6 +57,10 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
+    // The shared preview proxy does not forward Vite's HMR websocket.
+    // Disabling it keeps the dev runtime deterministic instead of leaving
+    // half-refreshed module graphs in the browser.
+    hmr: false,
     fs: {
       strict: true,
     },
