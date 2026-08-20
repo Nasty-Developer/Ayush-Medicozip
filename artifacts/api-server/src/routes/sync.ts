@@ -1240,19 +1240,9 @@ router.post(
       return;
     }
 
-    if (currentJob?.status === "running") {
+    if (hasValidJobLease(currentJob)) {
       res.status(409).json({
         error: "A sync is already running. Cancel it first or wait.",
-        code: "already_running",
-      });
-      return;
-    }
-
-    // Guard against a job running on another serverless instance
-    const dbJob = await loadJobFromDb();
-    if (dbJob?.status === "running") {
-      res.status(409).json({
-        error: "A sync is already running on another instance. Wait for it to finish.",
         code: "already_running",
       });
       return;
@@ -1306,7 +1296,18 @@ router.post(
       return;
     }
 
-    const job  = makeJob(sessionId, firebaseUid);
+    const job = makeJob(sessionId, firebaseUid);
+    const persistedLease = await claimPersistedJobLease(job);
+    if (!persistedLease.claimed) {
+      await finishSyncSession(sessionId, firebaseUid, "failed");
+      void cleanupSession(sessionId);
+      res.status(409).json({
+        error: "A sync is already running on another instance. Wait for it to finish.",
+        code: "already_running",
+      });
+      return;
+    }
+
     currentJob = job;
 
     logger.info(

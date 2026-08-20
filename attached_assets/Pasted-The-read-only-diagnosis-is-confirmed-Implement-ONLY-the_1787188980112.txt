@@ -1,0 +1,81 @@
+The read-only diagnosis is confirmed.
+
+Implement ONLY the minimal backend fix for the persisted `sync:current_job` stale-running problem.
+
+File:
+artifacts/api-server/src/routes/sync.ts
+
+Current problem:
+`/api/sync/start` does this:
+
+if (dbJob?.status === "running") {
+  return 409 already_running;
+}
+
+This ignores the existing persisted job lease (`leaseExpiresAt`).
+
+The codebase already contains lease-aware logic such as:
+- hasValidJobLease(job)
+- claimPersistedJobLease()
+- JOB_LEASE_MS = 5 minutes
+- heartbeat/lease renewal
+
+Change the `/api/sync/start` flow so that a persisted job with status `running` only blocks a new sync when its job lease is actually valid.
+
+Required behavior:
+
+1. If an existing persisted job has status `running` AND its lease is still valid:
+   - preserve the current 409 `already_running` protection.
+   - do not replace it.
+   - do not cancel it.
+   - do not weaken concurrency protection.
+
+2. If an existing persisted job has status `running` BUT its lease has expired:
+   - treat it as stale.
+   - recover/replace it safely using the existing atomic/advisory-lock-aware job claim mechanism.
+   - re-read the state while holding the appropriate PostgreSQL transaction/advisory lock.
+   - confirm the lease is still expired before replacing/recovering it.
+   - allow the new sync to claim the job.
+
+3. Preserve:
+   - Firebase authentication
+   - user ownership checks
+   - PostgreSQL advisory locking
+   - sync_sessions protections
+   - 15-minute uploading-session lease
+   - 2-hour running-session lease
+   - 30-second heartbeat
+   - existing cancellation behavior
+
+4. Do NOT:
+   - manually delete database records
+   - disable concurrency protection
+   - remove advisory locks
+   - automatically cancel another user's genuinely active sync
+   - change Vercel configuration
+   - change the Vercel Root Directory
+   - modify duplicate frontend folders
+   - modify Firebase
+   - modify medicine data
+
+5. Keep the existing `already_running` response for a genuinely active job.
+
+6. Make the smallest clean change possible. Reuse existing lease-aware helpers rather than creating a second job-lock system.
+
+7. After implementation, run:
+   - api-server TypeScript check
+   - api-server production build
+   - existing relevant sync/lifecycle tests or source assertions
+   - git diff --check
+
+8. Do NOT deploy anything yet.
+
+At the end report:
+- exact files changed
+- exact logic changed
+- how stale jobs are recovered
+- how genuinely active jobs remain protected
+- verification results
+- commit hash if one was created
+
+STOP after implementation and verification. Do not deploy.
