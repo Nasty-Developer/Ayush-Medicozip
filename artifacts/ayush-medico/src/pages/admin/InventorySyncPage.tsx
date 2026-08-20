@@ -84,6 +84,12 @@ interface ChunkProgress {
   bytesTotal: number;
 }
 
+interface ActiveSessionRecovery {
+  sessionId: string;
+  status?: string;
+  retryAt?: string;
+}
+
 // ── File Upload Card ──────────────────────────────────────────────────────────
 
 function FileUploadCard({
@@ -346,6 +352,9 @@ export default function InventorySyncPage() {
   const [cancelling,     setCancelling]     = useState(false);
   const [pollingEnabled, setPollingEnabled] = useState(false);
   const [chunkProgress,  setChunkProgress]  = useState<ChunkProgress | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  const [activeSessionRecovery, setActiveSessionRecovery] =
+    useState<ActiveSessionRecovery | null>(null);
   const queryClient = useQueryClient();
 
   const handleFile = useCallback((key: SdfFileKey, file: File | null) => {
@@ -447,6 +456,9 @@ export default function InventorySyncPage() {
     setUploadError(null);
     setChunkProgress(null);
     setStage("uploading");
+    setActiveSessionRecovery(null);
+    sessionIdRef.current = null;
+    let importStarted = false;
 
     try {
       await getFreshIdToken();
@@ -456,9 +468,39 @@ export default function InventorySyncPage() {
         method:  "POST",
       });
       if (!sessionResp.ok) {
-        throw new Error(`Failed to create upload session (${sessionResp.status})`);
+        const body = await sessionResp.json().catch(() => ({})) as {
+          error?: string;
+          code?: string;
+          sessionId?: string;
+          status?: string;
+          retryAt?: string;
+        };
+
+        if (
+          sessionResp.status === 409 &&
+          body.code === "sync_session_already_active" &&
+          body.sessionId
+        ) {
+          setActiveSessionRecovery({
+            sessionId: body.sessionId,
+            status: body.status,
+            retryAt: body.retryAt,
+          });
+          const retryMessage = body.retryAt
+            ? ` You can retry after ${new Date(body.retryAt).toLocaleTimeString()}.`
+            : "";
+          throw new Error(
+            `${body.error ?? "Another sync session is already active."}${retryMessage} ` +
+            "Cancel it only if you know the active sync is abandoned.",
+          );
+        }
+
+        throw new Error(
+          body.error ?? `Failed to create upload session (${sessionResp.status})`,
+        );
       }
       const { sessionId } = await sessionResp.json() as { sessionId: string };
+      sessionIdRef.current = sessionId;
 
       // 2. Upload each file in chunks (sequentially to avoid overwhelming the server)
       const filesToUpload: Array<{ slot: FileSlot; file: File }> = FILE_SLOTS
@@ -487,10 +529,28 @@ export default function InventorySyncPage() {
       }
 
       // 4. Begin polling
+      importStarted = true;
       await queryClient.invalidateQueries({ queryKey: ["syncStatus"] });
       setPollingEnabled(true);
       setStage("running");
     } catch (err) {
+      const sessionId = sessionIdRef.current;
+      if (sessionId && !importStarted) {
+        try {
+          const cancelResp = await authFetch("/api/sync/cancel", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId }),
+          });
+          if (!cancelResp.ok) {
+            throw new Error(`Cancellation failed (${cancelResp.status})`);
+          }
+        } catch (cancelErr) {
+          console.error("Failed to clean up abandoned sync session", cancelErr);
+        } finally {
+          sessionIdRef.current = null;
+        }
+      }
       setUploadError(err instanceof Error ? err.message : "Upload failed");
       setChunkProgress(null);
       setStage("idle");
@@ -502,11 +562,42 @@ export default function InventorySyncPage() {
   const handleCancel = async () => {
     setCancelling(true);
     try {
-      await authFetch("/api/sync/cancel", {
+      const cancelResp = await authFetch("/api/sync/cancel", {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sessionIdRef.current }),
       });
-    } catch { /* non-fatal */ }
+      if (!cancelResp.ok) {
+        throw new Error(`Cancellation failed (${cancelResp.status})`);
+      }
+      sessionIdRef.current = null;
+    } catch (err) {
+      console.error("Failed to cancel active sync session", err);
+      setUploadError(err instanceof Error ? err.message : "Failed to cancel sync");
+    }
     finally { setCancelling(false); }
+  };
+
+  const handleCancelActiveSession = async () => {
+    if (!activeSessionRecovery) return;
+    setCancelling(true);
+    try {
+      const cancelResp = await authFetch("/api/sync/cancel", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: activeSessionRecovery.sessionId }),
+      });
+      if (!cancelResp.ok) {
+        throw new Error(`Cancellation failed (${cancelResp.status})`);
+      }
+      setActiveSessionRecovery(null);
+      setUploadError("The active sync session was cancelled. You can start a new upload.");
+    } catch (err) {
+      console.error("Failed to cancel the recovered sync session", err);
+      setUploadError(err instanceof Error ? err.message : "Failed to cancel active sync");
+    } finally {
+      setCancelling(false);
+    }
   };
 
   // ── Reset ────────────────────────────────────────────────────────────────
@@ -517,6 +608,8 @@ export default function InventorySyncPage() {
     setUploadError(null);
     setPollingEnabled(false);
     setChunkProgress(null);
+    setActiveSessionRecovery(null);
+    sessionIdRef.current = null;
     queryClient.removeQueries({ queryKey: ["syncStatus"] });
   };
 
@@ -601,6 +694,32 @@ export default function InventorySyncPage() {
         <div className="flex items-start gap-2 bg-red-500/5 border border-red-500/20 rounded-lg p-3">
           <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-red-600">{uploadError}</p>
+        </div>
+      )}
+
+      {activeSessionRecovery && (
+        <div className="flex items-start justify-between gap-4 bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+          <div className="text-sm text-amber-800">
+            <p className="font-medium">Another inventory sync is active.</p>
+            {activeSessionRecovery.status && (
+              <p className="text-xs mt-1">
+                Status: {activeSessionRecovery.status}
+              </p>
+            )}
+            {activeSessionRecovery.retryAt && (
+              <p className="text-xs mt-1">
+                Retry after {new Date(activeSessionRecovery.retryAt).toLocaleTimeString()}.
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleCancelActiveSession}
+            disabled={cancelling}
+            className="shrink-0 rounded-lg border border-amber-600/30 px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-500/10 disabled:opacity-50"
+          >
+            {cancelling ? "Cancelling…" : "Cancel Active Sync"}
+          </button>
         </div>
       )}
 

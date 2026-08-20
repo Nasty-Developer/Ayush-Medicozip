@@ -1,0 +1,184 @@
+Now that the diagnosis is confirmed, implement the sync-session lifecycle fix ONLY.
+
+IMPORTANT:
+The canonical production frontend remains:
+
+artifacts/ayush-medico
+
+Do NOT replace the canonical frontend with ayush-medico-app.
+Do NOT delete ayush-medico-app.
+Do NOT delete ayush-medico-storefront.
+Do NOT change Vercel Root Directory.
+Do NOT change the production architecture.
+Do NOT modify unrelated UI.
+Do NOT modify medicine data.
+Do NOT modify Firebase.
+Do NOT modify PostgreSQL schema unless absolutely required for this fix.
+
+Use the working sync-session behavior from:
+
+artifacts/ayush-medico-app
+
+as the reference implementation.
+
+GOAL:
+
+Prevent abandoned inventory sync sessions from unnecessarily causing:
+
+409 sync_session_already_active
+
+in the canonical production application.
+
+IMPLEMENT THE FOLLOWING:
+
+1. In the canonical:
+
+artifacts/ayush-medico/src/pages/admin/InventorySyncPage.tsx
+
+store the current sync session ID in a useRef or equivalent persistent component-level value.
+
+Example concept:
+
+const sessionIdRef = useRef<string | null>(null);
+
+Do not keep the session ID only inside the try block.
+
+2. After POST /api/sync/session succeeds:
+
+save the returned sessionId into sessionIdRef.current.
+
+3. If chunk upload fails:
+
+attempt to cancel THAT SPECIFIC session using:
+
+DELETE /api/sync/cancel
+
+with the sessionId when the backend API supports it.
+
+4. If /api/sync/start fails:
+
+also attempt to cancel the specific session.
+
+5. When the user explicitly cancels an active sync:
+
+cancel the specific session ID.
+
+6. Make sure cleanup requests do not hide the original upload/start error.
+
+If cancellation itself fails, log it for diagnostics but preserve the original user-facing error.
+
+7. Improve handling of HTTP 409 from:
+
+POST /api/sync/session
+
+When the backend returns:
+
+{
+  "error": "A sync is already in progress for this user.",
+  "code": "sync_session_already_active",
+  "sessionId": "...",
+  "retryAt": "..."
+}
+
+parse the JSON response instead of displaying only:
+
+Failed to create upload session (409)
+
+Show a useful message explaining that another sync session is active.
+
+Display the retry time if available.
+
+8. Do NOT automatically cancel an existing 409 session merely because a new browser request received 409.
+
+This is important.
+
+A 409 may represent a genuinely active sync from another browser/tab.
+
+Instead, provide a safe recovery action such as:
+
+"Cancel Active Sync"
+
+only when appropriate.
+
+That action must cancel the specific sessionId returned by the backend.
+
+9. If the backend cancel endpoint currently does not accept an explicit sessionId, inspect its implementation.
+
+If necessary, minimally update the cancel endpoint so it can safely accept:
+
+sessionId
+
+and cancel ONLY that session belonging to the authenticated user.
+
+Do NOT cancel another user's session.
+
+Do NOT weaken authentication.
+
+10. Include the session status in the 409 response if useful:
+
+{
+  "error": "...",
+  "code": "sync_session_already_active",
+  "sessionId": "...",
+  "status": "uploading",
+  "retryAt": "..."
+}
+
+Only add this if it is safe and consistent with the existing API.
+
+11. Preserve the existing backend protections:
+
+- authentication
+- PostgreSQL locking
+- unique active-session protection
+- 15-minute abandoned-session lease
+- 2-hour active running lease
+- heartbeat behavior
+
+Do NOT remove these protections.
+
+12. IMPORTANT:
+
+Do not "fix" the 409 by simply deleting all sync-session records.
+
+Do not disable the active-session check.
+
+Do not increase the timeout to hide the problem.
+
+The goal is proper session lifecycle cleanup and safe recovery.
+
+13. After implementing the fix, verify:
+
+A. TypeScript passes.
+
+B. Production build passes.
+
+C. The canonical frontend builds:
+
+artifacts/ayush-medico
+
+D. POST /api/sync/session reaches Render.
+
+E. A normal new session can be created.
+
+F. If upload fails, the session is cancelled.
+
+G. A second request during a genuinely active sync still correctly receives 409.
+
+H. The 409 response contains useful recovery information.
+
+I. Explicitly cancelling an active session allows a new session to be created afterward.
+
+J. No unrelated frontend files are changed.
+
+Before finishing, show me:
+
+- exact files modified
+- exact sync lifecycle changes
+- whether backend code was changed
+- TypeScript result
+- production build result
+- tests performed
+- git diff summary
+
+Do NOT deploy or delete any project/folder yet.

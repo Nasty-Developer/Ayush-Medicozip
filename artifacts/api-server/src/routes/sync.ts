@@ -1063,6 +1063,7 @@ router.post(
           error: "A sync is already in progress for this user.",
           code: "sync_session_already_active",
           sessionId: result.existing.id,
+          status: result.existing.status,
           retryAt,
         });
         return;
