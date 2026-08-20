@@ -158,10 +158,10 @@ export default function Header() {
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
+        className={`site-header fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
           scrolled
-            ? "bg-background/85 backdrop-blur-xl border-b border-border shadow-sm"
-            : "bg-transparent"
+             ? "bg-background/95 backdrop-blur-xl border-b border-border shadow-md shadow-primary/5"
+             : "bg-background/82 backdrop-blur-md border-b border-border/70"
         }`}
       >
         <AnnouncementBanner />

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -59,43 +59,43 @@
 
 /* LIGHT MODE */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
-  --border: 214 32% 91%;
-  --card: 210 40% 98%;
+  --background: 192 42% 98%;
+  --foreground: 204 47% 15%;
+  --border: 195 24% 87%;
+  --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
-  --popover: 210 40% 98%;
+  --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
-  --primary: 205 69% 38%;
+  --primary: 190 72% 35%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 160 84% 39%;
+  --secondary: 157 64% 42%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
-  --accent: 199 89% 60%;
-  --accent-foreground: 222 47% 11%;
+  --muted: 187 34% 94%;
+  --muted-foreground: 204 19% 45%;
+  --accent: 35 92% 62%;
+  --accent-foreground: 204 47% 15%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --input: 214 32% 82%;
-  --ring: 205 69% 38%;
+  --input: 195 24% 80%;
+  --ring: 190 72% 35%;
   
   /* Required aliases for ui components */
-  --sidebar: 210 40% 98%;
-  --sidebar-foreground: 222 47% 11%;
-  --sidebar-border: 214 32% 91%;
-  --sidebar-primary: 205 69% 38%;
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 204 47% 15%;
+  --sidebar-border: 195 24% 87%;
+  --sidebar-primary: 190 72% 35%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 199 89% 60%;
-  --sidebar-accent-foreground: 222 47% 11%;
-  --sidebar-ring: 205 69% 38%;
+  --sidebar-accent: 187 34% 94%;
+  --sidebar-accent-foreground: 204 47% 15%;
+  --sidebar-ring: 190 72% 35%;
   
-  --chart-1: 205 69% 38%;
-  --chart-2: 160 84% 39%;
-  --chart-3: 199 89% 60%;
+  --chart-1: 190 72% 35%;
+  --chart-2: 157 64% 42%;
+  --chart-3: 35 92% 62%;
   --chart-4: 0 84% 60%;
   --chart-5: 222 47% 11%;
 
-  --app-font-sans: 'Inter', sans-serif;
+  --app-font-sans: 'DM Sans', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: 0.75rem;
@@ -350,4 +350,75 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* ── Homepage light-care visual language ─────────────────────────────────── */
+.hero-orbit {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--primary) / 0.08);
+  transform: rotate(-18deg);
+}
+
+.hero-orbit-one {
+  width: 34rem;
+  height: 18rem;
+  top: 13%;
+  right: -12rem;
+}
+
+.hero-orbit-two {
+  width: 24rem;
+  height: 13rem;
+  bottom: 4%;
+  left: -12rem;
+  border-color: hsl(var(--secondary) / 0.1);
+}
+
+.hero-heading-accent {
+  color: hsl(var(--primary));
+  position: relative;
+  white-space: nowrap;
+}
+
+.hero-heading-accent::after {
+  content: "";
+  position: absolute;
+  left: 0.05em;
+  right: 0.03em;
+  bottom: -0.07em;
+  height: 0.12em;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, hsl(var(--secondary)), hsl(var(--accent)));
+  transform: rotate(-1.5deg);
+}
+
+.hero-primary-button {
+  background: hsl(var(--primary));
+}
+
+.hero-primary-button:hover {
+  background: hsl(190 72% 29%);
+}
+
+@media (max-width: 640px) {
+  .hero-orbit-one {
+    width: 22rem;
+    height: 12rem;
+    top: 10%;
+    right: -13rem;
+  }
+
+  .hero-orbit-two {
+    width: 18rem;
+    height: 10rem;
+    left: -12rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-orbit {
+    display: none;
+  }
 }
