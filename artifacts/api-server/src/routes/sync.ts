@@ -51,7 +51,7 @@ import {
   requireAdminEmail,
   type AuthenticatedRequest,
 } from "../middlewares/authMiddleware";
-import { parseSdfBuffers } from "../lib/sdf/parser";
+import { prepareSdfImport } from "../lib/sdf/parser";
 
 const router = Router();
 
@@ -700,8 +700,39 @@ async function runImport(
     job.message = "Parsing SDF files…";
     await saveJobToDb(job);
 
-    const { medicines, allCategoryNames, allBrandNames, stats, parseErrors } =
-      parseSdfBuffers(buffers);
+    const plan = await prepareSdfImport({
+      product: async function* () {
+        yield buffers.product;
+      },
+      stock: async function* () {
+        yield buffers.stock;
+      },
+      company: buffers.company
+        ? async function* () {
+            yield buffers.company!;
+          }
+        : undefined,
+      category: buffers.category
+        ? async function* () {
+            yield buffers.category!;
+          }
+        : undefined,
+      drug: buffers.drug
+        ? async function* () {
+            yield buffers.drug!;
+          }
+        : undefined,
+    });
+    const medicines = [];
+    for await (const batch of plan.medicineBatches(500)) {
+      medicines.push(...batch);
+    }
+    const {
+      allCategoryNames,
+      allBrandNames,
+      stats,
+      parseErrors,
+    } = plan;
 
     job.total               = medicines.length;
     job.report.parseErrors  = parseErrors;
