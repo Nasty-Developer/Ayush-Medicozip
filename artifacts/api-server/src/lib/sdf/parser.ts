@@ -139,7 +139,7 @@ function parseStockLine(line: string): {
 export async function* readSdfLines(
   chunks: AsyncIterable<Buffer>,
 ): AsyncGenerator<string, void, void> {
-  let pending = Buffer.alloc(0);
+  let pending: Buffer<ArrayBufferLike> = Buffer.alloc(0);
 
   for await (const chunk of chunks) {
     const data = pending.length ? Buffer.concat([pending, chunk]) : chunk;
