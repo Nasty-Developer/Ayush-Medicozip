@@ -1,7 +1,6 @@
-# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+# See https://github.com for more about ignoring files.
 
-# compiled output
-dist
+# compiled output (UN-IGNORED DIST)
 tmp
 out-tsc
 *.tsbuildinfo
@@ -47,3 +46,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Force Vercel to see your API and Build files
+!api/
+!dist/

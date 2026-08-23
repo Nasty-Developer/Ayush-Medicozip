@@ -1,0 +1,1 @@
+import{j as o,R as t}from"./index-CqV9h6uy.js";import{u as a}from"./useLegalContent-MQqzrPj1.js";import{D as i}from"./DynamicLegalPage-C0Q8I3xO.js";function l(){const{content:e,loading:n}=a("refund");return o.jsx(i,{title:"Refund & Cancellation Policy",icon:t,content:e,loading:n})}export{l as default};
