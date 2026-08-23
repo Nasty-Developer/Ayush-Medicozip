@@ -1,12 +1,15 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "composite": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": true,
-    "outDir": "dist",
-    "rootDir": "src",
-    "types": ["node"]
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "noEmitOnError": false,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "rootDir": "./"
   },
-  "include": ["src"]
+  "include": ["api/**/*", "src/**/*"]
 }

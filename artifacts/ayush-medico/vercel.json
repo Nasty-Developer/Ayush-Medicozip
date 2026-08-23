@@ -1,17 +1,17 @@
 {
   "version": 2,
-  "buildCommand": "pnpm --filter @workspace/ayush-medico run build",
+  "buildCommand": "pnpm --filter @workspace/ayush-medico run build && tsc --project tsconfig.json",
   "outputDirectory": "dist/public",
   "builds": [
     {
-      "src": "api/[...path].ts",
+      "src": "api/[...path].js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/[...path].ts"
+      "dest": "api/[...path].js"
     },
     {
       "handle": "filesystem"

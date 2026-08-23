@@ -1,13 +1,24 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [
+  "version": 2,
+  "buildCommand": "pnpm --filter @workspace/ayush-medico run build && tsc --project tsconfig.json",
+  "outputDirectory": "dist/public",
+  "builds": [
     {
-      "source": "/api/:path*",
-      "destination": "https://ayush-medicozip-1.onrender.com/api/:path*"
+      "src": "api/[...path].js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "api/[...path].js"
     },
     {
-      "source": "/:path*",
-      "destination": "/index.html"
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
