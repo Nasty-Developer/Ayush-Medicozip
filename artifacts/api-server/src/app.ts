@@ -129,7 +129,10 @@ app.use("/api", router);
 // Render runs one web service for this project. In production, the API process
 // also serves the already-built Vite output from the primary frontend package.
 if (process.env.NODE_ENV === "production") {
-  const frontendDir = path.resolve(process.cwd(), "artifacts/ayush-medico/dist/public");
+  const frontendDir = path.resolve(
+    import.meta.dirname,
+    "../../ayush-medico/dist/public",
+  );
 
   app.use(express.static(frontendDir));
   app.use((req, res, next) => {
