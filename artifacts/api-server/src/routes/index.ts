@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import healthRouter   from "./health";
+import healthRouter   from "./health.js";
 import medicinesRouter from "./medicines";   // handles /medicines/*, /categories, /category/:slug, /search, /featured, /new-arrivals, /special
 import categoriesRouter from "./categories"; // admin CRUD for categories
 import productsRouter  from "./products";
