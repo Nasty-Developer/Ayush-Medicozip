@@ -4,10 +4,9 @@ import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import pinoHttp from "pino-http";
 import path from "node:path";
-import router from "./routes";
-import { logger } from "./lib/logger";
-import { initFirebaseAdmin } from "./lib/firebaseAdmin";
-
+import router from "./routes/index.js";
+import { logger } from "./lib/logger.js";
+import { initFirebaseAdmin } from "./lib/firebaseAdmin.js";
 initFirebaseAdmin();
 
 const app: Application = express();
