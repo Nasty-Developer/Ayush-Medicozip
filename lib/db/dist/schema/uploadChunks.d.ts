@@ -1,0 +1,114 @@
+export declare const uploadChunksTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "upload_chunks";
+    schema: undefined;
+    columns: {
+        sessionId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "session_id";
+            tableName: "upload_chunks";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        fileKey: import("drizzle-orm/pg-core").PgColumn<{
+            name: "file_key";
+            tableName: "upload_chunks";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        chunkIndex: import("drizzle-orm/pg-core").PgColumn<{
+            name: "chunk_index";
+            tableName: "upload_chunks";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        totalChunks: import("drizzle-orm/pg-core").PgColumn<{
+            name: "total_chunks";
+            tableName: "upload_chunks";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        data: import("drizzle-orm/pg-core").PgColumn<{
+            name: "data";
+            tableName: "upload_chunks";
+            dataType: "custom";
+            columnType: "PgCustomColumn";
+            data: Buffer<ArrayBufferLike>;
+            driverParam: Buffer<ArrayBufferLike>;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            pgColumnBuilderBrand: "PgCustomColumnBuilderBrand";
+        }>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "created_at";
+            tableName: "upload_chunks";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export type InsertUploadChunk = typeof uploadChunksTable.$inferInsert;
+export type UploadChunk = typeof uploadChunksTable.$inferSelect;
+//# sourceMappingURL=uploadChunks.d.ts.map

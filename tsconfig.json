@@ -1,19 +1,11 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "esModuleInterop": true,
-    "strict": false,
-    "skipLibCheck": true,
-    "noEmitOnError": false,
-    "resolveJsonModule": true,
-    "allowJs": true,
-    "rootDir": "./"
-  },
-  "include": ["src/**/*"],
-  "exclude": [
-    "api/**/*",
-    "artifacts/api-server/**/*"
+  "files": [],
+  "references": [
+    {
+      "path": "./lib/db"
+    },
+    {
+      "path": "./lib/api-zod"
+    }
   ]
 }
