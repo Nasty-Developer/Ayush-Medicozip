@@ -21052,9 +21052,9 @@ var require_application = __commonJS({
     var Router21 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
-    var app3 = exports = module.exports = {};
+    var app4 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
-    app3.init = function init() {
+    app4.init = function init() {
       var router21 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
@@ -21074,7 +21074,7 @@ var require_application = __commonJS({
         }
       });
     };
-    app3.defaultConfiguration = function defaultConfiguration() {
+    app4.defaultConfiguration = function defaultConfiguration() {
       var env = process.env.NODE_ENV || "development";
       this.enable("x-powered-by");
       this.set("etag", "weak");
@@ -21107,7 +21107,7 @@ var require_application = __commonJS({
         this.enable("view cache");
       }
     };
-    app3.handle = function handle(req, res, callback) {
+    app4.handle = function handle(req, res, callback) {
       var done = callback || finalhandler(req, res, {
         env: this.get("env"),
         onerror: logerror.bind(this)
@@ -21124,7 +21124,7 @@ var require_application = __commonJS({
       }
       this.router.handle(req, res, done);
     };
-    app3.use = function use(fn) {
+    app4.use = function use(fn) {
       var offset = 0;
       var path2 = "/";
       if (typeof fn !== "function") {
@@ -21161,10 +21161,10 @@ var require_application = __commonJS({
       }, this);
       return this;
     };
-    app3.route = function route(path2) {
+    app4.route = function route(path2) {
       return this.router.route(path2);
     };
-    app3.engine = function engine(ext, fn) {
+    app4.engine = function engine(ext, fn) {
       if (typeof fn !== "function") {
         throw new Error("callback function required");
       }
@@ -21172,7 +21172,7 @@ var require_application = __commonJS({
       this.engines[extension] = fn;
       return this;
     };
-    app3.param = function param(name, fn) {
+    app4.param = function param(name, fn) {
       if (Array.isArray(name)) {
         for (var i = 0; i < name.length; i++) {
           this.param(name[i], fn);
@@ -21182,7 +21182,7 @@ var require_application = __commonJS({
       this.router.param(name, fn);
       return this;
     };
-    app3.set = function set(setting, val) {
+    app4.set = function set(setting, val) {
       if (arguments.length === 1) {
         return this.settings[setting];
       }
@@ -21205,23 +21205,23 @@ var require_application = __commonJS({
       }
       return this;
     };
-    app3.path = function path2() {
+    app4.path = function path2() {
       return this.parent ? this.parent.path() + this.mountpath : "";
     };
-    app3.enabled = function enabled(setting) {
+    app4.enabled = function enabled(setting) {
       return Boolean(this.set(setting));
     };
-    app3.disabled = function disabled(setting) {
+    app4.disabled = function disabled(setting) {
       return !this.set(setting);
     };
-    app3.enable = function enable(setting) {
+    app4.enable = function enable(setting) {
       return this.set(setting, true);
     };
-    app3.disable = function disable(setting) {
+    app4.disable = function disable(setting) {
       return this.set(setting, false);
     };
     methods.forEach(function(method) {
-      app3[method] = function(path2) {
+      app4[method] = function(path2) {
         if (method === "get" && arguments.length === 1) {
           return this.set(path2);
         }
@@ -21230,7 +21230,7 @@ var require_application = __commonJS({
         return this;
       };
     });
-    app3.all = function all(path2) {
+    app4.all = function all(path2) {
       var route = this.route(path2);
       var args = slice.call(arguments, 1);
       for (var i = 0; i < methods.length; i++) {
@@ -21238,7 +21238,7 @@ var require_application = __commonJS({
       }
       return this;
     };
-    app3.render = function render(name, options, callback) {
+    app4.render = function render(name, options, callback) {
       var cache = this.cache;
       var done = callback;
       var engines = this.engines;
@@ -21274,7 +21274,7 @@ var require_application = __commonJS({
       }
       tryRender(view, renderOptions, done);
     };
-    app3.listen = function listen() {
+    app4.listen = function listen() {
       var server = http.createServer(this);
       var args = slice.call(arguments);
       if (typeof args[args.length - 1] === "function") {
@@ -23195,7 +23195,7 @@ var require_response = __commonJS({
       var encoding;
       var req = this.req;
       var type;
-      var app3 = this.app;
+      var app4 = this.app;
       switch (typeof chunk) {
         // string defaulting to html
         case "string":
@@ -23224,7 +23224,7 @@ var require_response = __commonJS({
           this.set("Content-Type", setCharset(type, "utf-8"));
         }
       }
-      var etagFn = app3.get("etag fn");
+      var etagFn = app4.get("etag fn");
       var generateETag = !this.get("ETag") && typeof etagFn === "function";
       var len;
       if (chunk !== void 0) {
@@ -23265,10 +23265,10 @@ var require_response = __commonJS({
       return this;
     };
     res.json = function json2(obj) {
-      var app3 = this.app;
-      var escape2 = app3.get("json escape");
-      var replacer = app3.get("json replacer");
-      var spaces = app3.get("json spaces");
+      var app4 = this.app;
+      var escape2 = app4.get("json escape");
+      var replacer = app4.get("json replacer");
+      var spaces = app4.get("json spaces");
       var body = stringify(obj, replacer, spaces, escape2);
       if (!this.get("Content-Type")) {
         this.set("Content-Type", "application/json");
@@ -23276,12 +23276,12 @@ var require_response = __commonJS({
       return this.send(body);
     };
     res.jsonp = function jsonp(obj) {
-      var app3 = this.app;
-      var escape2 = app3.get("json escape");
-      var replacer = app3.get("json replacer");
-      var spaces = app3.get("json spaces");
+      var app4 = this.app;
+      var escape2 = app4.get("json escape");
+      var replacer = app4.get("json replacer");
+      var spaces = app4.get("json spaces");
       var body = stringify(obj, replacer, spaces, escape2);
-      var callback = this.req.query[app3.get("jsonp callback name")];
+      var callback = this.req.query[app4.get("jsonp callback name")];
       if (!this.get("Content-Type")) {
         this.set("X-Content-Type-Options", "nosniff");
         this.set("Content-Type", "application/json");
@@ -23507,7 +23507,7 @@ var require_response = __commonJS({
       return this;
     };
     res.render = function render(view, options, callback) {
-      var app3 = this.req.app;
+      var app4 = this.req.app;
       var done = callback;
       var opts = options || {};
       var req = this.req;
@@ -23521,7 +23521,7 @@ var require_response = __commonJS({
         if (err) return req.next(err);
         self2.send(str);
       };
-      app3.render(view, opts, done);
+      app4.render(view, opts, done);
     };
     function sendfile(res2, file, options, callback) {
       var done = false;
@@ -23727,19 +23727,19 @@ var require_express = __commonJS({
     var res = require_response();
     exports = module.exports = createApplication;
     function createApplication() {
-      var app3 = function(req2, res2, next) {
-        app3.handle(req2, res2, next);
+      var app4 = function(req2, res2, next) {
+        app4.handle(req2, res2, next);
       };
-      mixin(app3, EventEmitter.prototype, false);
-      mixin(app3, proto, false);
-      app3.request = Object.create(req, {
-        app: { configurable: true, enumerable: true, writable: true, value: app3 }
+      mixin(app4, EventEmitter.prototype, false);
+      mixin(app4, proto, false);
+      app4.request = Object.create(req, {
+        app: { configurable: true, enumerable: true, writable: true, value: app4 }
       });
-      app3.response = Object.create(res, {
-        app: { configurable: true, enumerable: true, writable: true, value: app3 }
+      app4.response = Object.create(res, {
+        app: { configurable: true, enumerable: true, writable: true, value: app4 }
       });
-      app3.init();
-      return app3;
+      app4.init();
+      return app4;
     }
     exports.application = proto;
     exports.request = req;
@@ -30150,7 +30150,7 @@ var require_pino = __commonJS({
     };
     var normalize = createArgsNormalizer(defaultOptions);
     var serializers = Object.assign(/* @__PURE__ */ Object.create(null), stdSerializers);
-    function pino2(...args) {
+    function pino3(...args) {
       const instance = {};
       const { opts, stream } = normalize(instance, caller(), ...args);
       if (opts.level && typeof opts.level === "string" && DEFAULT_LEVELS[opts.level.toLowerCase()] !== void 0) opts.level = opts.level.toLowerCase();
@@ -30252,7 +30252,7 @@ var require_pino = __commonJS({
       instance[setLevelSym](level);
       return instance;
     }
-    module.exports = pino2;
+    module.exports = pino3;
     module.exports.destination = (dest = process.stdout.fd) => {
       if (typeof dest === "object") {
         dest.dest = normalizeDestFileDescriptor(dest.dest || process.stdout.fd);
@@ -30268,8 +30268,8 @@ var require_pino = __commonJS({
     module.exports.stdTimeFunctions = Object.assign({}, time2);
     module.exports.symbols = symbols;
     module.exports.version = version2;
-    module.exports.default = pino2;
-    module.exports.pino = pino2;
+    module.exports.default = pino3;
+    module.exports.pino = pino3;
   }
 });
 
@@ -30301,7 +30301,7 @@ var require_get_caller_file = __commonJS({
 var require_logger = __commonJS({
   "../../node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js"(exports, module) {
     "use strict";
-    var { pino: pino2, symbols: { stringifySym, chindingsSym } } = require_pino();
+    var { pino: pino3, symbols: { stringifySym, chindingsSym } } = require_pino();
     var serializers = require_pino_std_serializers();
     var getCallerFile = require_get_caller_file();
     var startTime = /* @__PURE__ */ Symbol("startTime");
@@ -30363,18 +30363,18 @@ var require_logger = __commonJS({
       delete opts.customErroredMessage;
       const quietReqLogger = !!opts.quietReqLogger;
       const quietResLogger = !!opts.quietResLogger;
-      const logger2 = wrapChild(opts, theStream);
-      const validLogLevels = Object.keys(logger2.levels.values).concat("silent");
+      const logger3 = wrapChild(opts, theStream);
+      const validLogLevels = Object.keys(logger3.levels.values).concat("silent");
       const useLevel = getValidLogLevel(opts.useLevel);
       delete opts.useLevel;
       const genReqId = reqIdGenFactory(opts.genReqId);
       const result = (req, res, next) => {
-        return loggingMiddleware(logger2, req, res, next);
+        return loggingMiddleware(logger3, req, res, next);
       };
-      result.logger = logger2;
+      result.logger = logger3;
       return result;
-      function onResFinished(res, logger3, err) {
-        let log = logger3;
+      function onResFinished(res, logger4, err) {
+        let log = logger4;
         const responseTime = Date.now() - res[startTime];
         const req = res[reqObject];
         const level = getLogLevelFromCustomLogLevel(customLogLevel, useLevel, res, err, req);
@@ -30383,10 +30383,10 @@ var require_logger = __commonJS({
         }
         const customPropBindings = typeof customProps === "function" ? customProps(req, res) : customProps;
         if (customPropBindings) {
-          const customPropBindingStr = logger3[stringifySym](customPropBindings).replace(/[{}]/g, "");
-          const customPropBindingsStr = logger3[chindingsSym];
+          const customPropBindingStr = logger4[stringifySym](customPropBindings).replace(/[{}]/g, "");
+          const customPropBindingsStr = logger4[chindingsSym];
           if (!customPropBindingsStr.includes(customPropBindingStr)) {
-            log = logger3.child(customPropBindings);
+            log = logger4.child(customPropBindings);
           }
         }
         if (err || res.err || res.statusCode >= 500) {
@@ -30409,10 +30409,10 @@ var require_logger = __commonJS({
           successMessage(req, res, responseTime)
         );
       }
-      function loggingMiddleware(logger3, req, res, next) {
+      function loggingMiddleware(logger4, req, res, next) {
         let shouldLogSuccess = true;
         req.id = req.id || genReqId(req, res);
-        const log = quietReqLogger ? logger3.child({ [requestIdKey]: req.id }) : logger3;
+        const log = quietReqLogger ? logger4.child({ [requestIdKey]: req.id }) : logger4;
         let fullReqLogger = log.child({ [reqKey]: req });
         const customPropBindings = typeof customProps === "function" ? customProps(req, res) : customProps;
         if (customPropBindings) {
@@ -30468,20 +30468,20 @@ var require_logger = __commonJS({
     function wrapChild(opts, stream) {
       const prevLogger = opts.logger;
       const prevGenReqId = opts.genReqId;
-      let logger2 = null;
+      let logger3 = null;
       if (prevLogger) {
         opts.logger = void 0;
         opts.genReqId = void 0;
-        logger2 = prevLogger.child({}, opts);
+        logger3 = prevLogger.child({}, opts);
         opts.logger = prevLogger;
         opts.genReqId = prevGenReqId;
       } else {
         if (opts.transport && !opts.transport.caller) {
           opts.transport.caller = getCallerFile();
         }
-        logger2 = pino2(opts, stream);
+        logger3 = pino3(opts, stream);
       }
-      return logger2;
+      return logger3;
     }
     function reqIdGenFactory(func) {
       if (typeof func === "function") return func;
@@ -31724,8 +31724,8 @@ var require_utils5 = __commonJS({
 // ../../node_modules/.pnpm/pg@8.22.0/node_modules/pg/lib/crypto/cert-signatures.js
 var require_cert_signatures = __commonJS({
   "../../node_modules/.pnpm/pg@8.22.0/node_modules/pg/lib/crypto/cert-signatures.js"(exports, module) {
-    function x509Error(msg, cert2) {
-      return new Error("SASL channel binding: " + msg + " when parsing public certificate " + cert2.toString("base64"));
+    function x509Error(msg, cert3) {
+      return new Error("SASL channel binding: " + msg + " when parsing public certificate " + cert3.toString("base64"));
     }
     function readASN1Length(data, index2) {
       let length = data[index2++];
@@ -62291,15 +62291,15 @@ var validations = {
     }
   }
 };
-function validateLogger(logger2) {
-  if (typeof logger2 !== "object" || typeof logger2.error !== "function" || typeof logger2.warn !== "function") {
+function validateLogger(logger3) {
+  if (typeof logger3 !== "object" || typeof logger3.error !== "function" || typeof logger3.warn !== "function") {
     throw new TypeError(
       "Provided logger does not implement the Logger interface"
     );
   }
 }
-var getValidations = (_enabled, logger2) => {
-  validateLogger(logger2);
+var getValidations = (_enabled, logger3) => {
+  validateLogger(logger3);
   let enabled;
   if (typeof _enabled === "boolean") {
     enabled = {
@@ -62326,8 +62326,8 @@ var getValidations = (_enabled, logger2) => {
             args
           );
         } catch (error) {
-          if (error instanceof ChangeWarning) logger2.warn(error);
-          else logger2.error(error);
+          if (error instanceof ChangeWarning) logger3.warn(error);
+          else logger3.error(error);
         }
       };
   }
@@ -62381,10 +62381,10 @@ var getOptionsFromConfig = (config) => {
 };
 var parseOptions = (passedOptions) => {
   const notUndefinedOptions = omitUndefinedProperties(passedOptions);
-  const logger2 = passedOptions.logger ?? ConsoleLogger;
+  const logger3 = passedOptions.logger ?? ConsoleLogger;
   const validations2 = getValidations(
     notUndefinedOptions?.validate ?? true,
-    logger2
+    logger3
   );
   validations2.validationsConfig();
   validations2.knownOptions(passedOptions);
@@ -62461,7 +62461,7 @@ var parseOptions = (passedOptions) => {
     ),
     // Print an error to the console if a few known misconfigurations are detected.
     validations: validations2,
-    logger: logger2
+    logger: logger3
   };
   if (typeof config.store.increment !== "function" || typeof config.store.decrement !== "function" || typeof config.store.resetKey !== "function" || config.store.resetAll !== void 0 && typeof config.store.resetAll !== "function" || config.store.init !== void 0 && typeof config.store.init !== "function") {
     throw new TypeError(
@@ -62672,10 +62672,10 @@ var DAY = 24 * HOUR;
 var import_pino_http = __toESM(require_logger(), 1);
 import path from "node:path";
 
-// src/routes/index.ts
+// src/routes/index.js
 var import_express20 = __toESM(require_express2(), 1);
 
-// src/routes/health.ts
+// src/routes/health.js
 var import_express = __toESM(require_express2(), 1);
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/util.js
@@ -66559,7 +66559,7 @@ var HealthCheckResponse = objectType({
   status: stringType()
 });
 
-// src/routes/health.ts
+// src/routes/health.js
 var router = (0, import_express.Router)();
 router.get("/healthz", (_req, res) => {
   const data = HealthCheckResponse.parse({ status: "ok" });
@@ -66567,7 +66567,7 @@ router.get("/healthz", (_req, res) => {
 });
 var health_default = router;
 
-// src/routes/medicines.ts
+// src/routes/medicines.js
 var import_express2 = __toESM(require_express2(), 1);
 
 // ../../node_modules/.pnpm/pg@8.22.0/node_modules/pg/esm/index.mjs
@@ -67256,10 +67256,10 @@ var PgEnumColumn = class extends PgColumn {
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.22.0/node_modules/drizzle-orm/subquery.js
 var Subquery = class {
   static [entityKind] = "Subquery";
-  constructor(sql3, fields, alias, isWith = false, usedTables = []) {
+  constructor(sql2, fields, alias, isWith = false, usedTables = []) {
     this._ = {
       brand: "Subquery",
-      sql: sql3,
+      sql: sql2,
       selectedFields: fields,
       alias,
       isWith,
@@ -67657,19 +67657,19 @@ function sql(strings, ...params) {
   }
   return new SQL(queryChunks);
 }
-((sql22) => {
+((sql2) => {
   function empty() {
     return new SQL([]);
   }
-  sql22.empty = empty;
+  sql2.empty = empty;
   function fromList(list) {
     return new SQL(list);
   }
-  sql22.fromList = fromList;
+  sql2.fromList = fromList;
   function raw(str) {
     return new SQL([new StringChunk(str)]);
   }
-  sql22.raw = raw;
+  sql2.raw = raw;
   function join(chunks2, separator) {
     const result = [];
     for (const [i, chunk] of chunks2.entries()) {
@@ -67680,24 +67680,24 @@ function sql(strings, ...params) {
     }
     return new SQL(result);
   }
-  sql22.join = join;
+  sql2.join = join;
   function identifier(value) {
     return new Name(value);
   }
-  sql22.identifier = identifier;
+  sql2.identifier = identifier;
   function placeholder2(name2) {
     return new Placeholder(name2);
   }
-  sql22.placeholder = placeholder2;
+  sql2.placeholder = placeholder2;
   function param2(value, encoder) {
     return new Param(value, encoder);
   }
-  sql22.param = param2;
+  sql2.param = param2;
 })(sql || (sql = {}));
 ((SQL2) => {
   class Aliased {
-    constructor(sql22, fieldAlias) {
-      this.sql = sql22;
+    constructor(sql2, fieldAlias) {
+      this.sql = sql2;
       this.fieldAlias = fieldAlias;
     }
     static [entityKind] = "SQL.Aliased";
@@ -70511,8 +70511,8 @@ var PgDialect = class {
       return "none";
     }
   }
-  sqlToQuery(sql22, invokeSource) {
-    return sql22.toQuery({
+  sqlToQuery(sql2, invokeSource) {
+    return sql2.toQuery({
       casing: this.casing,
       escapeName: this.escapeName,
       escapeParam: this.escapeParam,
@@ -72871,10 +72871,10 @@ var PgRelationalQuery = class extends QueryPromise {
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.22.0/node_modules/drizzle-orm/pg-core/query-builders/raw.js
 var PgRaw = class extends QueryPromise {
-  constructor(execute, sql3, query, mapBatchResult) {
+  constructor(execute, sql2, query, mapBatchResult) {
     super();
     this.execute = execute;
-    this.sql = sql3;
+    this.sql = sql2;
     this.query = query;
     this.mapBatchResult = mapBatchResult;
   }
@@ -73194,8 +73194,8 @@ var NoopCache = class extends Cache {
   async onMutate(_params) {
   }
 };
-async function hashQuery(sql3, params) {
-  const dataToHash = `${sql3}-${JSON.stringify(params)}`;
+async function hashQuery(sql2, params) {
+  const dataToHash = `${sql2}-${JSON.stringify(params)}`;
   const encoder = new TextEncoder();
   const data = encoder.encode(dataToHash);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -73328,8 +73328,8 @@ var PgSession = class {
     ).all();
   }
   /** @internal */
-  async count(sql22, token) {
-    const res = await this.execute(sql22, token);
+  async count(sql2, token) {
+    const res = await this.execute(sql2, token);
     return Number(
       res[0]["count"]
     );
@@ -73367,12 +73367,12 @@ var PgTransaction = class extends PgDatabase {
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.22.0/node_modules/drizzle-orm/node-postgres/session.js
 var { Pool: Pool2, types: types2 } = esm_default;
 var NodePgPreparedQuery = class extends PgPreparedQuery {
-  constructor(client, queryString, params, logger2, cache, queryMetadata, cacheConfig, fields, name, _isResponseInArrayMode, customResultMapper) {
+  constructor(client, queryString, params, logger3, cache, queryMetadata, cacheConfig, fields, name, _isResponseInArrayMode, customResultMapper) {
     super({ sql: queryString, params }, cache, queryMetadata, cacheConfig);
     this.client = client;
     this.queryString = queryString;
     this.params = params;
-    this.logger = logger2;
+    this.logger = logger3;
     this.fields = fields;
     this._isResponseInArrayMode = _isResponseInArrayMode;
     this.customResultMapper = customResultMapper;
@@ -73551,8 +73551,8 @@ var NodePgSession = class _NodePgSession extends PgSession {
       if (isPool) session.client.release();
     }
   }
-  async count(sql22) {
-    const res = await this.execute(sql22);
+  async count(sql2) {
+    const res = await this.execute(sql2);
     return Number(
       res["rows"][0]["count"]
     );
@@ -73600,11 +73600,11 @@ var NodePgDatabase = class extends PgDatabase {
 };
 function construct(client, config = {}) {
   const dialect = new PgDialect({ casing: config.casing });
-  let logger2;
+  let logger3;
   if (config.logger === true) {
-    logger2 = new DefaultLogger();
+    logger3 = new DefaultLogger();
   } else if (config.logger !== false) {
-    logger2 = config.logger;
+    logger3 = config.logger;
   }
   let schema;
   if (config.schema) {
@@ -73618,7 +73618,7 @@ function construct(client, config = {}) {
       tableNamesMap: tablesConfig.tableNamesMap
     };
   }
-  const driver = new NodePgDriver(client, dialect, { logger: logger2, cache: config.cache });
+  const driver = new NodePgDriver(client, dialect, { logger: logger3, cache: config.cache });
   const session = driver.createSession(schema);
   const db2 = new NodePgDatabase(dialect, session, schema);
   db2.$client = client;
@@ -74128,7 +74128,7 @@ var logger = (0, import_pino.default)({
   }
 });
 
-// src/routes/medicines.ts
+// src/routes/medicines.js
 var router2 = (0, import_express2.Router)();
 var LOW_STOCK_THRESHOLD = 10;
 function toPublicMedicine(m) {
@@ -74174,9 +74174,7 @@ async function fetchMedicinesWithJoins(where, limit = 50, offset = 0, extraOrder
     categoryName: categoriesTable.name,
     categoryImageUrl: categoriesTable.imageUrl
   }).from(medicinesTable).leftJoin(companiesTable, eq(medicinesTable.companyId, companiesTable.id)).leftJoin(categoriesTable, eq(medicinesTable.categoryId, categoriesTable.id)).where(and(eq(medicinesTable.status, "active"), where ?? sql`true`)).orderBy(STOCK_ORDER, extraOrder ?? asc(medicinesTable.name)).limit(limit).offset(offset);
-  return rows.map(
-    (r) => toPublicMedicine({ ...r.m, companyName: r.companyName, categoryName: r.categoryName, categoryImageUrl: r.categoryImageUrl })
-  );
+  return rows.map((r) => toPublicMedicine({ ...r.m, companyName: r.companyName, categoryName: r.categoryName, categoryImageUrl: r.categoryImageUrl }));
 }
 router2.get("/medicines", async (req, res) => {
   try {
@@ -74187,7 +74185,8 @@ router2.get("/medicines", async (req, res) => {
     const conditions = [];
     if (category) {
       const cat = await db.select({ id: categoriesTable.id }).from(categoriesTable).where(eq(categoriesTable.name, String(category))).limit(1);
-      if (cat[0]) conditions.push(eq(medicinesTable.categoryId, cat[0].id));
+      if (cat[0])
+        conditions.push(eq(medicinesTable.categoryId, cat[0].id));
       else {
         res.json({ data: [], total: 0, page, limit, hasMore: false });
         return;
@@ -74195,21 +74194,20 @@ router2.get("/medicines", async (req, res) => {
     }
     if (company) {
       const co = await db.select({ id: companiesTable.id }).from(companiesTable).where(eq(companiesTable.name, String(company))).limit(1);
-      if (co[0]) conditions.push(eq(medicinesTable.companyId, co[0].id));
+      if (co[0])
+        conditions.push(eq(medicinesTable.companyId, co[0].id));
     }
     if (search) {
       const q = `%${String(search)}%`;
-      conditions.push(
-        or(
-          ilike(medicinesTable.name, q),
-          ilike(medicinesTable.genericName, q)
-        )
-      );
+      conditions.push(or(ilike(medicinesTable.name, q), ilike(medicinesTable.genericName, q)));
     }
     let extraOrder;
-    if (sort === "name") extraOrder = asc(medicinesTable.name);
-    if (sort === "price-low") extraOrder = asc(medicinesTable.sellingPrice);
-    if (sort === "price-high") extraOrder = desc(medicinesTable.sellingPrice);
+    if (sort === "name")
+      extraOrder = asc(medicinesTable.name);
+    if (sort === "price-low")
+      extraOrder = asc(medicinesTable.sellingPrice);
+    if (sort === "price-high")
+      extraOrder = desc(medicinesTable.sellingPrice);
     const where = conditions.length ? and(...conditions) : void 0;
     const [data, [{ total }]] = await Promise.all([
       fetchMedicinesWithJoins(where, limit, offset, extraOrder),
@@ -74230,14 +74228,7 @@ router2.get("/medicines/search", async (req, res) => {
       return;
     }
     const pattern = `%${q}%`;
-    const data = await fetchMedicinesWithJoins(
-      or(
-        ilike(medicinesTable.name, pattern),
-        ilike(medicinesTable.genericName, pattern)
-      ),
-      limit,
-      0
-    );
+    const data = await fetchMedicinesWithJoins(or(ilike(medicinesTable.name, pattern), ilike(medicinesTable.genericName, pattern)), limit, 0);
     res.json({ data });
   } catch (err) {
     logger.error({ err }, "GET /medicines/search failed");
@@ -74309,14 +74300,7 @@ router2.get("/medicines/:id/related", async (req, res) => {
       res.json({ data: [] });
       return;
     }
-    const data = await fetchMedicinesWithJoins(
-      and(
-        eq(medicinesTable.categoryId, source.categoryId),
-        ne(medicinesTable.id, id)
-      ),
-      8,
-      0
-    );
+    const data = await fetchMedicinesWithJoins(and(eq(medicinesTable.categoryId, source.categoryId), ne(medicinesTable.id, id)), 8, 0);
     res.json({ data });
   } catch (err) {
     logger.error({ err }, "GET /medicines/:id/related failed");
@@ -74336,13 +74320,7 @@ router2.get("/categories", async (_req, res) => {
       enabled: categoriesTable.enabled,
       displayOrder: categoriesTable.displayOrder,
       count: sql`count(${medicinesTable.id})::int`
-    }).from(categoriesTable).leftJoin(
-      medicinesTable,
-      and(
-        eq(medicinesTable.categoryId, categoriesTable.id),
-        eq(medicinesTable.status, "active")
-      )
-    ).where(eq(categoriesTable.enabled, true)).groupBy(categoriesTable.id).orderBy(asc(categoriesTable.displayOrder), asc(categoriesTable.name));
+    }).from(categoriesTable).leftJoin(medicinesTable, and(eq(medicinesTable.categoryId, categoriesTable.id), eq(medicinesTable.status, "active"))).where(eq(categoriesTable.enabled, true)).groupBy(categoriesTable.id).orderBy(asc(categoriesTable.displayOrder), asc(categoriesTable.name));
     const data = rows.map((r) => ({
       id: String(r.id),
       name: r.name,
@@ -74374,9 +74352,12 @@ router2.get("/category/:slug", async (req, res) => {
       return;
     }
     let extraOrder;
-    if (sort === "name") extraOrder = asc(medicinesTable.name);
-    if (sort === "price-low") extraOrder = asc(medicinesTable.sellingPrice);
-    if (sort === "price-high") extraOrder = desc(medicinesTable.sellingPrice);
+    if (sort === "name")
+      extraOrder = asc(medicinesTable.name);
+    if (sort === "price-low")
+      extraOrder = asc(medicinesTable.sellingPrice);
+    if (sort === "price-high")
+      extraOrder = desc(medicinesTable.sellingPrice);
     const where = eq(medicinesTable.categoryId, cat.id);
     const [data, [{ total }]] = await Promise.all([
       fetchMedicinesWithJoins(where, limit, offset, extraOrder),
@@ -74411,14 +74392,7 @@ router2.get("/search", async (req, res) => {
       return;
     }
     const pattern = `%${q}%`;
-    const data = await fetchMedicinesWithJoins(
-      or(
-        ilike(medicinesTable.name, pattern),
-        ilike(medicinesTable.genericName, pattern)
-      ),
-      limit,
-      0
-    );
+    const data = await fetchMedicinesWithJoins(or(ilike(medicinesTable.name, pattern), ilike(medicinesTable.genericName, pattern)), limit, 0);
     res.json({ data });
   } catch (err) {
     logger.error({ err }, "GET /search failed");
@@ -74427,72 +74401,35 @@ router2.get("/search", async (req, res) => {
 });
 var medicines_default = router2;
 
-// src/routes/categories.ts
+// src/routes/categories.js
 var import_express3 = __toESM(require_express2(), 1);
 
 // src/lib/firebaseAdmin.ts
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-var app = null;
-var hasServiceAccountCredentials = false;
-var initializationError = null;
-function firstConfigured(...values) {
-  return values.find((value) => typeof value === "string" && value.trim().length > 0)?.trim();
-}
-function normalizePrivateKey(privateKey) {
-  return privateKey.replace(/\\n/g, "\n");
-}
-function initFirebaseAdmin() {
-  if (app || getApps().length > 0) return;
-  const projectId = firstConfigured(
-    process.env["FIREBASE_PROJECT_ID"],
-    process.env["VITE_FIREBASE_PROJECT_ID"]
-  );
-  const serviceAccountJson = process.env["FIREBASE_SERVICE_ACCOUNT_JSON"];
-  if (!projectId && !serviceAccountJson) {
-    initializationError = "Firebase Admin project ID or service account credentials are not configured";
-    logger.error(initializationError);
-    return;
-  }
-  try {
-    if (serviceAccountJson) {
-      const serviceAccount = JSON.parse(serviceAccountJson);
-      if (typeof serviceAccount.private_key === "string") {
-        serviceAccount.private_key = normalizePrivateKey(serviceAccount.private_key);
-      }
-      app = initializeApp({ credential: cert(serviceAccount) });
-      hasServiceAccountCredentials = true;
-      logger.info("Firebase Admin initialized with service account");
-    } else {
-      const clientEmail = firstConfigured(process.env["FIREBASE_CLIENT_EMAIL"]);
-      const privateKey = firstConfigured(process.env["FIREBASE_PRIVATE_KEY"]);
-      if (clientEmail && privateKey && projectId) {
-        app = initializeApp({
-          credential: cert({
-            projectId,
-            clientEmail,
-            privateKey: normalizePrivateKey(privateKey)
-          }),
-          projectId
-        });
-        hasServiceAccountCredentials = true;
-        logger.info("Firebase Admin initialized with server-side service account variables");
-      } else if (projectId) {
-        app = initializeApp({ projectId });
-        logger.warn(
-          "Firebase Admin initialized with project ID only. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY for server-side Firebase Admin API access."
-        );
-      } else {
-        initializationError = "Firebase Admin service account credentials are missing a project ID";
-        logger.error(initializationError);
-      }
+
+// src/lib/logger.js
+var import_pino2 = __toESM(require_pino(), 1);
+var isProduction2 = process.env.NODE_ENV === "production";
+var logger2 = (0, import_pino2.default)({
+  level: process.env.LOG_LEVEL ?? "info",
+  redact: [
+    "req.headers.authorization",
+    "req.headers.cookie",
+    "res.headers['set-cookie']"
+  ],
+  ...isProduction2 ? {} : {
+    transport: {
+      target: "pino-pretty",
+      options: { colorize: true }
     }
-  } catch (err) {
-    initializationError = "Firebase Admin could not be initialized from the configured credentials";
-    logger.error({ err }, "Failed to initialize Firebase Admin");
   }
-}
+});
+
+// src/lib/firebaseAdmin.ts
+var app = null;
+var initializationError = null;
 var FirebaseAdminConfigurationError = class extends Error {
   code = "firebase_admin_not_configured";
   constructor() {
@@ -74550,20 +74487,14 @@ function requireAdminEmail(req, res, next) {
   next();
 }
 
-// src/routes/categories.ts
+// src/routes/categories.js
 var router3 = (0, import_express3.Router)();
 router3.get("/", async (_req, res) => {
   try {
     const rows = await db.select({
       ...getTableColumns(categoriesTable),
       count: sql`cast(count(${medicinesTable.id}) as int)`
-    }).from(categoriesTable).leftJoin(
-      medicinesTable,
-      and(
-        eq(medicinesTable.categoryId, categoriesTable.id),
-        eq(medicinesTable.status, "active")
-      )
-    ).where(eq(categoriesTable.enabled, true)).groupBy(categoriesTable.id).orderBy(categoriesTable.displayOrder, categoriesTable.name);
+    }).from(categoriesTable).leftJoin(medicinesTable, and(eq(medicinesTable.categoryId, categoriesTable.id), eq(medicinesTable.status, "active"))).where(eq(categoriesTable.enabled, true)).groupBy(categoriesTable.id).orderBy(categoriesTable.displayOrder, categoriesTable.name);
     res.json({ data: rows });
   } catch (err) {
     logger.error({ err }, "Failed to fetch categories");
@@ -74640,21 +74571,23 @@ router3.delete("/:id", requireAuth, requireAdminEmail, async (req, res) => {
 });
 var categories_default = router3;
 
-// src/routes/products.ts
+// src/routes/products.js
 var import_express4 = __toESM(require_express2(), 1);
 var router4 = (0, import_express4.Router)();
 router4.get("/", async (req, res) => {
   try {
     const { search, category, stockStatus, showInNewArrivals, showInSpecialMedicines } = req.query;
     const conditions = [];
-    if (category) conditions.push(eq(productsTable.categoryId, Number(category)));
-    if (stockStatus) conditions.push(eq(productsTable.stockStatus, String(stockStatus)));
-    if (showInNewArrivals === "true") conditions.push(eq(productsTable.showInNewArrivals, true));
-    if (showInSpecialMedicines === "true") conditions.push(eq(productsTable.showInSpecialMedicines, true));
+    if (category)
+      conditions.push(eq(productsTable.categoryId, Number(category)));
+    if (stockStatus)
+      conditions.push(eq(productsTable.stockStatus, String(stockStatus)));
+    if (showInNewArrivals === "true")
+      conditions.push(eq(productsTable.showInNewArrivals, true));
+    if (showInSpecialMedicines === "true")
+      conditions.push(eq(productsTable.showInSpecialMedicines, true));
     if (search) {
-      conditions.push(
-        or(ilike(productsTable.name, `%${search}%`), ilike(productsTable.brand, `%${search}%`))
-      );
+      conditions.push(or(ilike(productsTable.name, `%${search}%`), ilike(productsTable.brand, `%${search}%`)));
     }
     const products = await db.select().from(productsTable).where(conditions.length ? and(...conditions) : void 0).orderBy(productsTable.displayOrder, productsTable.name);
     res.json(products);
@@ -74688,7 +74621,8 @@ router4.post("/", requireAuth, requireAdminEmail, async (req, res) => {
       res.status(400).json({ error: "name is required" });
       return;
     }
-    if (!data.slug) data.slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    if (!data.slug)
+      data.slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const [created] = await db.insert(productsTable).values(data).returning();
     await db.insert(inventoryTable).values({ productId: created.id, quantity: 0 }).onConflictDoNothing();
     res.status(201).json(created);
@@ -74772,7 +74706,7 @@ router4.put("/:id/inventory", requireAuth, requireAdminEmail, async (req, res) =
 });
 var products_default = router4;
 
-// src/routes/vet-medicines.ts
+// src/routes/vet-medicines.js
 var import_express5 = __toESM(require_express2(), 1);
 var router5 = (0, import_express5.Router)();
 function paginate(req) {
@@ -74785,18 +74719,7 @@ router5.get("/categories", async (_req, res) => {
     const rows = await db.select({
       ...getTableColumns(categoriesTable),
       count: sql`cast(count(${vetMedicinesTable.id}) as int)`
-    }).from(categoriesTable).leftJoin(
-      vetMedicinesTable,
-      and(
-        eq(vetMedicinesTable.categoryId, categoriesTable.id),
-        eq(vetMedicinesTable.status, "active")
-      )
-    ).where(
-      and(
-        eq(categoriesTable.enabled, true),
-        eq(categoriesTable.collectionType, "veterinary")
-      )
-    ).groupBy(categoriesTable.id).orderBy(asc(categoriesTable.displayOrder), asc(categoriesTable.name));
+    }).from(categoriesTable).leftJoin(vetMedicinesTable, and(eq(vetMedicinesTable.categoryId, categoriesTable.id), eq(vetMedicinesTable.status, "active"))).where(and(eq(categoriesTable.enabled, true), eq(categoriesTable.collectionType, "veterinary"))).groupBy(categoriesTable.id).orderBy(asc(categoriesTable.displayOrder), asc(categoriesTable.name));
     res.json({ data: rows });
   } catch (err) {
     logger.error({ err }, "GET /vet-medicines/categories failed");
@@ -74808,15 +74731,10 @@ router5.get("/admin", requireAuth, requireAdminEmail, async (req, res) => {
     const { page, limit, offset } = paginate(req);
     const { search, categoryId } = req.query;
     const conditions = [];
-    if (categoryId) conditions.push(eq(vetMedicinesTable.categoryId, Number(categoryId)));
+    if (categoryId)
+      conditions.push(eq(vetMedicinesTable.categoryId, Number(categoryId)));
     if (search) {
-      conditions.push(
-        or(
-          ilike(vetMedicinesTable.name, `%${search}%`),
-          ilike(vetMedicinesTable.brand, `%${search}%`),
-          ilike(vetMedicinesTable.genericName, `%${search}%`)
-        )
-      );
+      conditions.push(or(ilike(vetMedicinesTable.name, `%${search}%`), ilike(vetMedicinesTable.brand, `%${search}%`), ilike(vetMedicinesTable.genericName, `%${search}%`)));
     }
     const where = conditions.length ? and(...conditions) : void 0;
     const [rows, [totalRow]] = await Promise.all([
@@ -74837,17 +74755,14 @@ router5.get("/", async (req, res) => {
     const { page, limit, offset } = paginate(req);
     const { search, categoryId, animalType, featured } = req.query;
     const conditions = [eq(vetMedicinesTable.status, "active")];
-    if (categoryId) conditions.push(eq(vetMedicinesTable.categoryId, Number(categoryId)));
-    if (animalType) conditions.push(eq(vetMedicinesTable.animalType, String(animalType)));
-    if (featured === "true") conditions.push(eq(vetMedicinesTable.featured, true));
+    if (categoryId)
+      conditions.push(eq(vetMedicinesTable.categoryId, Number(categoryId)));
+    if (animalType)
+      conditions.push(eq(vetMedicinesTable.animalType, String(animalType)));
+    if (featured === "true")
+      conditions.push(eq(vetMedicinesTable.featured, true));
     if (search) {
-      conditions.push(
-        or(
-          ilike(vetMedicinesTable.name, `%${search}%`),
-          ilike(vetMedicinesTable.brand, `%${search}%`),
-          ilike(vetMedicinesTable.genericName, `%${search}%`)
-        )
-      );
+      conditions.push(or(ilike(vetMedicinesTable.name, `%${search}%`), ilike(vetMedicinesTable.brand, `%${search}%`), ilike(vetMedicinesTable.genericName, `%${search}%`)));
     }
     const where = and(...conditions);
     const [rows, [totalRow]] = await Promise.all([
@@ -74933,7 +74848,7 @@ router5.delete("/:id", requireAuth, requireAdminEmail, async (req, res) => {
 });
 var vet_medicines_default = router5;
 
-// src/routes/general-products.ts
+// src/routes/general-products.js
 var import_express6 = __toESM(require_express2(), 1);
 var router6 = (0, import_express6.Router)();
 function paginate2(req) {
@@ -74946,18 +74861,7 @@ router6.get("/categories", async (_req, res) => {
     const rows = await db.select({
       ...getTableColumns(categoriesTable),
       count: sql`cast(count(${generalProductsTable.id}) as int)`
-    }).from(categoriesTable).leftJoin(
-      generalProductsTable,
-      and(
-        eq(generalProductsTable.categoryId, categoriesTable.id),
-        eq(generalProductsTable.status, "active")
-      )
-    ).where(
-      and(
-        eq(categoriesTable.enabled, true),
-        eq(categoriesTable.collectionType, "general")
-      )
-    ).groupBy(categoriesTable.id).orderBy(asc(categoriesTable.displayOrder), asc(categoriesTable.name));
+    }).from(categoriesTable).leftJoin(generalProductsTable, and(eq(generalProductsTable.categoryId, categoriesTable.id), eq(generalProductsTable.status, "active"))).where(and(eq(categoriesTable.enabled, true), eq(categoriesTable.collectionType, "general"))).groupBy(categoriesTable.id).orderBy(asc(categoriesTable.displayOrder), asc(categoriesTable.name));
     res.json({ data: rows });
   } catch (err) {
     logger.error({ err }, "GET /general-products/categories failed");
@@ -74969,15 +74873,12 @@ router6.get("/admin", requireAuth, requireAdminEmail, async (req, res) => {
     const { page, limit, offset } = paginate2(req);
     const { search, categoryId, subCategory } = req.query;
     const conditions = [];
-    if (categoryId) conditions.push(eq(generalProductsTable.categoryId, Number(categoryId)));
-    if (subCategory) conditions.push(eq(generalProductsTable.subCategory, String(subCategory)));
+    if (categoryId)
+      conditions.push(eq(generalProductsTable.categoryId, Number(categoryId)));
+    if (subCategory)
+      conditions.push(eq(generalProductsTable.subCategory, String(subCategory)));
     if (search) {
-      conditions.push(
-        or(
-          ilike(generalProductsTable.name, `%${search}%`),
-          ilike(generalProductsTable.brand, `%${search}%`)
-        )
-      );
+      conditions.push(or(ilike(generalProductsTable.name, `%${search}%`), ilike(generalProductsTable.brand, `%${search}%`)));
     }
     const where = conditions.length ? and(...conditions) : void 0;
     const [rows, [totalRow]] = await Promise.all([
@@ -74998,17 +74899,14 @@ router6.get("/", async (req, res) => {
     const { page, limit, offset } = paginate2(req);
     const { search, categoryId, subCategory, featured } = req.query;
     const conditions = [eq(generalProductsTable.status, "active")];
-    if (categoryId) conditions.push(eq(generalProductsTable.categoryId, Number(categoryId)));
-    if (subCategory) conditions.push(eq(generalProductsTable.subCategory, String(subCategory)));
-    if (featured === "true") conditions.push(eq(generalProductsTable.featured, true));
+    if (categoryId)
+      conditions.push(eq(generalProductsTable.categoryId, Number(categoryId)));
+    if (subCategory)
+      conditions.push(eq(generalProductsTable.subCategory, String(subCategory)));
+    if (featured === "true")
+      conditions.push(eq(generalProductsTable.featured, true));
     if (search) {
-      conditions.push(
-        or(
-          ilike(generalProductsTable.name, `%${search}%`),
-          ilike(generalProductsTable.brand, `%${search}%`),
-          ilike(generalProductsTable.description, `%${search}%`)
-        )
-      );
+      conditions.push(or(ilike(generalProductsTable.name, `%${search}%`), ilike(generalProductsTable.brand, `%${search}%`), ilike(generalProductsTable.description, `%${search}%`)));
     }
     const where = and(...conditions);
     const [rows, [totalRow]] = await Promise.all([
@@ -75094,7 +74992,7 @@ router6.delete("/:id", requireAuth, requireAdminEmail, async (req, res) => {
 });
 var general_products_default = router6;
 
-// src/routes/orders.ts
+// src/routes/orders.js
 var import_express7 = __toESM(require_express2(), 1);
 var router7 = (0, import_express7.Router)();
 var ORDER_PREFIX = "AYM";
@@ -75106,10 +75004,7 @@ async function attachItems(order) {
 router7.get("/next-id", requireAuth, async (_req, res) => {
   try {
     const year = (/* @__PURE__ */ new Date()).getFullYear();
-    const [row] = await db.select({ orderId: ordersTable.orderId }).from(ordersTable).where(and(
-      gte(ordersTable.orderId, `${ORDER_PREFIX}-${year}-000000`),
-      lte(ordersTable.orderId, `${ORDER_PREFIX}-${year}-999999`)
-    )).orderBy(desc(ordersTable.orderId)).limit(1);
+    const [row] = await db.select({ orderId: ordersTable.orderId }).from(ordersTable).where(and(gte(ordersTable.orderId, `${ORDER_PREFIX}-${year}-000000`), lte(ordersTable.orderId, `${ORDER_PREFIX}-${year}-999999`))).orderBy(desc(ordersTable.orderId)).limit(1);
     let seq = 1;
     if (row?.orderId) {
       const match = row.orderId.match(/(\d{6})$/);
@@ -75137,8 +75032,10 @@ router7.get("/", requireAuth, async (req, res) => {
       return;
     }
     const conds = [];
-    if (customerId) conds.push(eq(ordersTable.customerId, String(customerId)));
-    if (status) conds.push(eq(ordersTable.status, String(status)));
+    if (customerId)
+      conds.push(eq(ordersTable.customerId, String(customerId)));
+    if (status)
+      conds.push(eq(ordersTable.status, String(status)));
     const where = conds.length ? and(...conds) : void 0;
     const orders = await db.select().from(ordersTable).where(where).orderBy(desc(ordersTable.createdAt)).limit(limitVal).offset(offsetVal);
     res.json(orders);
@@ -75341,7 +75238,7 @@ router7.patch("/:id/fields", requireAuth, async (req, res) => {
 });
 var orders_default = router7;
 
-// src/routes/users.ts
+// src/routes/users.js
 var import_express8 = __toESM(require_express2(), 1);
 var router8 = (0, import_express8.Router)();
 router8.get("/by-firebase/:uid", requireAuth, async (req, res) => {
@@ -75411,7 +75308,7 @@ router8.post("/admin/sync", requireAuth, requireAdminEmail, async (req, res) => 
 });
 var users_default = router8;
 
-// src/routes/coupons.ts
+// src/routes/coupons.js
 var import_express9 = __toESM(require_express2(), 1);
 var router9 = (0, import_express9.Router)();
 router9.get("/", requireAuth, requireAdminEmail, async (_req, res) => {
@@ -75466,7 +75363,8 @@ router9.post("/validate", requireAuth, async (req, res) => {
       discountAmount = Number(coupon.discountValue);
     } else {
       discountAmount = orderAmount * Number(coupon.discountValue) / 100;
-      if (coupon.maximumDiscount) discountAmount = Math.min(discountAmount, Number(coupon.maximumDiscount));
+      if (coupon.maximumDiscount)
+        discountAmount = Math.min(discountAmount, Number(coupon.maximumDiscount));
     }
     res.json({ valid: true, coupon, discountAmount: Math.min(discountAmount, orderAmount) });
   } catch (err) {
@@ -75526,7 +75424,7 @@ router9.delete("/:id", requireAuth, requireAdminEmail, async (req, res) => {
 });
 var coupons_default = router9;
 
-// src/routes/sync.ts
+// src/routes/sync.js
 var import_express10 = __toESM(require_express2(), 1);
 var import_multer = __toESM(require_multer(), 1);
 import { randomUUID } from "crypto";
@@ -75870,7 +75768,7 @@ async function prepareSdfImport(files) {
   };
 }
 
-// src/routes/sync.ts
+// src/routes/sync.js
 var router10 = (0, import_express10.Router)();
 var CHUNK_UPLOAD = (0, import_multer.default)({
   storage: import_multer.default.memoryStorage(),
@@ -75886,13 +75784,12 @@ var SyncLeaseLostError = class extends Error {
   }
 };
 function parsePersistedJob(value) {
-  if (!value || typeof value !== "object") return null;
+  if (!value || typeof value !== "object")
+    return null;
   return value;
 }
 function hasValidJobLease(job, now = Date.now()) {
-  return Boolean(
-    job?.status === "running" && Number.isFinite(job.leaseExpiresAt) && job.leaseExpiresAt > now
-  );
+  return Boolean(job?.status === "running" && Number.isFinite(job.leaseExpiresAt) && job.leaseExpiresAt > now);
 }
 function touchJobLease(job, now = Date.now()) {
   job.updatedAt = now;
@@ -75905,23 +75802,17 @@ async function saveJobToDb(job) {
     const updated = await db.update(settingsTable).set({
       value: job,
       updatedAt: new Date(job.updatedAt)
-    }).where(
-      and(
-        eq(settingsTable.key, SYNC_JOB_KEY),
-        sql`value->>'ownerId' = ${job.ownerId}`
-      )
-    ).returning({ key: settingsTable.key });
-    if (updated.length > 0) return true;
+    }).where(and(eq(settingsTable.key, SYNC_JOB_KEY), sql`value->>'ownerId' = ${job.ownerId}`)).returning({ key: settingsTable.key });
+    if (updated.length > 0)
+      return true;
     if (job.status === "running") {
       throw new SyncLeaseLostError();
     }
-    logger.warn(
-      { jobId: job.id, ownerId: job.ownerId, status: job.status },
-      "Skipped persisting a terminal sync job after its lease was replaced"
-    );
+    logger.warn({ jobId: job.id, ownerId: job.ownerId, status: job.status }, "Skipped persisting a terminal sync job after its lease was replaced");
     return false;
   } catch (err) {
-    if (err instanceof SyncLeaseLostError) throw err;
+    if (err instanceof SyncLeaseLostError)
+      throw err;
     logger.warn({ err }, "Failed to persist sync job state to DB (non-fatal)");
     return false;
   }
@@ -75929,7 +75820,8 @@ async function saveJobToDb(job) {
 async function loadJobFromDb() {
   try {
     const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, SYNC_JOB_KEY));
-    if (!rows.length || !rows[0]) return null;
+    if (!rows.length || !rows[0])
+      return null;
     return rows[0].value;
   } catch (err) {
     logger.warn({ err }, "Failed to load sync job state from DB");
@@ -75939,12 +75831,8 @@ async function loadJobFromDb() {
 async function claimPersistedJobLease(job) {
   touchJobLease(job);
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${SYNC_JOB_KEY}, 0))`
-    );
-    const rows = await tx.execute(
-      sql`SELECT value FROM settings WHERE key = ${SYNC_JOB_KEY} FOR UPDATE`
-    );
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${SYNC_JOB_KEY}, 0))`);
+    const rows = await tx.execute(sql`SELECT value FROM settings WHERE key = ${SYNC_JOB_KEY} FOR UPDATE`);
     const row = rows.rows[0];
     const existingJob = parsePersistedJob(row?.value);
     if (hasValidJobLease(existingJob)) {
@@ -76012,9 +75900,7 @@ function makeJob(sessionId, firebaseUid) {
 }
 async function createSyncSession(firebaseUid) {
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${firebaseUid}, 0))`
-    );
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${firebaseUid}, 0))`);
     const activeRows = await tx.execute(sql`
       WITH expired AS (
         UPDATE sync_sessions
@@ -76090,26 +75976,12 @@ async function loadOwnedSession(sessionId, firebaseUid, statuses) {
     updatedAt: sql`CURRENT_TIMESTAMP`,
     completedAt: sql`CURRENT_TIMESTAMP`,
     expiresAt: sql`CURRENT_TIMESTAMP`
-  }).where(
-    and(
-      eq(syncSessionsTable.id, sessionId),
-      eq(syncSessionsTable.firebaseUid, firebaseUid),
-      inArray(syncSessionsTable.status, [...statuses]),
-      lte(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`)
-    )
-  );
+  }).where(and(eq(syncSessionsTable.id, sessionId), eq(syncSessionsTable.firebaseUid, firebaseUid), inArray(syncSessionsTable.status, [...statuses]), lte(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`)));
   const rows = await db.select({
     id: syncSessionsTable.id,
     status: syncSessionsTable.status,
     expiresAt: syncSessionsTable.expiresAt
-  }).from(syncSessionsTable).where(
-    and(
-      eq(syncSessionsTable.id, sessionId),
-      eq(syncSessionsTable.firebaseUid, firebaseUid),
-      inArray(syncSessionsTable.status, [...statuses]),
-      gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`)
-    )
-  ).limit(1);
+  }).from(syncSessionsTable).where(and(eq(syncSessionsTable.id, sessionId), eq(syncSessionsTable.firebaseUid, firebaseUid), inArray(syncSessionsTable.status, [...statuses]), gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`))).limit(1);
   const session = rows[0];
   return session && isActiveSessionStatus(session.status) ? {
     id: session.id,
@@ -76122,15 +75994,9 @@ async function storeChunkForSession(input) {
     const activeSession = await tx.update(syncSessionsTable).set({
       updatedAt: sql`CURRENT_TIMESTAMP`,
       expiresAt: sql`CURRENT_TIMESTAMP + interval '15 minutes'`
-    }).where(
-      and(
-        eq(syncSessionsTable.id, input.sessionId),
-        eq(syncSessionsTable.firebaseUid, input.firebaseUid),
-        eq(syncSessionsTable.status, "uploading"),
-        gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`)
-      )
-    ).returning({ id: syncSessionsTable.id });
-    if (!activeSession.length) return false;
+    }).where(and(eq(syncSessionsTable.id, input.sessionId), eq(syncSessionsTable.firebaseUid, input.firebaseUid), eq(syncSessionsTable.status, "uploading"), gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`))).returning({ id: syncSessionsTable.id });
+    if (!activeSession.length)
+      return false;
     await tx.insert(uploadChunksTable).values({
       sessionId: input.sessionId,
       fileKey: input.fileKey,
@@ -76154,28 +76020,14 @@ async function claimSyncSession(sessionId, firebaseUid) {
     startedAt: sql`CURRENT_TIMESTAMP`,
     updatedAt: sql`CURRENT_TIMESTAMP`,
     expiresAt: sql`CURRENT_TIMESTAMP + interval '2 hours'`
-  }).where(
-    and(
-      eq(syncSessionsTable.id, sessionId),
-      eq(syncSessionsTable.firebaseUid, firebaseUid),
-      eq(syncSessionsTable.status, "uploading"),
-      gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`)
-    )
-  ).returning({ id: syncSessionsTable.id });
+  }).where(and(eq(syncSessionsTable.id, sessionId), eq(syncSessionsTable.firebaseUid, firebaseUid), eq(syncSessionsTable.status, "uploading"), gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`))).returning({ id: syncSessionsTable.id });
   return rows.length > 0;
 }
 async function refreshRunningSyncSessionLease(sessionId, firebaseUid) {
   const rows = await db.update(syncSessionsTable).set({
     updatedAt: sql`CURRENT_TIMESTAMP`,
     expiresAt: sql`CURRENT_TIMESTAMP + interval '2 hours'`
-  }).where(
-    and(
-      eq(syncSessionsTable.id, sessionId),
-      eq(syncSessionsTable.firebaseUid, firebaseUid),
-      eq(syncSessionsTable.status, "running"),
-      gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`)
-    )
-  ).returning({ id: syncSessionsTable.id });
+  }).where(and(eq(syncSessionsTable.id, sessionId), eq(syncSessionsTable.firebaseUid, firebaseUid), eq(syncSessionsTable.status, "running"), gt(syncSessionsTable.expiresAt, sql`CURRENT_TIMESTAMP`))).returning({ id: syncSessionsTable.id });
   return rows.length > 0;
 }
 async function finishSyncSession(sessionId, firebaseUid, status) {
@@ -76185,13 +76037,7 @@ async function finishSyncSession(sessionId, firebaseUid, status) {
       updatedAt: sql`CURRENT_TIMESTAMP`,
       completedAt: sql`CURRENT_TIMESTAMP`,
       expiresAt: sql`CURRENT_TIMESTAMP`
-    }).where(
-      and(
-        eq(syncSessionsTable.id, sessionId),
-        eq(syncSessionsTable.firebaseUid, firebaseUid),
-        inArray(syncSessionsTable.status, [...ACTIVE_SESSION_STATUSES])
-      )
-    );
+    }).where(and(eq(syncSessionsTable.id, sessionId), eq(syncSessionsTable.firebaseUid, firebaseUid), inArray(syncSessionsTable.status, [...ACTIVE_SESSION_STATUSES])));
   } catch (err) {
     logger.error({ err, sessionId, firebaseUid, status }, "Failed to release sync session lock");
   }
@@ -76202,18 +76048,15 @@ function slugify(name) {
 }
 function chunks(arr, size) {
   const out = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  for (let i = 0; i < arr.length; i += size)
+    out.push(arr.slice(i, i + size));
   return out;
 }
 var VALID_FILE_KEYS = ["product_sdf", "stock_sdf", "company_sdf", "category_sdf", "drug_sdf"];
 async function assembleFile(sessionId, fileKey) {
-  const rows = await db.select().from(uploadChunksTable).where(
-    and(
-      eq(uploadChunksTable.sessionId, sessionId),
-      eq(uploadChunksTable.fileKey, fileKey)
-    )
-  ).orderBy(uploadChunksTable.chunkIndex);
-  if (!rows.length) return null;
+  const rows = await db.select().from(uploadChunksTable).where(and(eq(uploadChunksTable.sessionId, sessionId), eq(uploadChunksTable.fileKey, fileKey))).orderBy(uploadChunksTable.chunkIndex);
+  if (!rows.length)
+    return null;
   return Buffer.concat(rows.map((r) => r.data));
 }
 async function cleanupSession(sessionId) {
@@ -76225,9 +76068,7 @@ async function cleanupSession(sessionId) {
 }
 async function pruneStaleChunks() {
   try {
-    await db.execute(
-      sql`DELETE FROM upload_chunks WHERE created_at < now() - interval '24 hours'`
-    );
+    await db.execute(sql`DELETE FROM upload_chunks WHERE created_at < now() - interval '24 hours'`);
   } catch {
   }
 }
@@ -76272,12 +76113,7 @@ async function runImport(job, buffers, session) {
     for await (const batch of plan.medicineBatches(500)) {
       medicines.push(...batch);
     }
-    const {
-      allCategoryNames,
-      allBrandNames,
-      stats,
-      parseErrors
-    } = plan;
+    const { allCategoryNames, allBrandNames, stats, parseErrors } = plan;
     job.total = medicines.length;
     job.report.parseErrors = parseErrors;
     job.message = `Parsed ${medicines.length.toLocaleString()} products, ${stats.stock.toLocaleString()} stock records.`;
@@ -76318,16 +76154,14 @@ async function runImport(job, buffers, session) {
     await saveJobToDb(job);
     const uniqueCategories = [...new Set(allCategoryNames.filter(Boolean))];
     if (uniqueCategories.length) {
-      await db.insert(categoriesTable).values(
-        uniqueCategories.map((name) => ({
-          name,
-          slug: slugify(name),
-          icon: "\u{1F48A}",
-          color: "primary",
-          enabled: true,
-          displayOrder: 0
-        }))
-      ).onConflictDoNothing();
+      await db.insert(categoriesTable).values(uniqueCategories.map((name) => ({
+        name,
+        slug: slugify(name),
+        icon: "\u{1F48A}",
+        color: "primary",
+        enabled: true,
+        displayOrder: 0
+      }))).onConflictDoNothing();
     }
     const categoryRows = await db.select().from(categoriesTable);
     const categoryNameToId = Object.fromEntries(categoryRows.map((r) => [r.name, r.id]));
@@ -76341,9 +76175,7 @@ async function runImport(job, buffers, session) {
       return;
     }
     job.phase = "drug_groups";
-    const uniqueGenerics = [...new Set(
-      medicines.map((m) => m.description).filter((d) => !!d && d.trim().length > 0)
-    )];
+    const uniqueGenerics = [...new Set(medicines.map((m) => m.description).filter((d) => !!d && d.trim().length > 0))];
     job.message = `Upserting ${uniqueGenerics.length} drug groups\u2026`;
     await saveJobToDb(job);
     if (uniqueGenerics.length) {
@@ -76417,7 +76249,8 @@ async function runImport(job, buffers, session) {
           //   NOT updated — those are admin-managed fields.
         }
       }).returning({ id: medicinesTable.id });
-      for (const r of inserted) allInsertedIds.push(r.id);
+      for (const r of inserted)
+        allInsertedIds.push(r.id);
       job.processed += batch.length;
       job.report.medicines = job.processed;
       await refreshRunningLeaseIfDue();
@@ -76436,7 +76269,8 @@ async function runImport(job, buffers, session) {
     await saveJobToDb(job);
     const productCodeToDbId = {};
     const idRows = await db.select({ id: medicinesTable.id, productCode: medicinesTable.productCode }).from(medicinesTable).where(inArray(medicinesTable.id, allInsertedIds.slice(0, 5e3)));
-    for (const r of idRows) productCodeToDbId[r.productCode] = r.id;
+    for (const r of idRows)
+      productCodeToDbId[r.productCode] = r.id;
     if (allInsertedIds.length > 0) {
       for (const idBatch of chunks(allInsertedIds, 1e3)) {
         await db.delete(stockTable).where(inArray(stockTable.medicineId, idBatch));
@@ -76445,7 +76279,8 @@ async function runImport(job, buffers, session) {
     }
     const stockValues = medicines.map((m) => {
       const dbId = productCodeToDbId[m.sdfProductId];
-      if (!dbId || m.stockQty <= 0) return null;
+      if (!dbId || m.stockQty <= 0)
+        return null;
       return {
         medicineId: dbId,
         quantity: m.stockQty,
@@ -76464,11 +76299,9 @@ async function runImport(job, buffers, session) {
     job.message = "Cleaning up orphaned categories\u2026";
     await saveJobToDb(job);
     try {
-      const emptyCats = await db.execute(
-        sql`DELETE FROM categories WHERE id NOT IN (
+      const emptyCats = await db.execute(sql`DELETE FROM categories WHERE id NOT IN (
           SELECT DISTINCT category_id FROM medicines WHERE category_id IS NOT NULL
-        ) RETURNING id, name`
-      );
+        ) RETURNING id, name`);
       const deletedNames = emptyCats.rows.map((r) => r.name);
       if (deletedNames.length) {
         logger.info({ deleted: deletedNames }, "Removed orphaned categories after sync");
@@ -76495,345 +76328,287 @@ async function runImport(job, buffers, session) {
     await saveJobToDb(job);
   } finally {
     await finishSyncSession(session.id, session.firebaseUid, terminalSessionStatus);
-    logger.info(
-      {
-        sessionId: session.id,
-        firebaseUid: session.firebaseUid,
-        status: terminalSessionStatus
-      },
-      "Inventory sync session released"
-    );
+    logger.info({
+      sessionId: session.id,
+      firebaseUid: session.firebaseUid,
+      status: terminalSessionStatus
+    }, "Inventory sync session released");
   }
 }
-router10.get(
-  "/status",
-  requireAuth,
-  requireAdminEmail,
-  async (_req, res) => {
-    if (currentJob) {
-      res.json({ running: currentJob.status === "running", job: currentJob });
-      return;
-    }
-    const dbJob = await loadJobFromDb();
-    res.json({ running: dbJob?.status === "running", job: dbJob });
+router10.get("/status", requireAuth, requireAdminEmail, async (_req, res) => {
+  if (currentJob) {
+    res.json({ running: currentJob.status === "running", job: currentJob });
+    return;
   }
-);
-router10.post(
-  "/session",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    const firebaseUid = req.firebaseUser?.uid;
-    if (!firebaseUid) {
-      res.status(401).json({ error: "Authenticated Firebase user is required." });
-      return;
-    }
-    try {
-      const result = await createSyncSession(firebaseUid);
-      if ("existing" in result) {
-        const retryAt = result.existing.expiresAt.toISOString();
-        logger.warn(
-          {
-            firebaseUid,
-            sessionId: result.existing.id,
-            status: result.existing.status,
-            retryAt
-          },
-          "Sync session creation rejected because an active session already exists"
-        );
-        res.status(409).json({
-          error: "A sync is already in progress for this user.",
-          code: "sync_session_already_active",
-          sessionId: result.existing.id,
-          status: result.existing.status,
-          retryAt
-        });
-        return;
-      }
-      logger.info(
-        {
-          firebaseUid,
-          sessionId: result.sessionId,
-          uploadingLeaseMinutes: UPLOADING_SESSION_TTL_MINUTES,
-          runningLeaseHours: RUNNING_SESSION_TTL_HOURS,
-          heartbeatIntervalSeconds: RUNNING_SESSION_HEARTBEAT_INTERVAL_MS / 1e3
-        },
-        "Sync upload session created"
-      );
-      res.json({ sessionId: result.sessionId });
-    } catch (err) {
-      logger.error({ err, firebaseUid }, "Failed to create sync upload session");
-      res.status(500).json({
-        error: "Failed to create sync upload session.",
-        code: "sync_session_creation_error"
-      });
-    }
+  const dbJob = await loadJobFromDb();
+  res.json({ running: dbJob?.status === "running", job: dbJob });
+});
+router10.post("/session", requireAuth, requireAdminEmail, async (req, res) => {
+  const firebaseUid = req.firebaseUser?.uid;
+  if (!firebaseUid) {
+    res.status(401).json({ error: "Authenticated Firebase user is required." });
+    return;
   }
-);
-router10.post(
-  "/chunk",
-  requireAuth,
-  requireAdminEmail,
-  (req, res, next) => {
-    CHUNK_UPLOAD(req, res, next);
-  },
-  async (req, res) => {
-    const { sessionId, fileKey, chunkIndex, totalChunks } = req.body;
-    if (!sessionId || typeof sessionId !== "string") {
-      res.status(400).json({ error: "sessionId is required", code: "missing_session_id" });
-      return;
-    }
-    if (!VALID_FILE_KEYS.includes(fileKey)) {
-      res.status(400).json({ error: `Invalid fileKey. Must be one of: ${VALID_FILE_KEYS.join(", ")}`, code: "invalid_file_key" });
-      return;
-    }
-    const idx = parseInt(chunkIndex, 10);
-    const total = parseInt(totalChunks, 10);
-    if (isNaN(idx) || isNaN(total) || idx < 0 || total < 1 || idx >= total) {
-      res.status(400).json({ error: "Invalid chunkIndex or totalChunks", code: "invalid_chunk_params" });
-      return;
-    }
-    if (!req.file) {
-      res.status(400).json({ error: "No chunk data received. Send binary data in the 'chunk' field.", code: "missing_chunk" });
-      return;
-    }
-    const firebaseUid = req.firebaseUser?.uid;
-    if (!firebaseUid) {
-      res.status(401).json({ error: "Authenticated Firebase user is required." });
-      return;
-    }
-    const fileName = req.file.originalname || fileKey;
-    logger.info(
-      {
+  try {
+    const result = await createSyncSession(firebaseUid);
+    if ("existing" in result) {
+      const retryAt = result.existing.expiresAt.toISOString();
+      logger.warn({
         firebaseUid,
-        sessionId,
-        fileName,
-        fileKey,
-        chunkIndex: idx,
-        chunkCount: total,
-        bytes: req.file.size
-      },
-      "Sync chunk upload started"
-    );
-    try {
-      const stored = await storeChunkForSession({
-        sessionId,
-        firebaseUid,
-        fileKey,
-        chunkIndex: idx,
-        totalChunks: total,
-        data: req.file.buffer
+        sessionId: result.existing.id,
+        status: result.existing.status,
+        retryAt
+      }, "Sync session creation rejected because an active session already exists");
+      res.status(409).json({
+        error: "A sync is already in progress for this user.",
+        code: "sync_session_already_active",
+        sessionId: result.existing.id,
+        status: result.existing.status,
+        retryAt
       });
-      if (!stored) {
-        logger.warn(
-          { firebaseUid, sessionId, fileName, fileKey, chunkIndex: idx, chunkCount: total },
-          "Sync chunk rejected because the upload session is not active or owned by the user"
-        );
-        res.status(409).json({
-          error: "This sync session is no longer active. Start a new sync.",
-          code: "sync_session_inactive"
-        });
-        return;
-      }
-      logger.info(
-        {
-          firebaseUid,
-          sessionId,
-          fileName,
-          fileKey,
-          chunkIndex: idx,
-          chunkCount: total,
-          bytes: req.file.size
-        },
-        "Sync chunk upload completed"
-      );
-      res.json({ received: true, sessionId, fileKey, chunkIndex: idx, totalChunks: total });
-    } catch (err) {
-      logger.error(
-        { err, firebaseUid, sessionId, fileName, fileKey, chunkIndex: idx, chunkCount: total },
-        "Sync chunk upload failed"
-      );
-      res.status(500).json({ error: "Failed to store chunk", code: "chunk_store_error" });
+      return;
     }
+    logger.info({
+      firebaseUid,
+      sessionId: result.sessionId,
+      uploadingLeaseMinutes: UPLOADING_SESSION_TTL_MINUTES,
+      runningLeaseHours: RUNNING_SESSION_TTL_HOURS,
+      heartbeatIntervalSeconds: RUNNING_SESSION_HEARTBEAT_INTERVAL_MS / 1e3
+    }, "Sync upload session created");
+    res.json({ sessionId: result.sessionId });
+  } catch (err) {
+    logger.error({ err, firebaseUid }, "Failed to create sync upload session");
+    res.status(500).json({
+      error: "Failed to create sync upload session.",
+      code: "sync_session_creation_error"
+    });
   }
-);
-router10.post(
-  "/start",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    const { sessionId } = req.body;
-    if (!sessionId || typeof sessionId !== "string") {
-      res.status(400).json({ error: "sessionId is required", code: "missing_session_id" });
-      return;
-    }
-    const firebaseUid = req.firebaseUser?.uid;
-    if (!firebaseUid) {
-      res.status(401).json({ error: "Authenticated Firebase user is required." });
-      return;
-    }
-    const session = await loadOwnedSession(sessionId, firebaseUid, ["uploading"]);
-    if (!session) {
+});
+router10.post("/chunk", requireAuth, requireAdminEmail, (req, res, next) => {
+  CHUNK_UPLOAD(req, res, next);
+}, async (req, res) => {
+  const { sessionId, fileKey, chunkIndex, totalChunks } = req.body;
+  if (!sessionId || typeof sessionId !== "string") {
+    res.status(400).json({ error: "sessionId is required", code: "missing_session_id" });
+    return;
+  }
+  if (!VALID_FILE_KEYS.includes(fileKey)) {
+    res.status(400).json({ error: `Invalid fileKey. Must be one of: ${VALID_FILE_KEYS.join(", ")}`, code: "invalid_file_key" });
+    return;
+  }
+  const idx = parseInt(chunkIndex, 10);
+  const total = parseInt(totalChunks, 10);
+  if (isNaN(idx) || isNaN(total) || idx < 0 || total < 1 || idx >= total) {
+    res.status(400).json({ error: "Invalid chunkIndex or totalChunks", code: "invalid_chunk_params" });
+    return;
+  }
+  if (!req.file) {
+    res.status(400).json({ error: "No chunk data received. Send binary data in the 'chunk' field.", code: "missing_chunk" });
+    return;
+  }
+  const firebaseUid = req.firebaseUser?.uid;
+  if (!firebaseUid) {
+    res.status(401).json({ error: "Authenticated Firebase user is required." });
+    return;
+  }
+  const fileName = req.file.originalname || fileKey;
+  logger.info({
+    firebaseUid,
+    sessionId,
+    fileName,
+    fileKey,
+    chunkIndex: idx,
+    chunkCount: total,
+    bytes: req.file.size
+  }, "Sync chunk upload started");
+  try {
+    const stored = await storeChunkForSession({
+      sessionId,
+      firebaseUid,
+      fileKey,
+      chunkIndex: idx,
+      totalChunks: total,
+      data: req.file.buffer
+    });
+    if (!stored) {
+      logger.warn({ firebaseUid, sessionId, fileName, fileKey, chunkIndex: idx, chunkCount: total }, "Sync chunk rejected because the upload session is not active or owned by the user");
       res.status(409).json({
         error: "This sync session is no longer active. Start a new sync.",
         code: "sync_session_inactive"
       });
       return;
     }
-    if (hasValidJobLease(currentJob)) {
-      res.status(409).json({
-        error: "A sync is already running. Cancel it first or wait.",
-        code: "already_running"
-      });
-      return;
-    }
-    const claimed = await claimSyncSession(sessionId, firebaseUid);
-    if (!claimed) {
-      res.status(409).json({
-        error: "This sync session has already started. Wait for it to finish.",
-        code: "sync_session_already_started"
-      });
-      return;
-    }
-    let productBuf;
-    let stockBuf;
-    let companyBuf;
-    let categoryBuf;
-    let drugBuf;
-    try {
-      productBuf = await assembleFile(sessionId, "product_sdf");
-      stockBuf = await assembleFile(sessionId, "stock_sdf");
-      companyBuf = await assembleFile(sessionId, "company_sdf") ?? void 0;
-      categoryBuf = await assembleFile(sessionId, "category_sdf") ?? void 0;
-      drugBuf = await assembleFile(sessionId, "drug_sdf") ?? void 0;
-    } catch (err) {
-      await finishSyncSession(sessionId, firebaseUid, "failed");
-      void cleanupSession(sessionId);
-      logger.error({ err, firebaseUid, sessionId }, "Failed to assemble sync session files");
-      res.status(500).json({
-        error: "Failed to assemble uploaded sync files.",
-        code: "sync_assembly_error"
-      });
-      return;
-    }
-    if (!productBuf) {
-      await finishSyncSession(sessionId, firebaseUid, "failed");
-      void cleanupSession(sessionId);
-      res.status(400).json({ error: "PRODUCT.SDF chunks not found for this session. Re-upload the file.", code: "missing_product" });
-      return;
-    }
-    if (!stockBuf) {
-      await finishSyncSession(sessionId, firebaseUid, "failed");
-      void cleanupSession(sessionId);
-      res.status(400).json({ error: "STOCK.SDF chunks not found for this session. Re-upload the file.", code: "missing_stock" });
-      return;
-    }
-    const job = makeJob(sessionId, firebaseUid);
-    const persistedLease = await claimPersistedJobLease(job);
-    if (!persistedLease.claimed) {
-      await finishSyncSession(sessionId, firebaseUid, "failed");
-      void cleanupSession(sessionId);
-      res.status(409).json({
-        error: "A sync is already running on another instance. Wait for it to finish.",
-        code: "already_running"
-      });
-      return;
-    }
-    currentJob = job;
-    logger.info(
-      {
-        firebaseUid,
-        sessionId,
-        product: productBuf.length,
-        stock: stockBuf.length,
-        company: companyBuf?.length,
-        category: categoryBuf?.length,
-        drug: drugBuf?.length
-      },
-      "Starting PostgreSQL import job from assembled chunks"
-    );
-    await saveJobToDb(job);
+    logger.info({
+      firebaseUid,
+      sessionId,
+      fileName,
+      fileKey,
+      chunkIndex: idx,
+      chunkCount: total,
+      bytes: req.file.size
+    }, "Sync chunk upload completed");
+    res.json({ received: true, sessionId, fileKey, chunkIndex: idx, totalChunks: total });
+  } catch (err) {
+    logger.error({ err, firebaseUid, sessionId, fileName, fileKey, chunkIndex: idx, chunkCount: total }, "Sync chunk upload failed");
+    res.status(500).json({ error: "Failed to store chunk", code: "chunk_store_error" });
+  }
+});
+router10.post("/start", requireAuth, requireAdminEmail, async (req, res) => {
+  const { sessionId } = req.body;
+  if (!sessionId || typeof sessionId !== "string") {
+    res.status(400).json({ error: "sessionId is required", code: "missing_session_id" });
+    return;
+  }
+  const firebaseUid = req.firebaseUser?.uid;
+  if (!firebaseUid) {
+    res.status(401).json({ error: "Authenticated Firebase user is required." });
+    return;
+  }
+  const session = await loadOwnedSession(sessionId, firebaseUid, ["uploading"]);
+  if (!session) {
+    res.status(409).json({
+      error: "This sync session is no longer active. Start a new sync.",
+      code: "sync_session_inactive"
+    });
+    return;
+  }
+  if (hasValidJobLease(currentJob)) {
+    res.status(409).json({
+      error: "A sync is already running. Cancel it first or wait.",
+      code: "already_running"
+    });
+    return;
+  }
+  const claimed = await claimSyncSession(sessionId, firebaseUid);
+  if (!claimed) {
+    res.status(409).json({
+      error: "This sync session has already started. Wait for it to finish.",
+      code: "sync_session_already_started"
+    });
+    return;
+  }
+  let productBuf;
+  let stockBuf;
+  let companyBuf;
+  let categoryBuf;
+  let drugBuf;
+  try {
+    productBuf = await assembleFile(sessionId, "product_sdf");
+    stockBuf = await assembleFile(sessionId, "stock_sdf");
+    companyBuf = await assembleFile(sessionId, "company_sdf") ?? void 0;
+    categoryBuf = await assembleFile(sessionId, "category_sdf") ?? void 0;
+    drugBuf = await assembleFile(sessionId, "drug_sdf") ?? void 0;
+  } catch (err) {
+    await finishSyncSession(sessionId, firebaseUid, "failed");
     void cleanupSession(sessionId);
-    runImport(job, {
-      product: productBuf,
-      stock: stockBuf,
-      company: companyBuf,
-      category: categoryBuf,
-      drug: drugBuf
-    }, {
-      id: sessionId,
-      firebaseUid
-    }).catch((err) => {
-      logger.error({ err }, "Import job crashed unexpectedly");
-      if (currentJob) {
-        currentJob.status = "error";
-        currentJob.message = err instanceof Error ? err.message : "Unknown error";
-        void saveJobToDb(currentJob);
-      }
-      void finishSyncSession(sessionId, firebaseUid, "failed");
+    logger.error({ err, firebaseUid, sessionId }, "Failed to assemble sync session files");
+    res.status(500).json({
+      error: "Failed to assemble uploaded sync files.",
+      code: "sync_assembly_error"
     });
-    res.status(202).json({
-      jobId: job.id,
-      message: `Import started \u2014 ${productBuf.length.toLocaleString()} byte product file assembled from chunks.`
+    return;
+  }
+  if (!productBuf) {
+    await finishSyncSession(sessionId, firebaseUid, "failed");
+    void cleanupSession(sessionId);
+    res.status(400).json({ error: "PRODUCT.SDF chunks not found for this session. Re-upload the file.", code: "missing_product" });
+    return;
+  }
+  if (!stockBuf) {
+    await finishSyncSession(sessionId, firebaseUid, "failed");
+    void cleanupSession(sessionId);
+    res.status(400).json({ error: "STOCK.SDF chunks not found for this session. Re-upload the file.", code: "missing_stock" });
+    return;
+  }
+  const job = makeJob(sessionId, firebaseUid);
+  const persistedLease = await claimPersistedJobLease(job);
+  if (!persistedLease.claimed) {
+    await finishSyncSession(sessionId, firebaseUid, "failed");
+    void cleanupSession(sessionId);
+    res.status(409).json({
+      error: "A sync is already running on another instance. Wait for it to finish.",
+      code: "already_running"
     });
+    return;
   }
-);
-router10.delete(
-  "/cancel",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    const firebaseUid = req.firebaseUser?.uid;
-    if (!firebaseUid) {
-      res.status(401).json({ error: "Authenticated Firebase user is required." });
-      return;
+  currentJob = job;
+  logger.info({
+    firebaseUid,
+    sessionId,
+    product: productBuf.length,
+    stock: stockBuf.length,
+    company: companyBuf?.length,
+    category: categoryBuf?.length,
+    drug: drugBuf?.length
+  }, "Starting PostgreSQL import job from assembled chunks");
+  await saveJobToDb(job);
+  void cleanupSession(sessionId);
+  runImport(job, {
+    product: productBuf,
+    stock: stockBuf,
+    company: companyBuf,
+    category: categoryBuf,
+    drug: drugBuf
+  }, {
+    id: sessionId,
+    firebaseUid
+  }).catch((err) => {
+    logger.error({ err }, "Import job crashed unexpectedly");
+    if (currentJob) {
+      currentJob.status = "error";
+      currentJob.message = err instanceof Error ? err.message : "Unknown error";
+      void saveJobToDb(currentJob);
     }
-    const { sessionId } = req.body ?? {};
-    const job = currentJob ?? await loadJobFromDb();
-    const requestedSessionId = sessionId ?? job?.sessionId;
-    if (requestedSessionId) {
-      const session = await loadOwnedSession(
-        requestedSessionId,
-        firebaseUid,
-        ["uploading", "running"]
-      );
-      if (!session) {
-        res.status(404).json({ error: "No active sync session found." });
-        return;
-      }
-      if (session.status === "running" && job?.status === "running" && job.sessionId === requestedSessionId) {
-        job.cancelRequested = true;
-        if (currentJob) currentJob.cancelRequested = true;
-        await saveJobToDb(job);
-        logger.info(
-          { firebaseUid, sessionId: requestedSessionId },
-          "Inventory sync cancellation requested"
-        );
-        res.json({ message: "Cancellation requested \u2014 sync will stop after the current batch." });
-        return;
-      }
-      await finishSyncSession(requestedSessionId, firebaseUid, "cancelled");
-      await cleanupSession(requestedSessionId);
-      logger.info(
-        { firebaseUid, sessionId: requestedSessionId },
-        "Upload-only sync session cancelled and released"
-      );
-      res.json({ message: "Sync session cancelled." });
-      return;
-    }
-    if (!job || job.status !== "running") {
-      res.status(404).json({ error: "No active sync job to cancel." });
-      return;
-    }
-    job.cancelRequested = true;
-    if (currentJob) currentJob.cancelRequested = true;
-    await saveJobToDb(job);
-    res.json({ message: "Cancellation requested \u2014 sync will stop after the current batch." });
+    void finishSyncSession(sessionId, firebaseUid, "failed");
+  });
+  res.status(202).json({
+    jobId: job.id,
+    message: `Import started \u2014 ${productBuf.length.toLocaleString()} byte product file assembled from chunks.`
+  });
+});
+router10.delete("/cancel", requireAuth, requireAdminEmail, async (req, res) => {
+  const firebaseUid = req.firebaseUser?.uid;
+  if (!firebaseUid) {
+    res.status(401).json({ error: "Authenticated Firebase user is required." });
+    return;
   }
-);
+  const { sessionId } = req.body ?? {};
+  const job = currentJob ?? await loadJobFromDb();
+  const requestedSessionId = sessionId ?? job?.sessionId;
+  if (requestedSessionId) {
+    const session = await loadOwnedSession(requestedSessionId, firebaseUid, ["uploading", "running"]);
+    if (!session) {
+      res.status(404).json({ error: "No active sync session found." });
+      return;
+    }
+    if (session.status === "running" && job?.status === "running" && job.sessionId === requestedSessionId) {
+      job.cancelRequested = true;
+      if (currentJob)
+        currentJob.cancelRequested = true;
+      await saveJobToDb(job);
+      logger.info({ firebaseUid, sessionId: requestedSessionId }, "Inventory sync cancellation requested");
+      res.json({ message: "Cancellation requested \u2014 sync will stop after the current batch." });
+      return;
+    }
+    await finishSyncSession(requestedSessionId, firebaseUid, "cancelled");
+    await cleanupSession(requestedSessionId);
+    logger.info({ firebaseUid, sessionId: requestedSessionId }, "Upload-only sync session cancelled and released");
+    res.json({ message: "Sync session cancelled." });
+    return;
+  }
+  if (!job || job.status !== "running") {
+    res.status(404).json({ error: "No active sync job to cancel." });
+    return;
+  }
+  job.cancelRequested = true;
+  if (currentJob)
+    currentJob.cancelRequested = true;
+  await saveJobToDb(job);
+  res.json({ message: "Cancellation requested \u2014 sync will stop after the current batch." });
+});
 var sync_default = router10;
 
-// src/routes/admin.ts
+// src/routes/admin.js
 var import_express11 = __toESM(require_express2(), 1);
 var router11 = (0, import_express11.Router)();
 router11.get("/stats", async (_req, res) => {
@@ -76964,16 +76739,16 @@ router11.get("/medicines", requireAuth, requireAdminEmail, async (req, res) => {
     const offset = (page - 1) * limit;
     const statusFilter = req.query["status"] ?? "active";
     const statusCond = statusFilter === "all" ? void 0 : eq(medicinesTable.status, statusFilter);
-    const searchCond = search ? or(
-      ilike(medicinesTable.name, `%${search}%`),
-      ilike(medicinesTable.genericName, `%${search}%`)
-    ) : void 0;
+    const searchCond = search ? or(ilike(medicinesTable.name, `%${search}%`), ilike(medicinesTable.genericName, `%${search}%`)) : void 0;
     const categoryIdParam = req.query["categoryId"] ? Number(req.query["categoryId"]) : void 0;
     const categoryCond = categoryIdParam && !isNaN(categoryIdParam) ? eq(medicinesTable.categoryId, categoryIdParam) : void 0;
     const flagConds = [];
-    if (req.query["featured"] === "true") flagConds.push(eq(medicinesTable.featured, true));
-    if (req.query["newArrival"] === "true") flagConds.push(eq(medicinesTable.newArrival, true));
-    if (req.query["special"] === "true") flagConds.push(eq(medicinesTable.special, true));
+    if (req.query["featured"] === "true")
+      flagConds.push(eq(medicinesTable.featured, true));
+    if (req.query["newArrival"] === "true")
+      flagConds.push(eq(medicinesTable.newArrival, true));
+    if (req.query["special"] === "true")
+      flagConds.push(eq(medicinesTable.special, true));
     const allConds = [statusCond, searchCond, categoryCond, ...flagConds].filter(Boolean);
     const where = allConds.length > 0 ? and(...allConds) : void 0;
     const [rows, [totalRow]] = await Promise.all([
@@ -77069,7 +76844,7 @@ router11.delete("/medicines/:id", requireAuth, requireAdminEmail, async (req, re
 });
 var admin_default = router11;
 
-// src/routes/inquiries.ts
+// src/routes/inquiries.js
 var import_express12 = __toESM(require_express2(), 1);
 var router12 = (0, import_express12.Router)();
 router12.post("/", async (req, res) => {
@@ -77162,119 +76937,91 @@ router12.get("/lookup", async (req, res) => {
     res.status(500).json({ error: "Order not found" });
   }
 });
-router12.get(
-  "/counts",
-  requireAuth,
-  requireAdminEmail,
-  async (_req, res) => {
-    try {
-      const [newInquiriesRow] = await db.select({ cnt: count() }).from(inquiriesTable).where(
-        and(
-          eq(inquiriesTable.type, "inquiry"),
-          or(
-            eq(inquiriesTable.status, "pending"),
-            eq(inquiriesTable.status, "new")
-          )
-        )
-      );
-      const [pendingRequestsRow] = await db.select({ cnt: count() }).from(inquiriesTable).where(
-        and(
-          eq(inquiriesTable.type, "medicine-request"),
-          eq(inquiriesTable.status, "pending")
-        )
-      );
-      res.json({
-        newInquiries: newInquiriesRow?.cnt ?? 0,
-        pendingRequests: pendingRequestsRow?.cnt ?? 0
-      });
-    } catch (err) {
-      logger.error({ err }, "GET /inquiries/counts failed");
-      res.status(500).json({ error: "Failed to fetch counts" });
-    }
+router12.get("/counts", requireAuth, requireAdminEmail, async (_req, res) => {
+  try {
+    const [newInquiriesRow] = await db.select({ cnt: count() }).from(inquiriesTable).where(and(eq(inquiriesTable.type, "inquiry"), or(eq(inquiriesTable.status, "pending"), eq(inquiriesTable.status, "new"))));
+    const [pendingRequestsRow] = await db.select({ cnt: count() }).from(inquiriesTable).where(and(eq(inquiriesTable.type, "medicine-request"), eq(inquiriesTable.status, "pending")));
+    res.json({
+      newInquiries: newInquiriesRow?.cnt ?? 0,
+      pendingRequests: pendingRequestsRow?.cnt ?? 0
+    });
+  } catch (err) {
+    logger.error({ err }, "GET /inquiries/counts failed");
+    res.status(500).json({ error: "Failed to fetch counts" });
   }
-);
-router12.get(
-  "/",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    try {
-      const type = req.query.type;
-      const limit = Math.min(Number(req.query.limit ?? 200), 500);
-      const offset = Number(req.query.offset ?? 0);
-      const rows = await db.select().from(inquiriesTable).where(type ? eq(inquiriesTable.type, type) : void 0).orderBy(desc(inquiriesTable.createdAt)).limit(limit).offset(offset);
-      res.json({ data: rows, total: rows.length, limit, offset });
-    } catch (err) {
-      logger.error({ err }, "GET /inquiries failed");
-      res.status(500).json({ error: "Failed to fetch inquiries" });
-    }
+});
+router12.get("/", requireAuth, requireAdminEmail, async (req, res) => {
+  try {
+    const type = req.query.type;
+    const limit = Math.min(Number(req.query.limit ?? 200), 500);
+    const offset = Number(req.query.offset ?? 0);
+    const rows = await db.select().from(inquiriesTable).where(type ? eq(inquiriesTable.type, type) : void 0).orderBy(desc(inquiriesTable.createdAt)).limit(limit).offset(offset);
+    res.json({ data: rows, total: rows.length, limit, offset });
+  } catch (err) {
+    logger.error({ err }, "GET /inquiries failed");
+    res.status(500).json({ error: "Failed to fetch inquiries" });
   }
-);
-router12.patch(
-  "/:id/status",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    try {
-      const id = parseInt(req.params.id, 10);
-      if (isNaN(id)) {
-        res.status(400).json({ error: "Invalid id" });
-        return;
-      }
-      const { status, adminNotes, ...extra } = req.body;
-      const updateFields = { updatedAt: /* @__PURE__ */ new Date() };
-      if (status !== void 0) updateFields.status = status;
-      if (adminNotes !== void 0) updateFields.adminNotes = adminNotes;
-      if ("prescriptionUrl" in extra) updateFields.prescriptionUrl = extra.prescriptionUrl;
-      if ("hasPrescription" in extra) updateFields.hasPrescription = Boolean(extra.hasPrescription);
-      if ("medicinePhotoUrl" in extra) updateFields.medicinePhotoUrl = extra.medicinePhotoUrl;
-      await db.update(inquiriesTable).set(updateFields).where(eq(inquiriesTable.id, id));
-      res.json({ success: true });
-    } catch (err) {
-      logger.error({ err }, "PATCH /inquiries/:id/status failed");
-      res.status(500).json({ error: "Failed to update inquiry" });
+});
+router12.patch("/:id/status", requireAuth, requireAdminEmail, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
     }
+    const { status, adminNotes, ...extra } = req.body;
+    const updateFields = { updatedAt: /* @__PURE__ */ new Date() };
+    if (status !== void 0)
+      updateFields.status = status;
+    if (adminNotes !== void 0)
+      updateFields.adminNotes = adminNotes;
+    if ("prescriptionUrl" in extra)
+      updateFields.prescriptionUrl = extra.prescriptionUrl;
+    if ("hasPrescription" in extra)
+      updateFields.hasPrescription = Boolean(extra.hasPrescription);
+    if ("medicinePhotoUrl" in extra)
+      updateFields.medicinePhotoUrl = extra.medicinePhotoUrl;
+    await db.update(inquiriesTable).set(updateFields).where(eq(inquiriesTable.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, "PATCH /inquiries/:id/status failed");
+    res.status(500).json({ error: "Failed to update inquiry" });
   }
-);
-router12.delete(
-  "/:id",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    try {
-      const id = parseInt(req.params.id, 10);
-      if (isNaN(id)) {
-        res.status(400).json({ error: "Invalid id" });
-        return;
-      }
-      await db.delete(inquiriesTable).where(eq(inquiriesTable.id, id));
-      res.json({ success: true });
-    } catch (err) {
-      logger.error({ err }, "DELETE /inquiries/:id failed");
-      res.status(500).json({ error: "Failed to delete inquiry" });
+});
+router12.delete("/:id", requireAuth, requireAdminEmail, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
     }
+    await db.delete(inquiriesTable).where(eq(inquiriesTable.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, "DELETE /inquiries/:id failed");
+    res.status(500).json({ error: "Failed to delete inquiry" });
   }
-);
+});
 var inquiries_default = router12;
 
-// src/routes/addresses.ts
+// src/routes/addresses.js
 var import_express13 = __toESM(require_express2(), 1);
 var router13 = (0, import_express13.Router)();
 async function resolveUserId(req) {
   const firebaseUid = req.firebaseUser.uid;
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.firebaseUid, firebaseUid));
-  if (existing) return existing.id;
+  if (existing)
+    return existing.id;
   const email = req.firebaseUser.email ?? `${firebaseUid}@unknown.ayushmedico.local`;
   const [created] = await db.insert(usersTable).values({ firebaseUid, email, displayName: req.firebaseUser.name ?? null }).onConflictDoNothing({ target: usersTable.firebaseUid }).returning();
-  if (created) return created.id;
+  if (created)
+    return created.id;
   const [row] = await db.select().from(usersTable).where(eq(usersTable.firebaseUid, firebaseUid));
   return row.id;
 }
 async function sortedAddresses(userId) {
   const rows = await db.select().from(addressesTable).where(eq(addressesTable.userId, userId)).orderBy(asc(addressesTable.createdAt));
-  return rows.sort(
-    (a, b) => a.isDefault === b.isDefault ? 0 : a.isDefault ? -1 : 1
-  );
+  return rows.sort((a, b) => a.isDefault === b.isDefault ? 0 : a.isDefault ? -1 : 1);
 }
 router13.get("/", requireAuth, async (req, res) => {
   try {
@@ -77358,7 +77105,7 @@ router13.delete("/:id", requireAuth, async (req, res) => {
 });
 var addresses_default = router13;
 
-// src/routes/testimonials.ts
+// src/routes/testimonials.js
 var import_express14 = __toESM(require_express2(), 1);
 var router14 = (0, import_express14.Router)();
 router14.get("/", async (_req, res) => {
@@ -77431,7 +77178,7 @@ router14.delete("/:id", requireAuth, requireAdminEmail, async (req, res) => {
 });
 var testimonials_default = router14;
 
-// src/routes/faqs.ts
+// src/routes/faqs.js
 var import_express15 = __toESM(require_express2(), 1);
 var router15 = (0, import_express15.Router)();
 router15.get("/", async (_req, res) => {
@@ -77504,7 +77251,7 @@ router15.delete("/:id", requireAuth, requireAdminEmail, async (req, res) => {
 });
 var faqs_default = router15;
 
-// src/routes/notifications.ts
+// src/routes/notifications.js
 var import_express16 = __toESM(require_express2(), 1);
 
 // src/lib/whatsappService.ts
@@ -77636,7 +77383,7 @@ ${messageText}`
   }
 }
 
-// src/routes/notifications.ts
+// src/routes/notifications.js
 var router16 = (0, import_express16.Router)();
 router16.post("/", requireAuth, async (req, res) => {
   try {
@@ -77678,7 +77425,7 @@ router16.post("/whatsapp", requireAuth, async (req, res) => {
 });
 var notifications_default = router16;
 
-// src/routes/settings.ts
+// src/routes/settings.js
 var import_express17 = __toESM(require_express2(), 1);
 var router17 = (0, import_express17.Router)();
 var ALLOWED_KEYS = /* @__PURE__ */ new Set([
@@ -77708,36 +77455,31 @@ router17.get("/:key", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch settings" });
   }
 });
-router17.put(
-  "/:key",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    const { key } = req.params;
-    if (!ALLOWED_KEYS.has(key)) {
-      res.status(404).json({ error: "Unknown settings key" });
-      return;
-    }
-    const value = req.body;
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-      res.status(400).json({ error: "Request body must be a JSON object" });
-      return;
-    }
-    try {
-      const [row] = await db.insert(settingsTable).values({ key, value, updatedAt: /* @__PURE__ */ new Date() }).onConflictDoUpdate({
-        target: settingsTable.key,
-        set: { value, updatedAt: /* @__PURE__ */ new Date() }
-      }).returning();
-      res.json(row.value);
-    } catch (err) {
-      logger.error({ err }, `PUT /settings/${key} failed`);
-      res.status(500).json({ error: "Failed to save settings" });
-    }
+router17.put("/:key", requireAuth, requireAdminEmail, async (req, res) => {
+  const { key } = req.params;
+  if (!ALLOWED_KEYS.has(key)) {
+    res.status(404).json({ error: "Unknown settings key" });
+    return;
   }
-);
+  const value = req.body;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    res.status(400).json({ error: "Request body must be a JSON object" });
+    return;
+  }
+  try {
+    const [row] = await db.insert(settingsTable).values({ key, value, updatedAt: /* @__PURE__ */ new Date() }).onConflictDoUpdate({
+      target: settingsTable.key,
+      set: { value, updatedAt: /* @__PURE__ */ new Date() }
+    }).returning();
+    res.json(row.value);
+  } catch (err) {
+    logger.error({ err }, `PUT /settings/${key} failed`);
+    res.status(500).json({ error: "Failed to save settings" });
+  }
+});
 var settings_default = router17;
 
-// src/routes/payment.ts
+// src/routes/payment.js
 var import_express18 = __toESM(require_express2(), 1);
 var import_razorpay = __toESM(require_razorpay(), 1);
 import crypto2 from "crypto";
@@ -77756,314 +77498,284 @@ function getRzp() {
 }
 function getKeyId() {
   const keyId = process.env.VITE_RAZORPAY_KEY_ID;
-  if (!keyId) throw new Error("VITE_RAZORPAY_KEY_ID not set");
+  if (!keyId)
+    throw new Error("VITE_RAZORPAY_KEY_ID not set");
   return keyId;
 }
-router18.post(
-  "/create-razorpay-order",
-  requireAuth,
-  async (req, res) => {
-    const { orderDbId } = req.body;
-    if (!orderDbId) {
-      res.status(400).json({ error: "orderDbId is required" });
+router18.post("/create-razorpay-order", requireAuth, async (req, res) => {
+  const { orderDbId } = req.body;
+  if (!orderDbId) {
+    res.status(400).json({ error: "orderDbId is required" });
+    return;
+  }
+  try {
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
       return;
     }
-    try {
-      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
-      if (!order) {
-        res.status(404).json({ error: "Order not found" });
-        return;
-      }
-      const isOwner = order.customerId === req.firebaseUser?.uid;
-      const isAdmin = isAdminEmail(req.firebaseUser?.email);
-      if (!isOwner && !isAdmin) {
-        res.status(403).json({ error: "Forbidden" });
-        return;
-      }
-      const rzp = getRzp();
-      const amountPaise = Math.round(
-        order.pricing.grandTotal * 100
-      );
-      const rzpOrder = await rzp.orders.create({
-        amount: amountPaise,
-        currency: "INR",
-        receipt: order.orderId,
-        notes: { orderDbId, orderId: order.orderId }
-      });
-      const payment = { ...order.payment, razorpayOrderId: rzpOrder.id };
-      await db.update(ordersTable).set({ payment, updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId)));
-      res.json({
-        razorpayOrderId: rzpOrder.id,
-        amount: rzpOrder.amount,
-        currency: rzpOrder.currency,
-        keyId: getKeyId()
-      });
-    } catch (err) {
-      logger.error({ err }, "POST /payment/create-razorpay-order failed");
-      res.status(500).json({ error: "Failed to create Razorpay order" });
+    const isOwner = order.customerId === req.firebaseUser?.uid;
+    const isAdmin = isAdminEmail(req.firebaseUser?.email);
+    if (!isOwner && !isAdmin) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const rzp = getRzp();
+    const amountPaise = Math.round(order.pricing.grandTotal * 100);
+    const rzpOrder = await rzp.orders.create({
+      amount: amountPaise,
+      currency: "INR",
+      receipt: order.orderId,
+      notes: { orderDbId, orderId: order.orderId }
+    });
+    const payment = { ...order.payment, razorpayOrderId: rzpOrder.id };
+    await db.update(ordersTable).set({ payment, updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId)));
+    res.json({
+      razorpayOrderId: rzpOrder.id,
+      amount: rzpOrder.amount,
+      currency: rzpOrder.currency,
+      keyId: getKeyId()
+    });
+  } catch (err) {
+    logger.error({ err }, "POST /payment/create-razorpay-order failed");
+    res.status(500).json({ error: "Failed to create Razorpay order" });
+  }
+});
+router18.post("/verify", requireAuth, async (req, res) => {
+  const { orderDbId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+  if (!orderDbId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    res.status(400).json({ error: "orderDbId, razorpay_order_id, razorpay_payment_id and razorpay_signature are required" });
+    return;
+  }
+  try {
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret)
+      throw new Error("RAZORPAY_KEY_SECRET not set");
+    const body = `${razorpay_order_id}|${razorpay_payment_id}`;
+    const expected = crypto2.createHmac("sha256", keySecret).update(body).digest("hex");
+    if (expected !== razorpay_signature) {
+      logger.warn({ orderDbId }, "Razorpay signature mismatch \u2014 possible tampering");
+      res.status(400).json({ error: "Payment verification failed: invalid signature" });
+      return;
+    }
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+    const isOwner = order.customerId === req.firebaseUser?.uid;
+    const isAdmin = isAdminEmail(req.firebaseUser?.email);
+    if (!isOwner && !isAdmin) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const payment = {
+      ...order.payment,
+      status: "paid",
+      razorpayPaymentId: razorpay_payment_id,
+      paidAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    const [updated] = await db.update(ordersTable).set({ payment, status: "payment-verified", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId))).returning();
+    logger.info({ orderDbId, razorpay_payment_id }, "Razorpay payment verified and order marked paid");
+    res.json({ success: true, order: updated });
+  } catch (err) {
+    logger.error({ err }, "POST /payment/verify failed");
+    res.status(500).json({ error: "Failed to verify payment" });
+  }
+});
+router18.post("/failure", requireAuth, async (req, res) => {
+  const { orderDbId } = req.body;
+  if (!orderDbId) {
+    res.status(400).json({ error: "orderDbId is required" });
+    return;
+  }
+  try {
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+    const isOwner = order.customerId === req.firebaseUser?.uid;
+    const isAdmin = isAdminEmail(req.firebaseUser?.email);
+    if (!isOwner && !isAdmin) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const payment = {
+      ...order.payment,
+      status: "failed",
+      failedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    await db.update(ordersTable).set({ payment, status: "payment-pending", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId)));
+    logger.info({ orderDbId }, "Razorpay payment marked as failed/dismissed");
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, "POST /payment/failure failed");
+    res.status(500).json({ error: "Failed to record payment failure" });
+  }
+});
+router18.post("/send-request", requireAuth, requireAdminEmail, async (req, res) => {
+  const { orderDbId } = req.body;
+  if (!orderDbId) {
+    res.status(400).json({ error: "orderDbId is required" });
+    return;
+  }
+  try {
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+    const rzp = getRzp();
+    const pricing = order.pricing;
+    const amountPaise = Math.round(pricing.grandTotal * 100);
+    const link = await rzp.paymentLink.create({
+      amount: amountPaise,
+      currency: "INR",
+      description: `Ayush Medico \u2014 Payment for Order ${order.orderId}`,
+      customer: {
+        name: order.customerName,
+        contact: order.customerPhone,
+        ...order.customerEmail ? { email: order.customerEmail } : {}
+      },
+      notify: { sms: false, email: false },
+      // admin sends manually via WhatsApp
+      reminder_enable: false,
+      notes: { orderId: order.orderId, orderDbId },
+      // Expires in 24 hours
+      expire_by: Math.floor(Date.now() / 1e3) + 86400
+    });
+    logger.info({ orderDbId, linkId: link.id }, "Razorpay payment link created");
+    res.json({ url: link.short_url, linkId: link.id });
+  } catch (err) {
+    logger.error({ err }, "POST /payment/send-request failed");
+    res.status(500).json({ error: "Failed to create payment link" });
+  }
+});
+router18.post("/webhook", async (req, res) => {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  if (!secret) {
+    logger.warn("RAZORPAY_WEBHOOK_SECRET not set \u2014 webhook verification skipped (unsafe)");
+  }
+  if (secret) {
+    const signature = req.headers["x-razorpay-signature"];
+    if (!signature) {
+      res.status(400).json({ error: "Missing x-razorpay-signature header" });
+      return;
+    }
+    const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+    const expected = crypto2.createHmac("sha256", secret).update(rawBody).digest("hex");
+    if (expected !== signature) {
+      logger.warn("Razorpay webhook signature mismatch");
+      res.status(400).json({ error: "Invalid webhook signature" });
+      return;
     }
   }
-);
-router18.post(
-  "/verify",
-  requireAuth,
-  async (req, res) => {
-    const {
-      orderDbId,
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature
-    } = req.body;
-    if (!orderDbId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      res.status(400).json({ error: "orderDbId, razorpay_order_id, razorpay_payment_id and razorpay_signature are required" });
-      return;
-    }
-    try {
-      const keySecret = process.env.RAZORPAY_KEY_SECRET;
-      if (!keySecret) throw new Error("RAZORPAY_KEY_SECRET not set");
-      const body = `${razorpay_order_id}|${razorpay_payment_id}`;
-      const expected = crypto2.createHmac("sha256", keySecret).update(body).digest("hex");
-      if (expected !== razorpay_signature) {
-        logger.warn({ orderDbId }, "Razorpay signature mismatch \u2014 possible tampering");
-        res.status(400).json({ error: "Payment verification failed: invalid signature" });
-        return;
-      }
-      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
-      if (!order) {
-        res.status(404).json({ error: "Order not found" });
-        return;
-      }
-      const isOwner = order.customerId === req.firebaseUser?.uid;
-      const isAdmin = isAdminEmail(req.firebaseUser?.email);
-      if (!isOwner && !isAdmin) {
-        res.status(403).json({ error: "Forbidden" });
-        return;
-      }
-      const payment = {
-        ...order.payment,
-        status: "paid",
-        razorpayPaymentId: razorpay_payment_id,
-        paidAt: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      const [updated] = await db.update(ordersTable).set({ payment, status: "payment-verified", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId))).returning();
-      logger.info({ orderDbId, razorpay_payment_id }, "Razorpay payment verified and order marked paid");
-      res.json({ success: true, order: updated });
-    } catch (err) {
-      logger.error({ err }, "POST /payment/verify failed");
-      res.status(500).json({ error: "Failed to verify payment" });
-    }
+  let event;
+  try {
+    const rawBody = Buffer.isBuffer(req.body) ? req.body.toString() : JSON.stringify(req.body);
+    event = JSON.parse(rawBody);
+  } catch {
+    res.status(400).json({ error: "Invalid JSON body" });
+    return;
   }
-);
-router18.post(
-  "/failure",
-  requireAuth,
-  async (req, res) => {
-    const { orderDbId } = req.body;
-    if (!orderDbId) {
-      res.status(400).json({ error: "orderDbId is required" });
-      return;
-    }
-    try {
-      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
-      if (!order) {
-        res.status(404).json({ error: "Order not found" });
-        return;
-      }
-      const isOwner = order.customerId === req.firebaseUser?.uid;
-      const isAdmin = isAdminEmail(req.firebaseUser?.email);
-      if (!isOwner && !isAdmin) {
-        res.status(403).json({ error: "Forbidden" });
-        return;
-      }
-      const payment = {
-        ...order.payment,
-        status: "failed",
-        failedAt: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      await db.update(ordersTable).set({ payment, status: "payment-pending", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId)));
-      logger.info({ orderDbId }, "Razorpay payment marked as failed/dismissed");
-      res.json({ success: true });
-    } catch (err) {
-      logger.error({ err }, "POST /payment/failure failed");
-      res.status(500).json({ error: "Failed to record payment failure" });
-    }
-  }
-);
-router18.post(
-  "/send-request",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    const { orderDbId } = req.body;
-    if (!orderDbId) {
-      res.status(400).json({ error: "orderDbId is required" });
-      return;
-    }
-    try {
-      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
-      if (!order) {
-        res.status(404).json({ error: "Order not found" });
-        return;
-      }
-      const rzp = getRzp();
-      const pricing = order.pricing;
-      const amountPaise = Math.round(pricing.grandTotal * 100);
-      const link = await rzp.paymentLink.create({
-        amount: amountPaise,
-        currency: "INR",
-        description: `Ayush Medico \u2014 Payment for Order ${order.orderId}`,
-        customer: {
-          name: order.customerName,
-          contact: order.customerPhone,
-          ...order.customerEmail ? { email: order.customerEmail } : {}
-        },
-        notify: { sms: false, email: false },
-        // admin sends manually via WhatsApp
-        reminder_enable: false,
-        notes: { orderId: order.orderId, orderDbId },
-        // Expires in 24 hours
-        expire_by: Math.floor(Date.now() / 1e3) + 86400
-      });
-      logger.info({ orderDbId, linkId: link.id }, "Razorpay payment link created");
-      res.json({ url: link.short_url, linkId: link.id });
-    } catch (err) {
-      logger.error({ err }, "POST /payment/send-request failed");
-      res.status(500).json({ error: "Failed to create payment link" });
-    }
-  }
-);
-router18.post(
-  "/webhook",
-  async (req, res) => {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    if (!secret) {
-      logger.warn("RAZORPAY_WEBHOOK_SECRET not set \u2014 webhook verification skipped (unsafe)");
-    }
-    if (secret) {
-      const signature = req.headers["x-razorpay-signature"];
-      if (!signature) {
-        res.status(400).json({ error: "Missing x-razorpay-signature header" });
-        return;
-      }
-      const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
-      const expected = crypto2.createHmac("sha256", secret).update(rawBody).digest("hex");
-      if (expected !== signature) {
-        logger.warn("Razorpay webhook signature mismatch");
-        res.status(400).json({ error: "Invalid webhook signature" });
-        return;
-      }
-    }
-    let event;
-    try {
-      const rawBody = Buffer.isBuffer(req.body) ? req.body.toString() : JSON.stringify(req.body);
-      event = JSON.parse(rawBody);
-    } catch {
-      res.status(400).json({ error: "Invalid JSON body" });
-      return;
-    }
-    const eventType = event["event"];
-    const payload = event["payload"] ?? {};
-    logger.info({ eventType }, "Razorpay webhook received");
-    try {
-      if (eventType === "payment.captured" || eventType === "payment_link.paid") {
-        const paymentEntity = payload["payment"]?.["entity"] ?? {};
-        const notes = paymentEntity["notes"] ?? {};
-        const orderDbId = notes["orderDbId"];
-        const razorpay_payment_id = paymentEntity["id"];
-        const razorpay_order_id = paymentEntity["order_id"];
-        if (orderDbId && razorpay_payment_id) {
-          const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
-          if (order && order.status !== "payment-verified" && order.status !== "delivered") {
-            const payment = {
-              ...order.payment,
-              status: "paid",
-              razorpayPaymentId: razorpay_payment_id,
-              razorpayOrderId: razorpay_order_id ?? order.payment["razorpayOrderId"],
-              paidAt: (/* @__PURE__ */ new Date()).toISOString(),
-              webhookVerified: true
-            };
-            await db.update(ordersTable).set({ payment, status: "payment-verified", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId)));
-            logger.info({ orderDbId, razorpay_payment_id }, "Webhook: order marked payment-verified");
-          }
+  const eventType = event["event"];
+  const payload = event["payload"] ?? {};
+  logger.info({ eventType }, "Razorpay webhook received");
+  try {
+    if (eventType === "payment.captured" || eventType === "payment_link.paid") {
+      const paymentEntity = payload["payment"]?.["entity"] ?? {};
+      const notes = paymentEntity["notes"] ?? {};
+      const orderDbId = notes["orderDbId"];
+      const razorpay_payment_id = paymentEntity["id"];
+      const razorpay_order_id = paymentEntity["order_id"];
+      if (orderDbId && razorpay_payment_id) {
+        const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
+        if (order && order.status !== "payment-verified" && order.status !== "delivered") {
+          const payment = {
+            ...order.payment,
+            status: "paid",
+            razorpayPaymentId: razorpay_payment_id,
+            razorpayOrderId: razorpay_order_id ?? order.payment["razorpayOrderId"],
+            paidAt: (/* @__PURE__ */ new Date()).toISOString(),
+            webhookVerified: true
+          };
+          await db.update(ordersTable).set({ payment, status: "payment-verified", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId)));
+          logger.info({ orderDbId, razorpay_payment_id }, "Webhook: order marked payment-verified");
         }
       }
-      if (eventType === "payment.failed") {
-        const paymentEntity = payload["payment"]?.["entity"] ?? {};
-        const notes = paymentEntity["notes"] ?? {};
-        const orderDbId = notes["orderDbId"];
-        if (orderDbId) {
-          const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
-          if (order) {
-            const payment = {
-              ...order.payment,
-              status: "failed",
-              failedAt: (/* @__PURE__ */ new Date()).toISOString(),
-              webhookVerified: true
-            };
-            await db.update(ordersTable).set({ payment, status: "payment-pending", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId)));
-            logger.info({ orderDbId }, "Webhook: order marked payment-failed");
-          }
+    }
+    if (eventType === "payment.failed") {
+      const paymentEntity = payload["payment"]?.["entity"] ?? {};
+      const notes = paymentEntity["notes"] ?? {};
+      const orderDbId = notes["orderDbId"];
+      if (orderDbId) {
+        const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
+        if (order) {
+          const payment = {
+            ...order.payment,
+            status: "failed",
+            failedAt: (/* @__PURE__ */ new Date()).toISOString(),
+            webhookVerified: true
+          };
+          await db.update(ordersTable).set({ payment, status: "payment-pending", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId)));
+          logger.info({ orderDbId }, "Webhook: order marked payment-failed");
         }
       }
-      res.json({ status: "ok" });
-    } catch (err) {
-      logger.error({ err }, "Razorpay webhook processing error");
-      res.json({ status: "error", message: "Processing failed but acknowledged" });
     }
+    res.json({ status: "ok" });
+  } catch (err) {
+    logger.error({ err }, "Razorpay webhook processing error");
+    res.json({ status: "error", message: "Processing failed but acknowledged" });
   }
-);
-router18.post(
-  "/refund",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    const { orderDbId, amount, notes } = req.body;
-    if (!orderDbId) {
-      res.status(400).json({ error: "orderDbId is required" });
+});
+router18.post("/refund", requireAuth, requireAdminEmail, async (req, res) => {
+  const { orderDbId, amount, notes } = req.body;
+  if (!orderDbId) {
+    res.status(400).json({ error: "orderDbId is required" });
+    return;
+  }
+  try {
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
       return;
     }
-    try {
-      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
-      if (!order) {
-        res.status(404).json({ error: "Order not found" });
-        return;
-      }
-      const payment = order.payment;
-      const razorpayPaymentId = payment["razorpayPaymentId"];
-      if (!razorpayPaymentId) {
-        const updatedPayment2 = { ...payment, status: "refunded", refundedAt: (/* @__PURE__ */ new Date()).toISOString() };
-        const [updated2] = await db.update(ordersTable).set({ payment: updatedPayment2, status: "refunded", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId))).returning();
-        logger.info({ orderDbId }, "Non-Razorpay order marked refunded (manual)");
-        res.json({ success: true, manual: true, order: updated2 });
-        return;
-      }
-      const rzp = getRzp();
-      const pricing = order.pricing;
-      const refundPaise = amount ? Math.round(amount * 100) : Math.round(pricing.grandTotal * 100);
-      const refund = await rzp.payments.refund(razorpayPaymentId, {
-        amount: refundPaise,
-        speed: "normal",
-        notes: { reason: notes ?? "Admin-initiated refund", orderId: order.orderId }
-      });
-      const updatedPayment = {
-        ...payment,
-        status: "refunded",
-        refundId: refund["id"],
-        refundedAt: (/* @__PURE__ */ new Date()).toISOString(),
-        refundAmount: amount ?? pricing.grandTotal
-      };
-      const [updated] = await db.update(ordersTable).set({ payment: updatedPayment, status: "refunded", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId))).returning();
-      logger.info({ orderDbId, refundId: refund["id"] }, "Razorpay refund initiated");
-      res.json({ success: true, refundId: refund["id"], order: updated });
-    } catch (err) {
-      logger.error({ err }, "POST /payment/refund failed");
-      res.status(500).json({ error: "Failed to initiate refund" });
+    const payment = order.payment;
+    const razorpayPaymentId = payment["razorpayPaymentId"];
+    if (!razorpayPaymentId) {
+      const updatedPayment2 = { ...payment, status: "refunded", refundedAt: (/* @__PURE__ */ new Date()).toISOString() };
+      const [updated2] = await db.update(ordersTable).set({ payment: updatedPayment2, status: "refunded", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId))).returning();
+      logger.info({ orderDbId }, "Non-Razorpay order marked refunded (manual)");
+      res.json({ success: true, manual: true, order: updated2 });
+      return;
     }
+    const rzp = getRzp();
+    const pricing = order.pricing;
+    const refundPaise = amount ? Math.round(amount * 100) : Math.round(pricing.grandTotal * 100);
+    const refund = await rzp.payments.refund(razorpayPaymentId, {
+      amount: refundPaise,
+      speed: "normal",
+      notes: { reason: notes ?? "Admin-initiated refund", orderId: order.orderId }
+    });
+    const updatedPayment = {
+      ...payment,
+      status: "refunded",
+      refundId: refund["id"],
+      refundedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      refundAmount: amount ?? pricing.grandTotal
+    };
+    const [updated] = await db.update(ordersTable).set({ payment: updatedPayment, status: "refunded", updatedAt: /* @__PURE__ */ new Date() }).where(eq(ordersTable.id, Number(orderDbId))).returning();
+    logger.info({ orderDbId, refundId: refund["id"] }, "Razorpay refund initiated");
+    res.json({ success: true, refundId: refund["id"], order: updated });
+  } catch (err) {
+    logger.error({ err }, "POST /payment/refund failed");
+    res.status(500).json({ error: "Failed to initiate refund" });
   }
-);
+});
 var payment_default = router18;
 
-// src/routes/porter.ts
+// src/routes/porter.js
 var import_express19 = __toESM(require_express2(), 1);
 var router19 = (0, import_express19.Router)();
 var PORTER_API_BASE = "https://pfe-apigw-uat.porter.in";
@@ -78072,7 +77784,8 @@ function getPorterKey() {
 }
 function porterHeaders() {
   const key = getPorterKey();
-  if (!key) throw new Error("PORTER_API_KEY not configured");
+  if (!key)
+    throw new Error("PORTER_API_KEY not configured");
   return {
     "Content-Type": "application/json",
     "x-api-key": key
@@ -78095,280 +77808,257 @@ function storePickupAddress() {
 function isConfigured() {
   return !!getPorterKey();
 }
-router19.post(
-  "/estimate",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    if (!isConfigured()) {
-      res.status(503).json({
-        error: "Porter not configured",
-        hint: "Set PORTER_API_KEY in environment secrets to enable delivery booking.",
-        configured: false
-      });
+router19.post("/estimate", requireAuth, requireAdminEmail, async (req, res) => {
+  if (!isConfigured()) {
+    res.status(503).json({
+      error: "Porter not configured",
+      hint: "Set PORTER_API_KEY in environment secrets to enable delivery booking.",
+      configured: false
+    });
+    return;
+  }
+  const { orderDbId } = req.body;
+  if (!orderDbId) {
+    res.status(400).json({ error: "orderDbId is required" });
+    return;
+  }
+  try {
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
       return;
     }
-    const { orderDbId } = req.body;
-    if (!orderDbId) {
-      res.status(400).json({ error: "orderDbId is required" });
-      return;
-    }
-    try {
-      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
-      if (!order) {
-        res.status(404).json({ error: "Order not found" });
-        return;
+    const address = order.address;
+    const pickup = storePickupAddress();
+    const payload = {
+      pickup_details: {
+        lat: pickup.lat,
+        lng: pickup.lng
+      },
+      drop_details: {
+        lat: address["lat"] ?? 19.076,
+        // fallback to Mumbai center
+        lng: address["lng"] ?? 72.877
+      },
+      customer: {
+        name: order.customerName,
+        mobile: {
+          country_code: "+91",
+          number: String(address["mobileNumber"] ?? "").replace(/\D/g, "").slice(-10)
+        }
       }
-      const address = order.address;
-      const pickup = storePickupAddress();
-      const payload = {
-        pickup_details: {
+    };
+    const response = await fetch(`${PORTER_API_BASE}/v1/get_quote`, {
+      method: "POST",
+      headers: porterHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      logger.error({ data }, "Porter estimate failed");
+      res.status(502).json({ error: "Porter estimate failed", detail: data });
+      return;
+    }
+    res.json({ configured: true, estimate: data });
+  } catch (err) {
+    logger.error({ err }, "POST /porter/estimate failed");
+    res.status(500).json({ error: "Failed to get delivery estimate" });
+  }
+});
+router19.post("/book", requireAuth, requireAdminEmail, async (req, res) => {
+  if (!isConfigured()) {
+    res.status(503).json({
+      error: "Porter not configured",
+      hint: "Set PORTER_API_KEY in environment secrets to enable delivery booking.",
+      configured: false
+    });
+    return;
+  }
+  const { orderDbId } = req.body;
+  if (!orderDbId) {
+    res.status(400).json({ error: "orderDbId is required" });
+    return;
+  }
+  try {
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+    const address = order.address;
+    const pickup = storePickupAddress();
+    const items = order.items ?? [];
+    const payload = {
+      request_id: order.orderId,
+      delivery_instructions: {
+        instructions_list: [
+          { type: "text", description: `Order: ${order.orderId}. Handle with care \u2014 medicines.` }
+        ]
+      },
+      pickup_details: {
+        address: {
+          apartment_address: pickup.street,
+          street_address1: pickup.street,
+          city: pickup.city,
+          state: pickup.state,
+          pincode: pickup.pincode,
+          country: "India",
           lat: pickup.lat,
           lng: pickup.lng
         },
-        drop_details: {
-          lat: address["lat"] ?? 19.076,
-          // fallback to Mumbai center
-          lng: address["lng"] ?? 72.877
+        contact: {
+          name: pickup.contact.name,
+          mobile: { country_code: "+91", number: pickup.contact.phone }
+        }
+      },
+      drop_details: {
+        address: {
+          apartment_address: [address["houseNumber"], address["buildingName"]].filter(Boolean).join(", "),
+          street_address1: String(address["street"] ?? ""),
+          street_address2: [address["area"], address["landmark"]].filter(Boolean).join(", "),
+          city: String(address["city"] ?? "Mumbai"),
+          state: String(address["state"] ?? "Maharashtra"),
+          pincode: String(address["pincode"] ?? ""),
+          country: "India",
+          lat: Number(address["lat"] ?? 19.076),
+          lng: Number(address["lng"] ?? 72.877)
         },
-        customer: {
-          name: order.customerName,
+        contact: {
+          name: String(address["fullName"] ?? order.customerName),
           mobile: {
             country_code: "+91",
             number: String(address["mobileNumber"] ?? "").replace(/\D/g, "").slice(-10)
           }
         }
-      };
-      const response = await fetch(`${PORTER_API_BASE}/v1/get_quote`, {
-        method: "POST",
-        headers: porterHeaders(),
-        body: JSON.stringify(payload)
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        logger.error({ data }, "Porter estimate failed");
-        res.status(502).json({ error: "Porter estimate failed", detail: data });
-        return;
-      }
-      res.json({ configured: true, estimate: data });
-    } catch (err) {
-      logger.error({ err }, "POST /porter/estimate failed");
-      res.status(500).json({ error: "Failed to get delivery estimate" });
+      },
+      additional_comments: `${items.map((i) => `${i.medicineName ?? "Item"} \xD7${i.quantity ?? 1}`).join(", ")}`
+    };
+    const response = await fetch(`${PORTER_API_BASE}/v1/orders`, {
+      method: "POST",
+      headers: porterHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      logger.error({ data }, "Porter booking failed");
+      res.status(502).json({ error: "Porter booking failed", detail: data });
+      return;
     }
+    const porterOrderId = String(data["order_id"] ?? "");
+    const trackingUrl = String(data["tracking_url"] ?? "");
+    await db.update(ordersTable).set({
+      delivery: {
+        ...order.delivery,
+        status: "assigned",
+        porterOrderId,
+        trackingUrl: trackingUrl || void 0,
+        bookedAt: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      status: "delivery-assigned",
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq(ordersTable.id, Number(orderDbId)));
+    logger.info({ orderDbId, porterOrderId }, "Porter delivery booked");
+    res.json({ configured: true, success: true, porterOrderId, trackingUrl, raw: data });
+  } catch (err) {
+    logger.error({ err }, "POST /porter/book failed");
+    res.status(500).json({ error: "Failed to book Porter delivery" });
   }
-);
-router19.post(
-  "/book",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    if (!isConfigured()) {
-      res.status(503).json({
-        error: "Porter not configured",
-        hint: "Set PORTER_API_KEY in environment secrets to enable delivery booking.",
-        configured: false
+});
+router19.get("/track/:porterOrderId", requireAuth, requireAdminEmail, async (req, res) => {
+  if (!isConfigured()) {
+    res.status(503).json({ error: "Porter not configured", configured: false });
+    return;
+  }
+  const { porterOrderId } = req.params;
+  if (!porterOrderId) {
+    res.status(400).json({ error: "porterOrderId is required" });
+    return;
+  }
+  try {
+    const response = await fetch(`${PORTER_API_BASE}/v1/orders/${encodeURIComponent(porterOrderId)}`, {
+      headers: porterHeaders()
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      res.status(502).json({ error: "Failed to fetch Porter tracking", detail: data });
+      return;
+    }
+    res.json({ configured: true, tracking: data });
+  } catch (err) {
+    logger.error({ err }, "GET /porter/track failed");
+    res.status(500).json({ error: "Failed to fetch tracking" });
+  }
+});
+router19.post("/cancel", requireAuth, requireAdminEmail, async (req, res) => {
+  if (!isConfigured()) {
+    res.status(503).json({ error: "Porter not configured", configured: false });
+    return;
+  }
+  const { porterOrderId, reason } = req.body;
+  if (!porterOrderId) {
+    res.status(400).json({ error: "porterOrderId is required" });
+    return;
+  }
+  try {
+    const response = await fetch(`${PORTER_API_BASE}/v1/orders/${encodeURIComponent(porterOrderId)}/cancel`, {
+      method: "POST",
+      headers: porterHeaders(),
+      body: JSON.stringify({ cancellation_reason: reason ?? "Order cancelled by merchant" })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      res.status(502).json({ error: "Failed to cancel Porter order", detail: data });
+      return;
+    }
+    logger.info({ porterOrderId }, "Porter delivery cancelled");
+    res.json({ configured: true, success: true, raw: data });
+  } catch (err) {
+    logger.error({ err }, "POST /porter/cancel failed");
+    res.status(500).json({ error: "Failed to cancel Porter delivery" });
+  }
+});
+router19.post("/webhook", async (req, res) => {
+  try {
+    const event = req.body;
+    const porterOrderId = String(event["order_id"] ?? "");
+    const status = String(event["status"] ?? "");
+    logger.info({ porterOrderId, status }, "Porter webhook received");
+    const statusMap = {
+      "PICKED_UP": "out-for-delivery",
+      "DELIVERED": "delivered",
+      "CANCELLED": "cancelled",
+      "FAILED": "returned"
+    };
+    const ourStatus = statusMap[status.toUpperCase()];
+    if (ourStatus && porterOrderId) {
+      const orders = await db.select().from(ordersTable);
+      const matching = orders.find((o) => {
+        const d = o.delivery;
+        return d?.["porterOrderId"] === porterOrderId;
       });
-      return;
-    }
-    const { orderDbId } = req.body;
-    if (!orderDbId) {
-      res.status(400).json({ error: "orderDbId is required" });
-      return;
-    }
-    try {
-      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
-      if (!order) {
-        res.status(404).json({ error: "Order not found" });
-        return;
-      }
-      const address = order.address;
-      const pickup = storePickupAddress();
-      const items = order.items ?? [];
-      const payload = {
-        request_id: order.orderId,
-        delivery_instructions: {
-          instructions_list: [
-            { type: "text", description: `Order: ${order.orderId}. Handle with care \u2014 medicines.` }
-          ]
-        },
-        pickup_details: {
-          address: {
-            apartment_address: pickup.street,
-            street_address1: pickup.street,
-            city: pickup.city,
-            state: pickup.state,
-            pincode: pickup.pincode,
-            country: "India",
-            lat: pickup.lat,
-            lng: pickup.lng
+      if (matching) {
+        await db.update(ordersTable).set({
+          status: ourStatus,
+          delivery: {
+            ...matching.delivery,
+            status: status === "DELIVERED" ? "delivered" : status === "PICKED_UP" ? "out-for-delivery" : "failed",
+            lastWebhookStatus: status,
+            lastWebhookAt: (/* @__PURE__ */ new Date()).toISOString()
           },
-          contact: {
-            name: pickup.contact.name,
-            mobile: { country_code: "+91", number: pickup.contact.phone }
-          }
-        },
-        drop_details: {
-          address: {
-            apartment_address: [address["houseNumber"], address["buildingName"]].filter(Boolean).join(", "),
-            street_address1: String(address["street"] ?? ""),
-            street_address2: [address["area"], address["landmark"]].filter(Boolean).join(", "),
-            city: String(address["city"] ?? "Mumbai"),
-            state: String(address["state"] ?? "Maharashtra"),
-            pincode: String(address["pincode"] ?? ""),
-            country: "India",
-            lat: Number(address["lat"] ?? 19.076),
-            lng: Number(address["lng"] ?? 72.877)
-          },
-          contact: {
-            name: String(address["fullName"] ?? order.customerName),
-            mobile: {
-              country_code: "+91",
-              number: String(address["mobileNumber"] ?? "").replace(/\D/g, "").slice(-10)
-            }
-          }
-        },
-        additional_comments: `${items.map((i) => `${i.medicineName ?? "Item"} \xD7${i.quantity ?? 1}`).join(", ")}`
-      };
-      const response = await fetch(`${PORTER_API_BASE}/v1/orders`, {
-        method: "POST",
-        headers: porterHeaders(),
-        body: JSON.stringify(payload)
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        logger.error({ data }, "Porter booking failed");
-        res.status(502).json({ error: "Porter booking failed", detail: data });
-        return;
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq(ordersTable.id, matching.id));
+        logger.info({ orderId: matching.orderId, ourStatus }, "Order status updated from Porter webhook");
       }
-      const porterOrderId = String(data["order_id"] ?? "");
-      const trackingUrl = String(data["tracking_url"] ?? "");
-      await db.update(ordersTable).set({
-        delivery: {
-          ...order.delivery,
-          status: "assigned",
-          porterOrderId,
-          trackingUrl: trackingUrl || void 0,
-          bookedAt: (/* @__PURE__ */ new Date()).toISOString()
-        },
-        status: "delivery-assigned",
-        updatedAt: /* @__PURE__ */ new Date()
-      }).where(eq(ordersTable.id, Number(orderDbId)));
-      logger.info({ orderDbId, porterOrderId }, "Porter delivery booked");
-      res.json({ configured: true, success: true, porterOrderId, trackingUrl, raw: data });
-    } catch (err) {
-      logger.error({ err }, "POST /porter/book failed");
-      res.status(500).json({ error: "Failed to book Porter delivery" });
     }
+    res.json({ received: true });
+  } catch (err) {
+    logger.error({ err }, "POST /porter/webhook failed");
+    res.status(500).json({ error: "Webhook processing failed" });
   }
-);
-router19.get(
-  "/track/:porterOrderId",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    if (!isConfigured()) {
-      res.status(503).json({ error: "Porter not configured", configured: false });
-      return;
-    }
-    const { porterOrderId } = req.params;
-    if (!porterOrderId) {
-      res.status(400).json({ error: "porterOrderId is required" });
-      return;
-    }
-    try {
-      const response = await fetch(`${PORTER_API_BASE}/v1/orders/${encodeURIComponent(porterOrderId)}`, {
-        headers: porterHeaders()
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        res.status(502).json({ error: "Failed to fetch Porter tracking", detail: data });
-        return;
-      }
-      res.json({ configured: true, tracking: data });
-    } catch (err) {
-      logger.error({ err }, "GET /porter/track failed");
-      res.status(500).json({ error: "Failed to fetch tracking" });
-    }
-  }
-);
-router19.post(
-  "/cancel",
-  requireAuth,
-  requireAdminEmail,
-  async (req, res) => {
-    if (!isConfigured()) {
-      res.status(503).json({ error: "Porter not configured", configured: false });
-      return;
-    }
-    const { porterOrderId, reason } = req.body;
-    if (!porterOrderId) {
-      res.status(400).json({ error: "porterOrderId is required" });
-      return;
-    }
-    try {
-      const response = await fetch(`${PORTER_API_BASE}/v1/orders/${encodeURIComponent(porterOrderId)}/cancel`, {
-        method: "POST",
-        headers: porterHeaders(),
-        body: JSON.stringify({ cancellation_reason: reason ?? "Order cancelled by merchant" })
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        res.status(502).json({ error: "Failed to cancel Porter order", detail: data });
-        return;
-      }
-      logger.info({ porterOrderId }, "Porter delivery cancelled");
-      res.json({ configured: true, success: true, raw: data });
-    } catch (err) {
-      logger.error({ err }, "POST /porter/cancel failed");
-      res.status(500).json({ error: "Failed to cancel Porter delivery" });
-    }
-  }
-);
-router19.post(
-  "/webhook",
-  async (req, res) => {
-    try {
-      const event = req.body;
-      const porterOrderId = String(event["order_id"] ?? "");
-      const status = String(event["status"] ?? "");
-      logger.info({ porterOrderId, status }, "Porter webhook received");
-      const statusMap = {
-        "PICKED_UP": "out-for-delivery",
-        "DELIVERED": "delivered",
-        "CANCELLED": "cancelled",
-        "FAILED": "returned"
-      };
-      const ourStatus = statusMap[status.toUpperCase()];
-      if (ourStatus && porterOrderId) {
-        const orders = await db.select().from(ordersTable);
-        const matching = orders.find((o) => {
-          const d = o.delivery;
-          return d?.["porterOrderId"] === porterOrderId;
-        });
-        if (matching) {
-          await db.update(ordersTable).set({
-            status: ourStatus,
-            delivery: {
-              ...matching.delivery,
-              status: status === "DELIVERED" ? "delivered" : status === "PICKED_UP" ? "out-for-delivery" : "failed",
-              lastWebhookStatus: status,
-              lastWebhookAt: (/* @__PURE__ */ new Date()).toISOString()
-            },
-            updatedAt: /* @__PURE__ */ new Date()
-          }).where(eq(ordersTable.id, matching.id));
-          logger.info({ orderId: matching.orderId, ourStatus }, "Order status updated from Porter webhook");
-        }
-      }
-      res.json({ received: true });
-    } catch (err) {
-      logger.error({ err }, "POST /porter/webhook failed");
-      res.status(500).json({ error: "Webhook processing failed" });
-    }
-  }
-);
+});
 var porter_default = router19;
 
-// src/routes/index.ts
+// src/routes/index.js
 var router20 = (0, import_express20.Router)();
 router20.use(health_default);
 router20.use("/", medicines_default);
@@ -78391,20 +78081,80 @@ router20.use("/payment", payment_default);
 router20.use("/porter", porter_default);
 var routes_default = router20;
 
+// src/lib/firebaseAdmin.js
+import { initializeApp as initializeApp2, cert as cert2, getApps as getApps2 } from "firebase-admin/app";
+import { getAuth as getAdminAuth2 } from "firebase-admin/auth";
+import { getFirestore as getFirestore2 } from "firebase-admin/firestore";
+var app2 = null;
+var hasServiceAccountCredentials = false;
+var initializationError2 = null;
+function firstConfigured(...values) {
+  return values.find((value) => typeof value === "string" && value.trim().length > 0)?.trim();
+}
+function normalizePrivateKey(privateKey) {
+  return privateKey.replace(/\\n/g, "\n");
+}
+function initFirebaseAdmin() {
+  if (app2 || getApps2().length > 0)
+    return;
+  const projectId = firstConfigured(process.env["FIREBASE_PROJECT_ID"], process.env["VITE_FIREBASE_PROJECT_ID"]);
+  const serviceAccountJson = process.env["FIREBASE_SERVICE_ACCOUNT_JSON"];
+  if (!projectId && !serviceAccountJson) {
+    initializationError2 = "Firebase Admin project ID or service account credentials are not configured";
+    logger2.error(initializationError2);
+    return;
+  }
+  try {
+    if (serviceAccountJson) {
+      const serviceAccount = JSON.parse(serviceAccountJson);
+      if (typeof serviceAccount.private_key === "string") {
+        serviceAccount.private_key = normalizePrivateKey(serviceAccount.private_key);
+      }
+      app2 = initializeApp2({ credential: cert2(serviceAccount) });
+      hasServiceAccountCredentials = true;
+      logger2.info("Firebase Admin initialized with service account");
+    } else {
+      const clientEmail = firstConfigured(process.env["FIREBASE_CLIENT_EMAIL"]);
+      const privateKey = firstConfigured(process.env["FIREBASE_PRIVATE_KEY"]);
+      if (clientEmail && privateKey && projectId) {
+        app2 = initializeApp2({
+          credential: cert2({
+            projectId,
+            clientEmail,
+            privateKey: normalizePrivateKey(privateKey)
+          }),
+          projectId
+        });
+        hasServiceAccountCredentials = true;
+        logger2.info("Firebase Admin initialized with server-side service account variables");
+      } else if (projectId) {
+        app2 = initializeApp2({ projectId });
+        logger2.warn("Firebase Admin initialized with project ID only. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY for server-side Firebase Admin API access.");
+      } else {
+        initializationError2 = "Firebase Admin service account credentials are missing a project ID";
+        logger2.error(initializationError2);
+      }
+    }
+  } catch (err) {
+    initializationError2 = "Firebase Admin could not be initialized from the configured credentials";
+    logger2.error({ err }, "Failed to initialize Firebase Admin");
+  }
+}
+
 // src/app.ts
 initFirebaseAdmin();
-var app2 = (0, import_express21.default)();
-app2.set("trust proxy", 1);
-app2.use(
+var app3 = (0, import_express21.default)();
+app3.set("trust proxy", 1);
+app3.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: false
     // Handled by Vite/frontend
   })
 );
-app2.use(
+app3.use(
   (0, import_pino_http.default)({
-    logger,
+    logger: logger2,
     serializers: {
       req(req) {
         return {
@@ -78421,10 +78171,10 @@ app2.use(
     }
   })
 );
-app2.use((0, import_cors.default)());
-app2.use("/api/payment/webhook", import_express21.default.raw({ type: "application/json" }));
-app2.use(import_express21.default.json({ limit: "50mb" }));
-app2.use(import_express21.default.urlencoded({ extended: true, limit: "50mb" }));
+app3.use((0, import_cors.default)());
+app3.use("/api/payment/webhook", import_express21.default.raw({ type: "application/json" }));
+app3.use(import_express21.default.json({ limit: "50mb" }));
+app3.use(import_express21.default.urlencoded({ extended: true, limit: "50mb" }));
 var generalLimiter = rate_limit_default({
   windowMs: 15 * 60 * 1e3,
   // 15 minutes
@@ -78456,7 +78206,7 @@ var syncLimiter = rate_limit_default({
       1,
       Math.ceil((resetTime.getTime() - Date.now()) / 1e3)
     );
-    logger.warn(
+    logger2.warn(
       {
         ip: req.ip,
         path: req.path,
@@ -78473,17 +78223,17 @@ var syncLimiter = rate_limit_default({
     });
   }
 });
-app2.use("/api", generalLimiter);
-app2.use("/api/payment", paymentLimiter);
-app2.use("/api/sync/session", syncLimiter);
-app2.use("/api", routes_default);
+app3.use("/api", generalLimiter);
+app3.use("/api/payment", paymentLimiter);
+app3.use("/api/sync/session", syncLimiter);
+app3.use("/api", routes_default);
 if (process.env.NODE_ENV === "production") {
   const frontendDir = path.resolve(
     import.meta.dirname,
     "../../ayush-medico/dist/public"
   );
-  app2.use(import_express21.default.static(frontendDir));
-  app2.use((req, res, next) => {
+  app3.use(import_express21.default.static(frontendDir));
+  app3.use((req, res, next) => {
     if (req.method !== "GET" || req.path.startsWith("/api")) {
       next();
       return;
@@ -78493,7 +78243,7 @@ if (process.env.NODE_ENV === "production") {
     });
   });
 }
-var app_default = app2;
+var app_default = app3;
 
 // src/index.ts
 var rawPort = process.env["PORT"];
