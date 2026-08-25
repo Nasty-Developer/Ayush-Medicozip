@@ -1,0 +1,1 @@
+import{j as o,a2 as n}from"./index-Ds-rFBeg.js";import{u as s}from"./useLegalContent-DPJe2M5b.js";import{D as a}from"./DynamicLegalPage-XuberOW-.js";function l(){const{content:t,loading:e}=s("terms");return o.jsx(a,{title:"Terms & Conditions",icon:n,content:t,loading:e})}export{l as default};

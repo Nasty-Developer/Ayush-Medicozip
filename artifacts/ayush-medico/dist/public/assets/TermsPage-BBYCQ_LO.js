@@ -1,1 +1,0 @@
-import{j as o,a2 as n}from"./index-CqV9h6uy.js";import{u as s}from"./useLegalContent-MQqzrPj1.js";import{D as a}from"./DynamicLegalPage-C0Q8I3xO.js";function l(){const{content:t,loading:e}=s("terms");return o.jsx(a,{title:"Terms & Conditions",icon:n,content:t,loading:e})}export{l as default};
