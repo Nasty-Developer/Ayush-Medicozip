@@ -11,5 +11,9 @@
     "allowJs": true,
     "rootDir": "./"
   },
-  "include": ["api/**/*", "src/**/*"]
+  "include": ["src/**/*"],
+"exclude": [
+  "api/**/*",
+  "artifacts/api-server/**/*"
+]
 }
