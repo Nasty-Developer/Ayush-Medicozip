@@ -12,8 +12,8 @@
     "rootDir": "./"
   },
   "include": ["src/**/*"],
-"exclude": [
-  "api/**/*",
-  "artifacts/api-server/**/*"
-]
+  "exclude": [
+    "api/**/*",
+    "artifacts/api-server/**/*"
+  ]
 }
