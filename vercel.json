@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "corepack enable && corepack prepare pnpm@10.26.1 --activate && pnpm install --frozen-lockfile && node api/build.mjs && pnpm --filter @workspace/ayush-medico run build"
+  "buildCommand": "corepack prepare pnpm@10.26.1 --activate && pnpm install --frozen-lockfile && node api/build.mjs && pnpm --filter @workspace/ayush-medico run build",
   "outputDirectory": "artifacts/ayush-medico/dist/public",
   "rewrites": [
     {
