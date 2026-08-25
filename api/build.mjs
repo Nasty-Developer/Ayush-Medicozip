@@ -17,7 +17,7 @@ await rm(outputDir, { recursive: true, force: true });
 await build({
   entryPoints: [path.join(repoRoot, "artifacts/api-server/src/app.ts")],
   outdir: outputDir,
-  entryNames: "api-handler",
+  entryNames: "[name]",
   platform: "node",
   bundle: true,
   format: "esm",

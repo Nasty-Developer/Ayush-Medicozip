@@ -21,7 +21,7 @@
  *   - POST /api/payment/webhook — raw body for Razorpay HMAC verification
  * Express's own middleware in app.ts handles all body parsing.
  */
-import app from "./.vercel-build/api-handler.mjs";
+import app from "./.vercel-build/app.mjs";
 
 export const config = {
   api: {
