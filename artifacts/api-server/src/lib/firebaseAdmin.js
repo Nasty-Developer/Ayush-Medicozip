@@ -1,7 +1,7 @@
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { logger } from "./logger";
+import { logger } from "./logger.js";
 let app = null;
 let hasServiceAccountCredentials = false;
 let initializationError = null;
