@@ -22,11 +22,9 @@
  * Express's own middleware in app.ts handles all body parsing.
  */
 import app from "../artifacts/api-server/src/app.js";
-
 export const config = {
-  api: {
-    bodyParser: false,
-  },
+    api: {
+        bodyParser: false,
+    },
 };
-
 export default app;
