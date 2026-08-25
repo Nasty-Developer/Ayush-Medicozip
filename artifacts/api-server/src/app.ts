@@ -1,4 +1,4 @@
-import express, { type Application, type Request } from "express";
+import express, { type Request } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
@@ -9,7 +9,18 @@ import { logger } from "./lib/logger.js";
 import { initFirebaseAdmin } from "./lib/firebaseAdmin.js";
 initFirebaseAdmin();
 
-const app: Application = express();
+// Keep the app type inferred from the callable Express factory. This avoids
+// Vercel's function type checker confusing the CommonJS Express export with
+// the module namespace when it analyzes the workspace from the api function.
+const app = express();
+
+// pino-http publishes a CommonJS export. The workspace bundler handles the
+// default import, while Vercel's standalone type pass can see the namespace
+// shape instead. Normalize the type at this boundary; runtime behavior is
+// unchanged.
+const createPinoHttp = pinoHttp as unknown as (
+  options: Record<string, unknown>,
+) => ReturnType<typeof express>;
 
 // ── Trust proxy ───────────────────────────────────────────────────────────────
 // Replit (and most PaaS providers) sit behind a reverse-proxy that sets
@@ -26,17 +37,17 @@ app.use(
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 app.use(
-  pinoHttp({
+  createPinoHttp({
     logger,
     serializers: {
-      req(req) {
+      req(req: any) {
         return {
           id: req.id,
           method: req.method,
           url: req.url?.split("?")[0],
         };
       },
-      res(res) {
+      res(res: any) {
         return {
           statusCode: res.statusCode,
         };

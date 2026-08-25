@@ -78144,6 +78144,7 @@ function initFirebaseAdmin() {
 // src/app.ts
 initFirebaseAdmin();
 var app3 = (0, import_express21.default)();
+var createPinoHttp = import_pino_http.default;
 app3.set("trust proxy", 1);
 app3.use(
   helmet({
@@ -78153,7 +78154,7 @@ app3.use(
   })
 );
 app3.use(
-  (0, import_pino_http.default)({
+  createPinoHttp({
     logger: logger2,
     serializers: {
       req(req) {
