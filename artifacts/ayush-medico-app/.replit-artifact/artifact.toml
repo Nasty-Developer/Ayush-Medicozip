@@ -1,5 +1,5 @@
 kind = "web"
-previewPath = "/ayush-medico-source/"
+previewPath = "/"
 title = "Ayush Medico"
 description = "A medicine delivery and request management web app for Ayush Medico pharmacy in Kurla West, Mumbai, with a customer storefront, inventory-backed catalog, order flows, and administration tools."
 version = "1.0.0"
@@ -8,7 +8,7 @@ router = "path"
 
 [[services]]
 name = "web"
-paths = [ "/ayush-medico-source/" ]
+paths = [ "/" ]
 localPort = 22890
 
 [services.development]
@@ -25,4 +25,4 @@ to = "/index.html"
 
 [services.env]
 PORT = "22890"
-BASE_PATH = "/ayush-medico-source/"
+BASE_PATH = "/"
