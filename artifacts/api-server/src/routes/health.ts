@@ -5,7 +5,7 @@ const router = Router();
 
 router.get("/", (_req: Request, res: Response) => {
   const data = HealthCheckResponse.parse({ status: "ok" });
-  return res.status(200).json(data);
+  return res.json(data);
 });
 
 export default router;
