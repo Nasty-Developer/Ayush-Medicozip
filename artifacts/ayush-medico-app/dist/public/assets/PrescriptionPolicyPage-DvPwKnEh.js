@@ -1,0 +1,1 @@
+import{j as i}from"./index-CAW-LK2_.js";import{u as r}from"./useLegalContent-u1SZj5vy.js";import{D as e}from"./DynamicLegalPage-DGaeBGPK.js";import{F as n}from"./file-check-CqtEA64i.js";function p(){const{content:o,loading:t}=r("prescription");return i.jsx(e,{title:"Prescription Policy",icon:n,content:o,loading:t})}export{p as default};
