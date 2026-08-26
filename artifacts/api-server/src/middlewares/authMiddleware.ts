@@ -3,18 +3,22 @@ import type { DecodedIdToken } from "firebase-admin/auth";
 import {
   FirebaseAdminConfigurationError,
   getAuth,
-} from "../lib/firebaseAdmin";
-import { logger } from "../lib/logger";
+} from "../lib/firebaseAdmin.js";
+import { logger } from "../lib/logger.js";
 
 export interface AuthenticatedRequest extends Request {
   firebaseUser?: DecodedIdToken;
+  headers: {
+    authorization?: string;
+    [key: string]: unknown;
+  };
 }
 
 /**
  * requireAuth — verifies Firebase ID token in Authorization: Bearer <token> header.
  * Rejects 401 if missing/invalid.
  */
-export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+export async function requireAuth(req: AuthenticatedRequest, res: any, next: any): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
     res.status(401).json({ error: "Missing or malformed Authorization header" });
@@ -63,7 +67,7 @@ export function isAdminEmail(email: string | undefined | null): boolean {
  * the VITE_ADMIN_EMAIL allowlist (comma-separated). If the env var is not set,
  * any authenticated user is accepted (set the var in production).
  */
-export function requireAdminEmail(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+export function requireAdminEmail(req: AuthenticatedRequest, res: any, next: any): void {
   if (!process.env["VITE_ADMIN_EMAIL"]) {
     logger.warn("VITE_ADMIN_EMAIL not set; any authenticated user can access admin routes");
   }
