@@ -1,0 +1,1 @@
+- [Vercel workspace bundling](vercel-workspace-bundling.md) — root serverless entrypoints must bundle workspace TypeScript and avoid workspace-local external dependencies.
