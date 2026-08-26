@@ -45,13 +45,13 @@ import {
   syncSessionsTable,
   uploadChunksTable,
 } from "@workspace/db";
-import { logger } from "../lib/logger";
+import { logger } from "../lib/logger.js";
 import {
   requireAuth,
   requireAdminEmail,
   type AuthenticatedRequest,
-} from "../middlewares/authMiddleware";
-import { prepareSdfImport } from "../lib/sdf/parser";
+} from "../middlewares/authMiddleware.js";
+import { prepareSdfImport } from "../lib/sdf/parser.js";
 
 const router = Router();
 

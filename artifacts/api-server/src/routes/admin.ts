@@ -25,8 +25,8 @@ import {
   type InsertMedicine, type InsertCompany,
 } from "@workspace/db";
 import { eq, sql, count, ilike, or, and, asc } from "drizzle-orm";
-import { logger } from "../lib/logger";
-import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware";
+import { logger } from "../lib/logger.js";
+import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 

@@ -2,8 +2,8 @@ import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { productsTable, inventoryTable, type InsertProduct, type InsertInventory } from "@workspace/db";
 import { eq, ilike, or, and, type SQL } from "drizzle-orm";
-import { logger } from "../lib/logger";
-import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware";
+import { logger } from "../lib/logger.js";
+import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 

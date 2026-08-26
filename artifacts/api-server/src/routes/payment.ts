@@ -18,8 +18,8 @@ import crypto from "crypto";
 import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { ordersTable } from "@workspace/db";
-import { logger } from "../lib/logger";
-import { requireAuth, requireAdminEmail, isAdminEmail, type AuthenticatedRequest } from "../middlewares/authMiddleware";
+import { logger } from "../lib/logger.js";
+import { requireAuth, requireAdminEmail, isAdminEmail, type AuthenticatedRequest } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 

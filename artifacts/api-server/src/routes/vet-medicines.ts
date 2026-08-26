@@ -20,8 +20,8 @@ import {
   vetMedicinesTable, categoriesTable,
   type InsertVetMedicine,
 } from "@workspace/db";
-import { logger } from "../lib/logger";
-import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware";
+import { logger } from "../lib/logger.js";
+import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
