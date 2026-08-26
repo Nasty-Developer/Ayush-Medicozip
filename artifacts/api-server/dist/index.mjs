@@ -77335,13 +77335,13 @@ async function sendWhatsAppMessage(input) {
   const apiVersion = process.env["WHATSAPP_API_VERSION"] ?? "v19.0";
   const template = TEMPLATES[input.event];
   if (!template) {
-    logger.warn({ event: input.event }, "[WhatsApp] No template for event");
+    logger2.warn({ event: input.event }, "[WhatsApp] No template for event");
     return { sent: false, reason: "no_template" };
   }
   const messageText = template(input.params);
   const to = normalisePhone(input.to);
   if (!accessToken || !phoneNumberId) {
-    logger.info(
+    logger2.info(
       { event: input.event, to, orderId: input.params["orderId"] },
       `[WhatsApp] NOT_CONFIGURED \u2014 would send:
 ${messageText}`
@@ -77370,15 +77370,15 @@ ${messageText}`
     });
     const data = await res.json();
     if (!res.ok) {
-      logger.error({ status: res.status, data, event: input.event, to }, "[WhatsApp] API error");
+      logger2.error({ status: res.status, data, event: input.event, to }, "[WhatsApp] API error");
       return { sent: false, reason: `api_error_${res.status}` };
     }
     const messages = data["messages"];
     const messageId = messages?.[0]?.id;
-    logger.info({ event: input.event, to, messageId }, "[WhatsApp] Message sent");
+    logger2.info({ event: input.event, to, messageId }, "[WhatsApp] Message sent");
     return { sent: true, messageId };
   } catch (err) {
-    logger.error({ err, event: input.event, to }, "[WhatsApp] Network error");
+    logger2.error({ err, event: input.event, to }, "[WhatsApp] Network error");
     return { sent: false, reason: "network_error" };
   }
 }

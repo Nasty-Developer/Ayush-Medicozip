@@ -15,7 +15,7 @@
  * https://developers.facebook.com/docs/whatsapp/cloud-api/messages
  */
 
-import { logger } from "./logger";
+import { logger } from "./logger.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -143,14 +143,18 @@ export async function sendWhatsAppMessage(
   };
 
   try {
-    const res = await fetch(url, {
+    const res = (await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-    });
+    })) as unknown as {
+      json(): Promise<Record<string, unknown>>;
+      ok: boolean;
+      status: number;
+    };
 
     const data = await res.json() as Record<string, unknown>;
 
