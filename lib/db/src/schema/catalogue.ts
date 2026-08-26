@@ -18,9 +18,9 @@
 import {
   pgTable, serial, integer, text, numeric, boolean, timestamp, index,
 } from "drizzle-orm/pg-core";
-import { categoriesTable } from "./categories";
-import { companiesTable } from "./companies";
-import { drugGroupsTable } from "./drugGroups";
+import { categoriesTable } from "./categories.js";
+import { companiesTable } from "./companies.js";
+import { drugGroupsTable } from "./drugGroups.js";
 
 // ── Medicines ─────────────────────────────────────────────────────────────────
 

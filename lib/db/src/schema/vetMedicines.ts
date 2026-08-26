@@ -9,7 +9,7 @@
 import {
   pgTable, serial, integer, text, numeric, boolean, timestamp, index,
 } from "drizzle-orm/pg-core";
-import { categoriesTable } from "./categories";
+import { categoriesTable } from "./categories.js";
 
 export const vetMedicinesTable = pgTable(
   "vet_medicines",
