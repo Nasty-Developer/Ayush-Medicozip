@@ -408,6 +408,7 @@ function App() {
                             )}
                           </Route>
                         </Switch>
+                        </WouterRouter>
                       </Suspense>
                     </ErrorBoundary>
                   </OfflineGuard>
