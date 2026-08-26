@@ -7,7 +7,7 @@
  * array of lines.
  */
 
-import { normalizeCategory } from "./categoryNormalizer";
+import { normalizeCategory } from "./categoryNormalizer.js";
 
 export interface ParsedMedicine {
   sdfProductId: number;
