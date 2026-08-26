@@ -1,46 +1,45 @@
-# Ayush Medico
+# [Project name]
 
-A medicine delivery and request management web app for Ayush Medico pharmacy (Kurla West, Mumbai).
+_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+
+## Run & Operate
+
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm run typecheck` — full typecheck across all packages
+- `pnpm run build` — typecheck + build all packages
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
+- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
-- **Frontend**: React 19 + Vite, Tailwind CSS v4, TanStack Query, wouter, Radix UI
-- **Backend**: Express (Node.js/TypeScript), built with esbuild
-- **Database**: PostgreSQL via Drizzle ORM
-- **Auth**: Firebase Authentication + Firebase Admin SDK
-- **Monorepo**: pnpm workspaces
+- pnpm workspaces, Node.js 24, TypeScript 5.9
+- API: Express 5
+- DB: PostgreSQL + Drizzle ORM
+- Validation: Zod (`zod/v4`), `drizzle-zod`
+- API codegen: Orval (from OpenAPI spec)
+- Build: esbuild (CJS bundle)
 
-## Running the project
+## Where things live
 
-Both services start automatically via the **Project** run button:
+_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
 
-| Service | Command | Port |
-|---------|---------|------|
-| Frontend (Vite dev) | `pnpm --filter @workspace/ayush-medico run dev` | 18169 |
-| API server | `pnpm --filter @workspace/api-server run dev` | 8080 |
+## Architecture decisions
 
-To push DB schema changes: `pnpm --filter @workspace/db run push`
+_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
 
-## Environment
+## Product
 
-All Firebase config keys (`VITE_FIREBASE_*`) are stored as shared env vars.  
-`DATABASE_URL` is runtime-managed by Replit PostgreSQL.  
-`SESSION_SECRET` is stored as a Replit Secret.
-
-## Inventory sources
-
-The medicine catalog comes from exactly two sources:
-- Manual entries created in the Admin Panel.
-- MediVision Gold inventory sync.
-
-There is no third-party medicine lookup API (previously OpenFDA was explored and has been fully removed).
-
-## Fresh environment setup
-
-On a newly imported/cloned environment the Postgres database starts empty — no tables, no data. To get a fully working app:
-1. `pnpm install` (installs all workspace deps)
-2. `pnpm --filter @workspace/db run push` (creates tables from the Drizzle schema)
-3. Restart both workflows
-4. Sign in as an admin user and use the Admin Panel's inventory sync (MediVision Gold SDF upload) to populate categories/medicines — sample `.SDF` files are in `attached_assets/`. Without this step the site runs but the catalog is empty (0 products/categories).
+_Describe the high-level user-facing capabilities of this app once they exist._
 
 ## User preferences
+
+_Populate as you build — explicit user instructions worth remembering across sessions._
+
+## Gotchas
+
+_Populate as you build — sharp edges, "always run X before Y" rules._
+
+## Pointers
+
+- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details

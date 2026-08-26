@@ -13,10 +13,10 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas.js";
+import type { HealthStatus } from "./api.schemas";
 
-import { customFetch } from "../custom-fetch.js";
-import type { ErrorType } from "../custom-fetch.js";
+import { customFetch } from "../custom-fetch";
+import type { ErrorType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
