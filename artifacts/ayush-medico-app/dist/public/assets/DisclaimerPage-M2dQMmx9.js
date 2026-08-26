@@ -1,1 +1,0 @@
-import{j as t,a9 as i}from"./index-CAW-LK2_.js";import{u as r}from"./useLegalContent-u1SZj5vy.js";import{D as o}from"./DynamicLegalPage-DGaeBGPK.js";function l(){const{content:e,loading:a}=r("disclaimer");return t.jsx(o,{title:"Disclaimer",icon:i,iconBg:"bg-amber-500/10",iconCls:"text-amber-500",content:e,loading:a})}export{l as default};

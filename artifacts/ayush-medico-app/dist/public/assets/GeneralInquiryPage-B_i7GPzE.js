@@ -1,2 +1,0 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/GeneralInquiry-CaZeUC1n.js","assets/index-CAW-LK2_.js","assets/index-DFvBMc8D.css","assets/textarea-BW_vQu9H.js","assets/message-square-CBKCWQmY.js"])))=>i.map(i=>d[i]);
-import{j as e,r,aZ as a}from"./index-CAW-LK2_.js";import{P as s}from"./PageShell-BCzn5EzT.js";const t=r.lazy(()=>a(()=>import("./GeneralInquiry-CaZeUC1n.js"),__vite__mapDeps([0,1,2,3,4])));function l(){return e.jsx(s,{children:e.jsx(r.Suspense,{fallback:e.jsx("div",{className:"min-h-[60vh]"}),children:e.jsx(t,{})})})}export{l as default};

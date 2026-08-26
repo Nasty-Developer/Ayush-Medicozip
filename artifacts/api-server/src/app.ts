@@ -1,4 +1,4 @@
-import express, { type Request } from "express";
+import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
@@ -74,7 +74,7 @@ const generalLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { error: "Too many requests. Please try again later." },
-  skip: (req) => {
+  skip: (req: any) => {
     // Skip rate limiting for health checks
     return req.path === "/api/health";
   },
@@ -97,9 +97,9 @@ const syncLimiter = rateLimit({
   max: 20,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  handler: (req, res, _next, options) => {
+  handler: (req: any, res: any, _next: any, options: any) => {
     const resetTime = (
-      req as Request & { rateLimit?: { resetTime?: Date } }
+      req as { rateLimit?: { resetTime?: Date } }
     ).rateLimit?.resetTime ?? new Date(Date.now() + options.windowMs);
     const retryAfterSeconds = Math.max(
       1,
@@ -145,13 +145,13 @@ if (process.env.NODE_ENV === "production") {
   );
 
   app.use(express.static(frontendDir));
-  app.use((req, res, next) => {
+  app.use((req: any, res: any, next: any) => {
     if (req.method !== "GET" || req.path.startsWith("/api")) {
       next();
       return;
     }
 
-    res.sendFile(path.join(frontendDir, "index.html"), (err) => {
+    res.sendFile(path.join(frontendDir, "index.html"), (err: any) => {
       if (err) next(err);
     });
   });
