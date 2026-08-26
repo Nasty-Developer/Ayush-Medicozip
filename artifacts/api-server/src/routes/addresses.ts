@@ -10,8 +10,8 @@ import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { addressesTable, usersTable, type InsertAddress } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
-import { logger } from "../lib/logger";
-import { requireAuth, type AuthenticatedRequest } from "../middlewares/authMiddleware";
+import { logger } from "../lib/logger.js";
+import { requireAuth, type AuthenticatedRequest } from "../middlewares/authMiddleware.js";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 

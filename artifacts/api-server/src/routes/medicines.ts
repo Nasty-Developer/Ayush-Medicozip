@@ -23,7 +23,7 @@ import {
   type Medicine,
 } from "@workspace/db";
 import { eq, ilike, or, and, desc, asc, sql, ne, type SQL } from "drizzle-orm";
-import { logger } from "../lib/logger";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
