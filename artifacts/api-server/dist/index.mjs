@@ -61100,7 +61100,7 @@ var require_razorpay = __commonJS({
   }
 });
 
-// src/app.ts
+// src/app.js
 var import_express21 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 
@@ -62668,7 +62668,7 @@ var MINUTE = 60 * SECOND;
 var HOUR = 60 * MINUTE;
 var DAY = 24 * HOUR;
 
-// src/app.ts
+// src/app.js
 var import_pino_http = __toESM(require_logger(), 1);
 import path from "node:path";
 
@@ -78135,37 +78135,32 @@ router20.use("/payment", payment_default);
 router20.use("/porter", porter_default);
 var routes_default = router20;
 
-// src/app.ts
+// src/app.js
 initFirebaseAdmin();
 var app2 = (0, import_express21.default)();
-var createPinoHttp = import_pino_http.default;
 app2.set("trust proxy", 1);
-app2.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: false
-    // Handled by Vite/frontend
-  })
-);
-app2.use(
-  createPinoHttp({
-    logger: logger2,
-    serializers: {
-      req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0]
-        };
-      },
-      res(res) {
-        return {
-          statusCode: res.statusCode
-        };
-      }
+app2.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false
+  // Handled by Vite/frontend
+}));
+app2.use((0, import_pino_http.default)({
+  logger: logger2,
+  serializers: {
+    req(req) {
+      return {
+        id: req.id,
+        method: req.method,
+        url: req.url?.split("?")[0]
+      };
+    },
+    res(res) {
+      return {
+        statusCode: res.statusCode
+      };
     }
-  })
-);
+  }
+}));
 app2.use((0, import_cors.default)());
 app2.use("/api/payment/webhook", import_express21.default.raw({ type: "application/json" }));
 app2.use(import_express21.default.json({ limit: "50mb" }));
@@ -78197,19 +78192,13 @@ var syncLimiter = rate_limit_default({
   legacyHeaders: false,
   handler: (req, res, _next, options) => {
     const resetTime = req.rateLimit?.resetTime ?? new Date(Date.now() + options.windowMs);
-    const retryAfterSeconds = Math.max(
-      1,
-      Math.ceil((resetTime.getTime() - Date.now()) / 1e3)
-    );
-    logger2.warn(
-      {
-        ip: req.ip,
-        path: req.path,
-        retryAt: resetTime.toISOString(),
-        retryAfterSeconds
-      },
-      "Sync session creation rate limit reached"
-    );
+    const retryAfterSeconds = Math.max(1, Math.ceil((resetTime.getTime() - Date.now()) / 1e3));
+    logger2.warn({
+      ip: req.ip,
+      path: req.path,
+      retryAt: resetTime.toISOString(),
+      retryAfterSeconds
+    }, "Sync session creation rate limit reached");
     res.status(options.statusCode).setHeader("Retry-After", String(retryAfterSeconds)).json({
       error: "Sync session creation rate limit exceeded.",
       code: "sync_session_rate_limited",
@@ -78223,10 +78212,7 @@ app2.use("/api/payment", paymentLimiter);
 app2.use("/api/sync/session", syncLimiter);
 app2.use("/api", routes_default);
 if (process.env.NODE_ENV === "production") {
-  const frontendDir = path.resolve(
-    import.meta.dirname,
-    "../../ayush-medico/dist/public"
-  );
+  const frontendDir = path.resolve(import.meta.dirname, "../../ayush-medico/dist/public");
   app2.use(import_express21.default.static(frontendDir));
   app2.use((req, res, next) => {
     if (req.method !== "GET" || req.path.startsWith("/api")) {
@@ -78234,7 +78220,8 @@ if (process.env.NODE_ENV === "production") {
       return;
     }
     res.sendFile(path.join(frontendDir, "index.html"), (err) => {
-      if (err) next(err);
+      if (err)
+        next(err);
     });
   });
 }
@@ -78253,10 +78240,10 @@ if (Number.isNaN(port) || port <= 0) {
 }
 app_default.listen(port, (err) => {
   if (err) {
-    logger.error({ err }, "Error listening on port");
+    logger2.error({ err }, "Error listening on port");
     process.exit(1);
   }
-  logger.info({ port }, "Server listening");
+  logger2.info({ port }, "Server listening");
 });
 /*! Bundled license information:
 
