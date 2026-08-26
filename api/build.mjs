@@ -90,7 +90,6 @@ await build({
     "puppeteer",
     "puppeteer-core",
     "electron",
-    "firebase-admin",
   ],
   plugins: [
     esbuildPluginPino({ transports: ["pino-pretty"] }),
