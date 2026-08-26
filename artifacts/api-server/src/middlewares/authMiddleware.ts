@@ -1,4 +1,5 @@
-import type { Request, Response, NextFunction } from "express";
+import type { Request } from "express";
+import type { IncomingHttpHeaders } from "node:http";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import {
   FirebaseAdminConfigurationError,
@@ -8,10 +9,7 @@ import { logger } from "../lib/logger.js";
 
 export interface AuthenticatedRequest extends Request {
   firebaseUser?: DecodedIdToken;
-  headers: {
-    authorization?: string;
-    [key: string]: unknown;
-  };
+  headers: IncomingHttpHeaders;
 }
 
 /**
@@ -19,7 +17,10 @@ export interface AuthenticatedRequest extends Request {
  * Rejects 401 if missing/invalid.
  */
 export async function requireAuth(req: AuthenticatedRequest, res: any, next: any): Promise<void> {
-  const authHeader = req.headers.authorization;
+  const authHeader =
+    typeof req.headers.authorization === "string"
+      ? req.headers.authorization
+      : undefined;
   if (!authHeader?.startsWith("Bearer ")) {
     res.status(401).json({ error: "Missing or malformed Authorization header" });
     return;

@@ -21052,9 +21052,9 @@ var require_application = __commonJS({
     var Router21 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
-    var app4 = exports = module.exports = {};
+    var app3 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
-    app4.init = function init() {
+    app3.init = function init() {
       var router21 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
@@ -21074,7 +21074,7 @@ var require_application = __commonJS({
         }
       });
     };
-    app4.defaultConfiguration = function defaultConfiguration() {
+    app3.defaultConfiguration = function defaultConfiguration() {
       var env = process.env.NODE_ENV || "development";
       this.enable("x-powered-by");
       this.set("etag", "weak");
@@ -21107,7 +21107,7 @@ var require_application = __commonJS({
         this.enable("view cache");
       }
     };
-    app4.handle = function handle(req, res, callback) {
+    app3.handle = function handle(req, res, callback) {
       var done = callback || finalhandler(req, res, {
         env: this.get("env"),
         onerror: logerror.bind(this)
@@ -21124,7 +21124,7 @@ var require_application = __commonJS({
       }
       this.router.handle(req, res, done);
     };
-    app4.use = function use(fn) {
+    app3.use = function use(fn) {
       var offset = 0;
       var path2 = "/";
       if (typeof fn !== "function") {
@@ -21161,10 +21161,10 @@ var require_application = __commonJS({
       }, this);
       return this;
     };
-    app4.route = function route(path2) {
+    app3.route = function route(path2) {
       return this.router.route(path2);
     };
-    app4.engine = function engine(ext, fn) {
+    app3.engine = function engine(ext, fn) {
       if (typeof fn !== "function") {
         throw new Error("callback function required");
       }
@@ -21172,7 +21172,7 @@ var require_application = __commonJS({
       this.engines[extension] = fn;
       return this;
     };
-    app4.param = function param(name, fn) {
+    app3.param = function param(name, fn) {
       if (Array.isArray(name)) {
         for (var i = 0; i < name.length; i++) {
           this.param(name[i], fn);
@@ -21182,7 +21182,7 @@ var require_application = __commonJS({
       this.router.param(name, fn);
       return this;
     };
-    app4.set = function set(setting, val) {
+    app3.set = function set(setting, val) {
       if (arguments.length === 1) {
         return this.settings[setting];
       }
@@ -21205,23 +21205,23 @@ var require_application = __commonJS({
       }
       return this;
     };
-    app4.path = function path2() {
+    app3.path = function path2() {
       return this.parent ? this.parent.path() + this.mountpath : "";
     };
-    app4.enabled = function enabled(setting) {
+    app3.enabled = function enabled(setting) {
       return Boolean(this.set(setting));
     };
-    app4.disabled = function disabled(setting) {
+    app3.disabled = function disabled(setting) {
       return !this.set(setting);
     };
-    app4.enable = function enable(setting) {
+    app3.enable = function enable(setting) {
       return this.set(setting, true);
     };
-    app4.disable = function disable(setting) {
+    app3.disable = function disable(setting) {
       return this.set(setting, false);
     };
     methods.forEach(function(method) {
-      app4[method] = function(path2) {
+      app3[method] = function(path2) {
         if (method === "get" && arguments.length === 1) {
           return this.set(path2);
         }
@@ -21230,7 +21230,7 @@ var require_application = __commonJS({
         return this;
       };
     });
-    app4.all = function all(path2) {
+    app3.all = function all(path2) {
       var route = this.route(path2);
       var args = slice.call(arguments, 1);
       for (var i = 0; i < methods.length; i++) {
@@ -21238,7 +21238,7 @@ var require_application = __commonJS({
       }
       return this;
     };
-    app4.render = function render(name, options, callback) {
+    app3.render = function render(name, options, callback) {
       var cache = this.cache;
       var done = callback;
       var engines = this.engines;
@@ -21274,7 +21274,7 @@ var require_application = __commonJS({
       }
       tryRender(view, renderOptions, done);
     };
-    app4.listen = function listen() {
+    app3.listen = function listen() {
       var server = http.createServer(this);
       var args = slice.call(arguments);
       if (typeof args[args.length - 1] === "function") {
@@ -23195,7 +23195,7 @@ var require_response = __commonJS({
       var encoding;
       var req = this.req;
       var type;
-      var app4 = this.app;
+      var app3 = this.app;
       switch (typeof chunk) {
         // string defaulting to html
         case "string":
@@ -23224,7 +23224,7 @@ var require_response = __commonJS({
           this.set("Content-Type", setCharset(type, "utf-8"));
         }
       }
-      var etagFn = app4.get("etag fn");
+      var etagFn = app3.get("etag fn");
       var generateETag = !this.get("ETag") && typeof etagFn === "function";
       var len;
       if (chunk !== void 0) {
@@ -23265,10 +23265,10 @@ var require_response = __commonJS({
       return this;
     };
     res.json = function json2(obj) {
-      var app4 = this.app;
-      var escape2 = app4.get("json escape");
-      var replacer = app4.get("json replacer");
-      var spaces = app4.get("json spaces");
+      var app3 = this.app;
+      var escape2 = app3.get("json escape");
+      var replacer = app3.get("json replacer");
+      var spaces = app3.get("json spaces");
       var body = stringify(obj, replacer, spaces, escape2);
       if (!this.get("Content-Type")) {
         this.set("Content-Type", "application/json");
@@ -23276,12 +23276,12 @@ var require_response = __commonJS({
       return this.send(body);
     };
     res.jsonp = function jsonp(obj) {
-      var app4 = this.app;
-      var escape2 = app4.get("json escape");
-      var replacer = app4.get("json replacer");
-      var spaces = app4.get("json spaces");
+      var app3 = this.app;
+      var escape2 = app3.get("json escape");
+      var replacer = app3.get("json replacer");
+      var spaces = app3.get("json spaces");
       var body = stringify(obj, replacer, spaces, escape2);
-      var callback = this.req.query[app4.get("jsonp callback name")];
+      var callback = this.req.query[app3.get("jsonp callback name")];
       if (!this.get("Content-Type")) {
         this.set("X-Content-Type-Options", "nosniff");
         this.set("Content-Type", "application/json");
@@ -23507,7 +23507,7 @@ var require_response = __commonJS({
       return this;
     };
     res.render = function render(view, options, callback) {
-      var app4 = this.req.app;
+      var app3 = this.req.app;
       var done = callback;
       var opts = options || {};
       var req = this.req;
@@ -23521,7 +23521,7 @@ var require_response = __commonJS({
         if (err) return req.next(err);
         self2.send(str);
       };
-      app4.render(view, opts, done);
+      app3.render(view, opts, done);
     };
     function sendfile(res2, file, options, callback) {
       var done = false;
@@ -23727,19 +23727,19 @@ var require_express = __commonJS({
     var res = require_response();
     exports = module.exports = createApplication;
     function createApplication() {
-      var app4 = function(req2, res2, next) {
-        app4.handle(req2, res2, next);
+      var app3 = function(req2, res2, next) {
+        app3.handle(req2, res2, next);
       };
-      mixin(app4, EventEmitter.prototype, false);
-      mixin(app4, proto, false);
-      app4.request = Object.create(req, {
-        app: { configurable: true, enumerable: true, writable: true, value: app4 }
+      mixin(app3, EventEmitter.prototype, false);
+      mixin(app3, proto, false);
+      app3.request = Object.create(req, {
+        app: { configurable: true, enumerable: true, writable: true, value: app3 }
       });
-      app4.response = Object.create(res, {
-        app: { configurable: true, enumerable: true, writable: true, value: app4 }
+      app3.response = Object.create(res, {
+        app: { configurable: true, enumerable: true, writable: true, value: app3 }
       });
-      app4.init();
-      return app4;
+      app3.init();
+      return app3;
     }
     exports.application = proto;
     exports.request = req;
@@ -31724,8 +31724,8 @@ var require_utils5 = __commonJS({
 // ../../node_modules/.pnpm/pg@8.22.0/node_modules/pg/lib/crypto/cert-signatures.js
 var require_cert_signatures = __commonJS({
   "../../node_modules/.pnpm/pg@8.22.0/node_modules/pg/lib/crypto/cert-signatures.js"(exports, module) {
-    function x509Error(msg, cert3) {
-      return new Error("SASL channel binding: " + msg + " when parsing public certificate " + cert3.toString("base64"));
+    function x509Error(msg, cert2) {
+      return new Error("SASL channel binding: " + msg + " when parsing public certificate " + cert2.toString("base64"));
     }
     function readASN1Length(data, index2) {
       let length = data[index2++];
@@ -74404,7 +74404,7 @@ var medicines_default = router2;
 // src/routes/categories.js
 var import_express3 = __toESM(require_express2(), 1);
 
-// src/lib/firebaseAdmin.ts
+// src/lib/firebaseAdmin.js
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
@@ -74427,9 +74427,62 @@ var logger2 = (0, import_pino2.default)({
   }
 });
 
-// src/lib/firebaseAdmin.ts
+// src/lib/firebaseAdmin.js
 var app = null;
+var hasServiceAccountCredentials = false;
 var initializationError = null;
+function firstConfigured(...values) {
+  return values.find((value) => typeof value === "string" && value.trim().length > 0)?.trim();
+}
+function normalizePrivateKey(privateKey) {
+  return privateKey.replace(/\\n/g, "\n");
+}
+function initFirebaseAdmin() {
+  if (app || getApps().length > 0)
+    return;
+  const projectId = firstConfigured(process.env["FIREBASE_PROJECT_ID"], process.env["VITE_FIREBASE_PROJECT_ID"]);
+  const serviceAccountJson = process.env["FIREBASE_SERVICE_ACCOUNT_JSON"];
+  if (!projectId && !serviceAccountJson) {
+    initializationError = "Firebase Admin project ID or service account credentials are not configured";
+    logger2.error(initializationError);
+    return;
+  }
+  try {
+    if (serviceAccountJson) {
+      const serviceAccount = JSON.parse(serviceAccountJson);
+      if (typeof serviceAccount.private_key === "string") {
+        serviceAccount.private_key = normalizePrivateKey(serviceAccount.private_key);
+      }
+      app = initializeApp({ credential: cert(serviceAccount) });
+      hasServiceAccountCredentials = true;
+      logger2.info("Firebase Admin initialized with service account");
+    } else {
+      const clientEmail = firstConfigured(process.env["FIREBASE_CLIENT_EMAIL"]);
+      const privateKey = firstConfigured(process.env["FIREBASE_PRIVATE_KEY"]);
+      if (clientEmail && privateKey && projectId) {
+        app = initializeApp({
+          credential: cert({
+            projectId,
+            clientEmail,
+            privateKey: normalizePrivateKey(privateKey)
+          }),
+          projectId
+        });
+        hasServiceAccountCredentials = true;
+        logger2.info("Firebase Admin initialized with server-side service account variables");
+      } else if (projectId) {
+        app = initializeApp({ projectId });
+        logger2.warn("Firebase Admin initialized with project ID only. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY for server-side Firebase Admin API access.");
+      } else {
+        initializationError = "Firebase Admin service account credentials are missing a project ID";
+        logger2.error(initializationError);
+      }
+    }
+  } catch (err) {
+    initializationError = "Firebase Admin could not be initialized from the configured credentials";
+    logger2.error({ err }, "Failed to initialize Firebase Admin");
+  }
+}
 var FirebaseAdminConfigurationError = class extends Error {
   code = "firebase_admin_not_configured";
   constructor() {
@@ -74438,13 +74491,14 @@ var FirebaseAdminConfigurationError = class extends Error {
   }
 };
 function getAuth() {
-  if (!app) throw new FirebaseAdminConfigurationError();
+  if (!app)
+    throw new FirebaseAdminConfigurationError();
   return getAdminAuth(app);
 }
 
 // src/middlewares/authMiddleware.ts
 async function requireAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
+  const authHeader = typeof req.headers.authorization === "string" ? req.headers.authorization : void 0;
   if (!authHeader?.startsWith("Bearer ")) {
     res.status(401).json({ error: "Missing or malformed Authorization header" });
     return;
@@ -74456,14 +74510,14 @@ async function requireAuth(req, res, next) {
     next();
   } catch (err) {
     if (err instanceof FirebaseAdminConfigurationError) {
-      logger.error({ err }, "Firebase Admin is not configured for token verification");
+      logger2.error({ err }, "Firebase Admin is not configured for token verification");
       res.status(503).json({
         error: "Authentication service is not configured",
         code: err.code
       });
       return;
     }
-    logger.warn({ err }, "Firebase token verification failed");
+    logger2.warn({ err }, "Firebase token verification failed");
     res.status(401).json({ error: "Invalid or expired token" });
   }
 }
@@ -74478,7 +74532,7 @@ function isAdminEmail(email) {
 }
 function requireAdminEmail(req, res, next) {
   if (!process.env["VITE_ADMIN_EMAIL"]) {
-    logger.warn("VITE_ADMIN_EMAIL not set; any authenticated user can access admin routes");
+    logger2.warn("VITE_ADMIN_EMAIL not set; any authenticated user can access admin routes");
   }
   if (!isAdminEmail(req.firebaseUser?.email)) {
     res.status(403).json({ error: "Forbidden: admin access required" });
@@ -78081,79 +78135,19 @@ router20.use("/payment", payment_default);
 router20.use("/porter", porter_default);
 var routes_default = router20;
 
-// src/lib/firebaseAdmin.js
-import { initializeApp as initializeApp2, cert as cert2, getApps as getApps2 } from "firebase-admin/app";
-import { getAuth as getAdminAuth2 } from "firebase-admin/auth";
-import { getFirestore as getFirestore2 } from "firebase-admin/firestore";
-var app2 = null;
-var hasServiceAccountCredentials = false;
-var initializationError2 = null;
-function firstConfigured(...values) {
-  return values.find((value) => typeof value === "string" && value.trim().length > 0)?.trim();
-}
-function normalizePrivateKey(privateKey) {
-  return privateKey.replace(/\\n/g, "\n");
-}
-function initFirebaseAdmin() {
-  if (app2 || getApps2().length > 0)
-    return;
-  const projectId = firstConfigured(process.env["FIREBASE_PROJECT_ID"], process.env["VITE_FIREBASE_PROJECT_ID"]);
-  const serviceAccountJson = process.env["FIREBASE_SERVICE_ACCOUNT_JSON"];
-  if (!projectId && !serviceAccountJson) {
-    initializationError2 = "Firebase Admin project ID or service account credentials are not configured";
-    logger2.error(initializationError2);
-    return;
-  }
-  try {
-    if (serviceAccountJson) {
-      const serviceAccount = JSON.parse(serviceAccountJson);
-      if (typeof serviceAccount.private_key === "string") {
-        serviceAccount.private_key = normalizePrivateKey(serviceAccount.private_key);
-      }
-      app2 = initializeApp2({ credential: cert2(serviceAccount) });
-      hasServiceAccountCredentials = true;
-      logger2.info("Firebase Admin initialized with service account");
-    } else {
-      const clientEmail = firstConfigured(process.env["FIREBASE_CLIENT_EMAIL"]);
-      const privateKey = firstConfigured(process.env["FIREBASE_PRIVATE_KEY"]);
-      if (clientEmail && privateKey && projectId) {
-        app2 = initializeApp2({
-          credential: cert2({
-            projectId,
-            clientEmail,
-            privateKey: normalizePrivateKey(privateKey)
-          }),
-          projectId
-        });
-        hasServiceAccountCredentials = true;
-        logger2.info("Firebase Admin initialized with server-side service account variables");
-      } else if (projectId) {
-        app2 = initializeApp2({ projectId });
-        logger2.warn("Firebase Admin initialized with project ID only. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY for server-side Firebase Admin API access.");
-      } else {
-        initializationError2 = "Firebase Admin service account credentials are missing a project ID";
-        logger2.error(initializationError2);
-      }
-    }
-  } catch (err) {
-    initializationError2 = "Firebase Admin could not be initialized from the configured credentials";
-    logger2.error({ err }, "Failed to initialize Firebase Admin");
-  }
-}
-
 // src/app.ts
 initFirebaseAdmin();
-var app3 = (0, import_express21.default)();
+var app2 = (0, import_express21.default)();
 var createPinoHttp = import_pino_http.default;
-app3.set("trust proxy", 1);
-app3.use(
+app2.set("trust proxy", 1);
+app2.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: false
     // Handled by Vite/frontend
   })
 );
-app3.use(
+app2.use(
   createPinoHttp({
     logger: logger2,
     serializers: {
@@ -78172,10 +78166,10 @@ app3.use(
     }
   })
 );
-app3.use((0, import_cors.default)());
-app3.use("/api/payment/webhook", import_express21.default.raw({ type: "application/json" }));
-app3.use(import_express21.default.json({ limit: "50mb" }));
-app3.use(import_express21.default.urlencoded({ extended: true, limit: "50mb" }));
+app2.use((0, import_cors.default)());
+app2.use("/api/payment/webhook", import_express21.default.raw({ type: "application/json" }));
+app2.use(import_express21.default.json({ limit: "50mb" }));
+app2.use(import_express21.default.urlencoded({ extended: true, limit: "50mb" }));
 var generalLimiter = rate_limit_default({
   windowMs: 15 * 60 * 1e3,
   // 15 minutes
@@ -78224,17 +78218,17 @@ var syncLimiter = rate_limit_default({
     });
   }
 });
-app3.use("/api", generalLimiter);
-app3.use("/api/payment", paymentLimiter);
-app3.use("/api/sync/session", syncLimiter);
-app3.use("/api", routes_default);
+app2.use("/api", generalLimiter);
+app2.use("/api/payment", paymentLimiter);
+app2.use("/api/sync/session", syncLimiter);
+app2.use("/api", routes_default);
 if (process.env.NODE_ENV === "production") {
   const frontendDir = path.resolve(
     import.meta.dirname,
     "../../ayush-medico/dist/public"
   );
-  app3.use(import_express21.default.static(frontendDir));
-  app3.use((req, res, next) => {
+  app2.use(import_express21.default.static(frontendDir));
+  app2.use((req, res, next) => {
     if (req.method !== "GET" || req.path.startsWith("/api")) {
       next();
       return;
@@ -78244,7 +78238,7 @@ if (process.env.NODE_ENV === "production") {
     });
   });
 }
-var app_default = app3;
+var app_default = app2;
 
 // src/index.ts
 var rawPort = process.env["PORT"];
