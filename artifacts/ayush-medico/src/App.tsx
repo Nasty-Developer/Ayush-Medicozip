@@ -162,7 +162,8 @@ function App() {
                   <OfflineGuard>
                     <ErrorBoundary label="App">
                       <Suspense fallback={<PageLoader />}>
-                        <Switch>
+                        <WouterRouter base={import.meta.env.BASE_URL}>
+                          <Switch>
                           {/* ── Admin ── */}
                           <Route path="/admin/login">
                             {() => (
