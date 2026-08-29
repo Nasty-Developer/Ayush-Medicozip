@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Ayush Medico — robots.txt
 # https://YOUR-DOMAIN.com/robots.txt
 # Replace YOUR-DOMAIN.com with the real domain before launch.
@@ -27,7 +26,3 @@ User-agent: Bingbot
 Allow: /
 Disallow: /admin
 Disallow: /admin/
-=======
-User-agent: *
-Allow: /
->>>>>>> 96e6827 (i;u;;;;j)
