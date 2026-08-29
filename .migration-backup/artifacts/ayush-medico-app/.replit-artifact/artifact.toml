@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Ayush Medico"
+description = "A medicine delivery and request management web app for Ayush Medico pharmacy in Kurla West, Mumbai, with a customer storefront, inventory-backed catalog, order flows, and administration tools."
+version = "1.0.0"
+id = "artifacts/ayush-medico-app"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22890
+
+[services.development]
+run = "pnpm --filter @workspace/ayush-medico-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ayush-medico-app", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ayush-medico-app/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22890"
+BASE_PATH = "/"

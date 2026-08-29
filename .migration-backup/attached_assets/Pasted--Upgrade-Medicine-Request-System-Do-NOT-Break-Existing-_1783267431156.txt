@@ -1,0 +1,194 @@
+🚀 Upgrade Medicine Request System (Do NOT Break Existing Website)
+
+You are working on an existing premium Ayush Medico pharmacy website with a working Admin Dashboard.
+
+IMPORTANT
+Do NOT redesign the website.
+Do NOT remove or duplicate existing sections.
+Reuse the current UI, animations, colors, spacing, typography, and project architecture.
+Only upgrade the existing Medicine Request system.
+💊 Upgrade the Medicine Request Section
+
+Keep the existing form but improve it.
+
+Fields:
+
+Customer Name
+Mobile Number
+Medicine Name
+Quantity
+Upload Prescription (Optional)
+Additional Notes
+Add THREE Action Buttons
+1️⃣ Send Request (Primary)
+
+When clicked:
+
+Save the request to Firebase Firestore.
+The request must instantly appear in the Admin Dashboard under Medicine Requests.
+Show a success toast.
+Generate a unique Request ID.
+Save:
+Customer Name
+Mobile Number
+Medicine Name
+Quantity
+Notes
+Prescription Image (if uploaded)
+Date & Time
+Status = Pending
+Source = Website
+2️⃣ Request via WhatsApp
+
+When clicked:
+
+Open WhatsApp with a professionally formatted pre-filled message.
+
+Example:
+
+Hello Ayush Medico,
+
+I would like to request the following medicine.
+
+Customer Name:
+Mobile Number:
+Medicine Name:
+Quantity:
+Additional Notes:
+
+Please let me know whether this medicine is available.
+If it is currently unavailable, kindly arrange it and inform me when it arrives.
+
+Thank you.
+
+⚠️ Also save this request in Firebase so it appears in the Admin Dashboard even if the customer sends it through WhatsApp.
+
+Source:
+
+WhatsApp
+3️⃣ Request via Email
+
+When clicked:
+
+Open the user's default email app with:
+
+Subject:
+
+Medicine Request - Ayush Medico
+
+Body:
+
+Hello,
+
+I would like to request the following medicine.
+
+Customer Name:
+Mobile Number:
+Medicine Name:
+Quantity:
+Additional Notes:
+
+Please let me know whether this medicine is available.
+If it is currently unavailable, kindly arrange it and inform me once it is available.
+
+Thank you.
+
+⚠️ Also save this request to Firebase before opening the email client.
+
+Source:
+
+Email
+🔥 Admin Dashboard Improvements
+
+Every request, regardless of how it was submitted (Website / WhatsApp / Email), must appear in the Admin Dashboard.
+
+Each request should display:
+
+Request ID
+Customer Name
+Mobile Number
+Medicine Name
+Quantity
+Notes
+Prescription Image
+Source (Website / WhatsApp / Email)
+Date & Time
+Status
+
+Status options:
+
+Pending
+Contacted
+Medicine Ordered
+Ready for Pickup
+Delivered
+Cancelled
+📞 Admin Quick Actions
+
+For every request add:
+
+📱 Call Customer
+💬 Reply on WhatsApp
+📧 Reply by Email
+👁️ View Prescription
+✅ Change Status
+🗑️ Delete Request
+🔔 Notifications
+
+Whenever a new request is received:
+
+Show a notification badge in the Admin Dashboard.
+Increase the pending request counter.
+Display the newest requests at the top.
+📊 Dashboard Analytics
+
+Add cards showing:
+
+Total Requests
+Pending Requests
+Ordered Medicines
+Delivered Medicines
+Today's Requests
+🔍 Search & Filters
+
+Allow searching by:
+
+Customer Name
+Medicine Name
+Mobile Number
+Request ID
+
+Filters:
+
+Website
+WhatsApp
+Email
+
+Status filters:
+
+Pending
+Contacted
+Ordered
+Delivered
+Cancelled
+🎨 UI
+
+Keep the current premium design.
+
+Do not redesign anything.
+
+Only extend the current system.
+
+Use the existing colors, typography, spacing, animations, and components.
+
+Everything should feel like one consistent application.
+
+Final Requirements
+No duplicate code.
+No duplicate sections.
+Fully responsive.
+Firebase optimized.
+Firestore reads optimized.
+Production ready.
+Compatible with Firebase Spark (Free Tier).
+Test every feature before completion.

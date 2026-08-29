@@ -1,0 +1,56 @@
+Continue the existing importer memory/OOM fix from where you stopped.
+
+Do NOT restart the investigation.
+Do NOT make unrelated changes.
+Do NOT change the frontend UI unnecessarily.
+
+First inspect the current working tree and Git state, then continue the existing work on:
+
+1. chunk-at-a-time file/line processing
+2. two-pass bounded importer design
+3. reducing retained in-memory arrays/data
+4. aligning running-session recovery with the persisted five-minute job lease so a crashed importer cannot leave a running session blocking new syncs for two hours
+
+IMPORTANT:
+Preserve all existing authentication, Firebase authentication flow, PostgreSQL advisory locking, ownership validation, sync-session protection, database schema, Vercel routing, Render architecture, and existing medicine/catalog behavior.
+
+Do not delete safety mechanisms just to make another sync start.
+
+The intended behavior must be:
+
+- A genuinely active sync remains protected.
+- A crashed/dead importer must not leave a running session blocking new syncs for two hours.
+- An expired/stale importer lease can be safely recovered.
+- Two concurrent imports must never be allowed.
+- Re-running the same SDF files must remain safe/idempotent.
+- Large SDF files must be processed without retaining the entire decoded file, all lines, all parsed products, all medicines, all batches, or unnecessary inserted-ID/stock arrays in memory.
+
+Before changing code, inspect the current implementation and continue from the existing partial refactor rather than replacing it wholesale.
+
+After implementation, run ALL relevant verification:
+
+- API TypeScript check
+- frontend TypeScript check
+- API production build
+- frontend production build
+- focused sync-session/concurrency/lease assertions
+- importer/memory-related tests or assertions if available
+- git diff --check
+
+Do NOT deploy to Vercel or Render yet.
+
+Do NOT modify production database records.
+
+Do NOT manually delete sync-session rows.
+
+At the end report:
+
+- exact files changed
+- what was changed in the importer
+- what was changed in running-session recovery
+- how memory usage is bounded
+- how stale sessions are recovered
+- all verification results
+- whether any deployment was performed
+
+STOP after verification.

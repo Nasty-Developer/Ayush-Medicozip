@@ -1,0 +1,82 @@
+IMPORTANT: The Vercel deployment now reaches the build stage successfully, but deployment fails AFTER the build.
+
+Current result:
+
+✓ Frontend build completed successfully
+✓ built in ~6.7s
+
+But Vercel then fails with:
+
+Error: No entrypoint found in output directory: "artifacts/..."
+
+The 500 KB chunk warning is NOT the issue.
+
+We recently changed the Vercel Root Directory from:
+artifacts/ayush-medico
+
+to:
+.
+
+The repository-root vercel.json currently contains:
+
+{
+  "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter @workspace/ayush-medico run build",
+  "outputDirectory": "artifacts/ayush-medico/dist/public",
+  "functions": {
+    "api/[...path].ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/:path((?!api(?:/|$)).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+
+DO NOT blindly change the configuration.
+
+First inspect the ACTUAL build output.
+
+Run the production build and verify the exact location of:
+- index.html
+- assets/
+- the final frontend dist directory
+
+Confirm whether the actual output is:
+
+artifacts/ayush-medico/dist/public/index.html
+
+or a different location.
+
+Then inspect whether Vercel is interpreting outputDirectory relative to the repository root as expected.
+
+IMPORTANT:
+The build itself is successful. The problem is specifically Vercel's "No entrypoint found in output directory" after the build.
+
+Find the minimum configuration change required so that:
+
+1. The frontend index.html is correctly detected by Vercel.
+2. The root-level api/[...path].ts serverless function remains deployed.
+3. /api/* is NOT rewritten to index.html.
+4. The Replit Preview continues working.
+5. Firebase configuration is NOT changed.
+6. Firestore rules are NOT changed.
+7. Cloudinary is NOT changed.
+8. Admin UI is NOT changed.
+9. Do not create a second build system.
+10. Do not move files unless absolutely necessary.
+
+Also verify whether the current rewrite syntax is valid for Vercel.
+
+After diagnosis, tell me:
+- exact cause
+- exact file/configuration to change
+- exact final vercel.json
+- whether Root Directory should remain "."
+- whether Output Directory should be changed
+- whether any source code needs modification
+
+Do not claim it is fixed until the actual output directory and index.html location have been verified.

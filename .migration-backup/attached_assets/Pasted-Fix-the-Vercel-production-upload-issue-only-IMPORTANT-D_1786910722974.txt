@@ -1,0 +1,87 @@
+Fix the Vercel production upload issue only.
+
+IMPORTANT:
+Do not redesign the UI.
+Do not modify Firebase configuration.
+Do not modify Firestore rules.
+Do not modify Cloudinary configuration.
+Do not modify the Admin Panel layout.
+Do not break the working Replit Preview upload flow.
+
+CURRENT ISSUE:
+Medicine/inventory file upload works correctly in the Replit Preview, but when the same upload is attempted on the Vercel deployed website, the upload API returns HTTP 405.
+
+The affected endpoint is:
+POST /api/sync/session
+
+PROJECT STRUCTURE:
+- Frontend: artifacts/ayush-medico
+- API server: artifacts/api-server
+- Vercel API function: root-level api/[...path].ts
+- Root-level vercel.json
+
+GOAL:
+Make the production Vercel deployment route /api/sync/session to the actual API handler correctly, while keeping the existing Replit Preview behavior unchanged.
+
+FIRST:
+1. Inspect the existing api/[...path].ts.
+2. Inspect artifacts/api-server routing and Express configuration.
+3. Inspect vercel.json.
+4. Inspect package.json and workspace configuration.
+5. Inspect the frontend code that calls /api/sync/session.
+6. Determine exactly why Vercel returns 405 while Replit Preview works.
+7. Do not blindly rewrite the architecture.
+
+VERCEL:
+Ensure the Vercel deployment is using the repository root as its Root Directory so the root-level api/[...path].ts and root-level vercel.json are included.
+
+The frontend build must continue using the existing build configuration.
+
+API ROUTING:
+Make sure /api/* requests are not accidentally rewritten to the SPA index.html before reaching the Vercel API function.
+
+Ensure:
+POST /api/sync/session
+reaches the Express/API handler.
+
+Do not change the endpoint expected by the frontend.
+
+ERROR HANDLING:
+If the API route is reached but authentication fails, it should return the existing authentication response rather than 404/405.
+
+If the API route is reached and the database/upload configuration is missing, report the actual server error clearly rather than masking it as 404/405.
+
+DO NOT:
+- create a second upload system
+- bypass authentication
+- disable authentication
+- create fake upload success responses
+- replace Cloudinary
+- replace Firebase
+- change Firestore rules
+- change the UI
+- change the upload workflow
+
+VERCEL CONFIGURATION:
+Review the existing vercel.json carefully.
+
+If rewrites are present, ensure API routes are excluded from SPA rewrites so /api/* is handled by the serverless function.
+
+After making the minimum required changes:
+1. Run type checking.
+2. Run the existing tests.
+3. Build the frontend.
+4. Verify that the API function is included in the Vercel deployment.
+5. Test POST /api/sync/session.
+6. Confirm that the Replit Preview upload still works.
+
+IMPORTANT:
+Do not claim the issue is fixed until the actual route behavior has been verified.
+
+At the end, explain:
+- exact root cause
+- files changed
+- Vercel settings that must be used
+- exact deployment/build configuration
+- how the production upload flow now works
+- whether any environment variables are still required

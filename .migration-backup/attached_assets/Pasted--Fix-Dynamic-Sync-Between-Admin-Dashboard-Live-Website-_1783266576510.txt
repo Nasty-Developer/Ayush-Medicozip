@@ -1,0 +1,115 @@
+🚀 Fix Dynamic Sync Between Admin Dashboard & Live Website
+
+The Admin Dashboard is working well, but I found an important issue that needs to be fixed.
+
+🔴 Current Issue
+
+When I add, edit, delete, or update medicines from the Admin Dashboard, the live homepage does not update correctly. The website should always display the latest data from Firebase without requiring manual code changes.
+
+Please fix the following:
+
+Real-Time Synchronization
+Every change made in the Admin Dashboard must automatically appear on the live website.
+
+Use Firebase Firestore real-time listeners (onSnapshot) where appropriate or implement an efficient refresh strategy.
+
+Remove any static or hardcoded medicine data.
+
+The homepage should always fetch the latest database content.
+
+Medicine Price
+Each medicine card should display:
+
+Medicine Name
+
+Brand
+
+Price (₹)
+
+Availability Status
+
+Medicine Image
+
+Short Description
+
+The price should be editable from the Admin Dashboard.
+
+Fields should include:
+
+Selling Price
+
+MRP (Optional)
+
+Discount (Optional)
+
+Display the price in a clean and attractive format.
+
+Homepage Sections
+The following homepage sections must be completely dynamic:
+
+New Medicine Arrivals
+
+Special Medicines – Only Available at Our Medical
+
+Featured Medicines (if applicable)
+
+The admin should be able to:
+
+Add unlimited medicines
+
+Edit medicines
+
+Delete medicines
+
+Change prices
+
+Update stock status
+
+Upload images
+
+Reorder medicines
+
+Enable/Disable homepage display
+
+All changes should instantly reflect on the live website.
+
+Stock Status
+The admin should be able to select:
+
+✅ In Stock
+
+❌ Out of Stock
+
+⏳ Coming Soon
+
+The homepage should immediately display the selected status.
+
+Performance
+Keep Firebase Spark (Free Tier) optimized.
+
+Avoid unnecessary Firestore reads.
+
+Cache static settings where appropriate.
+
+Only listen to collections that require real-time updates.
+
+Final Verification
+Before completing the task, verify that:
+
+Adding a new medicine immediately appears on the homepage.
+
+Editing a medicine updates the homepage.
+
+Deleting a medicine removes it from the homepage.
+
+Price updates instantly.
+
+Stock status updates instantly.
+
+Images update correctly.
+
+Mobile and desktop remain fully responsive.
+
+No duplicate data or caching issues remain.
+
+The website should behave like a professional CMS where the Admin Dashboard is the single source of truth, and every change made by the admin is reflected on the live website automatically.

@@ -1,0 +1,438 @@
+IMPORTANT
+
+Analyze the existing project before making any changes.
+
+This is an enhancement to the existing implementation.
+
+Do NOT redesign the UI.
+
+Do NOT modify Firebase configuration.
+
+Do NOT modify Firestore rules.
+
+Do NOT modify Cloudinary configuration.
+
+Do NOT modify the Admin Panel layout.
+
+Do NOT break any existing working functionality.
+
+Do NOT rewrite the current delivery pipeline.
+
+Do NOT rebuild the order management system.
+
+Only extend the existing implementation.
+
+==================================================
+
+CURRENT STATUS
+
+The existing medicine request workflow is working correctly.
+
+The admin panel already manages medicine requests and updates order status.
+
+The customer-facing Track Order feature still needs to become production-ready.
+
+==================================================
+
+GOAL
+
+Create a professional medicine order tracking system suitable for a real pharmacy.
+
+The system should remain simple for customers today while being scalable for future customer accounts and authentication.
+
+==================================================
+
+CUSTOMER IDENTIFICATION
+
+Do NOT require customer login.
+
+Do NOT require registration.
+
+Do NOT require OTP.
+
+Do NOT require Firebase Authentication.
+
+Instead use:
+
+• Order ID
+• Mobile Number
+
+for secure order tracking.
+
+==================================================
+
+ORDER ID
+
+Whenever a customer submits a medicine request successfully:
+
+Generate a unique Order ID.
+
+Example:
+
+AYM-2026-000123
+
+After submission show:
+
+✅ Request Submitted Successfully
+
+Your Order ID:
+
+AYM-2026-000123
+
+Please save this Order ID.
+
+You can use it later to track your medicine request.
+
+==================================================
+
+TRACK ORDER
+
+Track Order should ask for:
+
+• Order ID
+
+• Mobile Number
+
+Only if BOTH match a Firestore document should the order be displayed.
+
+Otherwise show:
+
+Order not found.
+
+Please verify your Order ID and Mobile Number.
+
+Never reveal whether:
+
+• the Order ID exists
+
+or
+
+• the mobile number is incorrect.
+
+==================================================
+
+ORDER STATUS PIPELINE
+
+Support these statuses:
+
+Request Submitted
+
+↓
+
+Prescription Under Review
+
+↓
+
+Prescription Verified
+
+↓
+
+Medicine Reserved
+
+↓
+
+Payment Pending
+
+↓
+
+Payment Received
+
+↓
+
+Packing Order
+
+↓
+
+Out For Delivery
+
+↓
+
+Delivered
+
+Alternative statuses:
+
+Cancelled
+
+Medicine Unavailable
+
+Rejected
+
+==================================================
+
+ADMIN PANEL
+
+Keep the existing Admin Panel.
+
+Do NOT redesign it.
+
+Whenever the admin changes an order status:
+
+Firestore should update.
+
+The customer Track Order page must immediately display the latest status from Firestore.
+
+Firestore must remain the single source of truth.
+
+Workflow:
+
+Admin updates status
+
+↓
+
+Firestore updates
+
+↓
+
+Track Order automatically reflects the latest status
+
+==================================================
+
+WHATSAPP STATUS UPDATE
+
+Add an Admin action button:
+
+"Send Status Update on WhatsApp"
+
+When clicked:
+
+Open WhatsApp with a dynamically generated message.
+
+Do NOT hardcode messages.
+
+Generate the message from the latest Firestore order data.
+
+Include:
+
+• Customer Name
+
+• Order ID
+
+• Medicine Name
+
+• Current Status
+
+• Payment Amount (if available)
+
+• Delivery Information (if available)
+
+==================================================
+
+Example:
+
+STATUS
+
+Prescription Verified
+
+Hello Ramesh,
+
+Your Ayush Medico order (AYM-2026-000123) has been verified successfully.
+
+Current Status:
+
+✅ Prescription Verified
+
+Your medicines are now being reserved.
+
+Thank you,
+
+Ayush Medico
+
+==================================================
+
+STATUS
+
+Payment Pending
+
+Hello Ramesh,
+
+Your medicines are ready.
+
+Order ID:
+
+AYM-2026-000123
+
+Amount:
+
+₹450
+
+Please complete the payment to continue with packing and delivery.
+
+Thank you,
+
+Ayush Medico
+
+==================================================
+
+STATUS
+
+Out For Delivery
+
+Hello Ramesh,
+
+Your medicines are now out for delivery.
+
+Order ID:
+
+AYM-2026-000123
+
+Estimated Delivery:
+
+30–45 Minutes
+
+Thank you,
+
+Ayush Medico
+
+==================================================
+
+STATUS
+
+Delivered
+
+Hello Ramesh,
+
+Your medicines have been successfully delivered.
+
+Thank you for choosing Ayush Medico.
+
+We wish you good health.
+
+==================================================
+
+STATUS
+
+Medicine Unavailable
+
+Hello Ramesh,
+
+Unfortunately this medicine is currently unavailable.
+
+We are trying to arrange it.
+
+We will contact you as soon as possible.
+
+Thank you,
+
+Ayush Medico
+
+==================================================
+
+STATUS
+
+Cancelled
+
+Hello Ramesh,
+
+Your medicine request has been cancelled.
+
+If you believe this is incorrect, please contact Ayush Medico.
+
+==================================================
+
+TRACK ORDER PAGE
+
+Whenever the customer checks an order,
+
+show:
+
+• Order ID
+
+• Medicine Name
+
+• Quantity
+
+• Current Status
+
+• Last Updated Time
+
+• Timeline of completed stages
+
+Example:
+
+✅ Request Submitted
+
+✅ Prescription Under Review
+
+✅ Prescription Verified
+
+🟡 Medicine Reserved
+
+⚪ Payment Pending
+
+⚪ Packing Order
+
+⚪ Out For Delivery
+
+⚪ Delivered
+
+==================================================
+
+SECURITY
+
+Customers must never see another customer's order.
+
+Tracking must require BOTH:
+
+• Order ID
+
+AND
+
+• Mobile Number
+
+==================================================
+
+FUTURE READY
+
+Design the code so that future authentication can be added easily.
+
+Possible future upgrades:
+
+• Firebase Phone Authentication
+
+• Email Login
+
+• Customer Accounts
+
+• Saved Addresses
+
+• Order History
+
+• Repeat Orders
+
+Do NOT implement these features now.
+
+Only prepare the architecture.
+
+==================================================
+
+DO NOT
+
+❌ Break the current request workflow.
+
+❌ Change Firebase configuration.
+
+❌ Change Firestore rules.
+
+❌ Change Cloudinary.
+
+❌ Redesign the UI.
+
+Only extend the existing implementation.
+
+==================================================
+
+AFTER IMPLEMENTATION
+
+Explain:
+
+1. How Order IDs are generated.
+
+2. How Track Order works.
+
+3. How Firestore synchronization works.
+
+4. How WhatsApp status messages are generated.
+
+5. How the architecture can later support Firebase Authentication.
+
+6. Which files were modified.

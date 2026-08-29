@@ -1,0 +1,209 @@
+Treat this website as a production-ready client project.
+
+Do NOT redesign the website.
+
+Do NOT change business logic.
+
+Do NOT modify PostgreSQL, authentication, APIs, routes, or backend functionality.
+
+Your only task is to perform a complete frontend audit and fix every UI, UX, responsiveness, accessibility, and visual issue.
+
+Think like a Senior Frontend Engineer performing the final QA before production deployment.
+
+Step 1 — Complete Website Audit
+
+Inspect every page and every section.
+
+Check:
+
+Homepage
+Medicines
+Categories
+Search
+Product Details
+Cart
+Checkout
+Login
+Register
+Profile
+Orders
+Track Order
+Contact
+Admin Panel UI
+
+Inspect everything.
+
+Step 2 — Mobile Audit
+
+Completely inspect the mobile experience.
+
+Fix:
+
+Large white gaps
+Broken spacing
+Overflow
+Hidden sections
+Incorrect heights
+Horizontal scrolling
+Button sizing
+Navigation
+Cards
+Forms
+
+Ensure smooth scrolling.
+
+No blank areas.
+
+Step 3 — Tablet Audit
+
+Verify every section on tablets.
+
+Fix alignment.
+
+Fix spacing.
+
+Fix grids.
+
+Fix typography.
+
+Step 4 — Desktop Audit
+
+Inspect the desktop layout.
+
+Verify:
+
+Consistent spacing
+Equal card heights
+Proper alignment
+Section flow
+Typography
+Shadows
+Hover animations
+Step 5 — Layout Inspection
+
+Inspect every section using browser developer tools.
+
+Identify the exact root cause of:
+
+Empty white spaces
+Layout shifts
+Hidden containers
+Broken flex layouts
+Incorrect grid layouts
+Height issues
+Margin issues
+Padding issues
+
+Remove the root cause.
+
+Do NOT hide problems with CSS.
+
+Fix them correctly.
+
+Step 6 — Responsive Components
+
+Inspect every component.
+
+Navbar
+Hero
+Search
+Categories
+Product Cards
+Featured Sections
+Testimonials
+FAQ
+Contact
+Footer
+
+Every component should be perfectly responsive.
+
+Step 7 — Forms
+
+Inspect all forms.
+
+Improve:
+
+Alignment
+Input spacing
+Upload fields
+Validation UI
+Mobile responsiveness
+Step 8 — Visual Consistency
+
+Ensure the entire website has:
+
+Consistent spacing
+Same border radius
+Same shadows
+Same typography
+Same button styles
+Same icon sizes
+Same section spacing
+
+Make everything visually consistent.
+
+Step 9 — Animations
+
+Inspect all animations.
+
+Fix:
+
+Flickering
+Layout jumping
+Slow transitions
+Animation glitches
+
+Animations should be smooth and professional.
+
+Step 10 — Performance
+
+Improve:
+
+Lazy loading
+Image optimization
+Rendering
+CLS (layout shifts)
+
+Do not reduce UI quality.
+
+Step 11 — Accessibility
+
+Improve:
+
+Button focus states
+Keyboard navigation
+Form labels
+Color contrast
+Screen reader support
+Step 12 — Final QA
+
+Perform a complete production audit.
+
+Do not stop after fixing one issue.
+
+Continue inspecting until:
+
+No layout issues
+No responsive issues
+No visual inconsistencies
+No spacing issues
+No overflow
+No empty gaps
+No broken cards
+No broken forms
+No UI glitches
+IMPORTANT
+
+Use browser developer tools to inspect every section.
+
+Fix the root cause.
+
+Do NOT apply temporary CSS fixes.
+
+Do NOT redesign the website.
+
+Do NOT remove existing features.
+
+Only polish, optimize, and perfect the frontend.
+
+The final result should feel like a production-ready website built by a professional software company.

@@ -1,0 +1,341 @@
+
+
+
+---
+
+🎨 Ayush Medico – Premium UI/UX Redesign (Frontend Only)
+
+Redesign the entire Ayush Medico homepage to look like a modern, premium healthcare platform inspired by leading pharmacy websites (such as PharmEasy, Tata 1mg, Apollo Pharmacy, and Netmeds), while keeping Ayush Medico's own unique identity. Do not copy any existing design.
+
+Important
+
+Improve only the UI/UX.
+
+Do not change any backend logic.
+
+Do not modify PostgreSQL.
+
+Do not change APIs.
+
+Do not change authentication.
+
+Do not modify business logic.
+
+Keep all existing functionality exactly as it is.
+
+
+
+---
+
+Hero Section
+
+Create a premium healthcare hero.
+
+Add a beautiful pharmacy background with a dark overlay.
+
+Improve typography and spacing.
+
+Make the search bar larger and more modern.
+
+Add smooth entrance animations.
+
+Improve CTA button styles.
+
+
+Buttons:
+
+Search Medicines
+
+Explore All Medicines
+
+Request Medicine Delivery
+
+
+
+---
+
+Trust Badges
+
+Create beautiful trust cards below the hero.
+
+Include:
+
+Licensed Pharmacy
+
+Secure Payments
+
+Prescription Verified
+
+Same Day Delivery
+
+Genuine Medicines
+
+Trusted Since 2013
+
+
+Use premium icons, soft shadows, rounded corners, and hover animations.
+
+
+---
+
+Statistics
+
+Redesign statistics cards.
+
+Animate numbers.
+
+Display:
+
+10+ Years
+
+50K+ Customers
+
+5000+ Medicines
+
+4.9★ Rating
+
+Same Day Delivery
+
+
+Never show placeholder values like 0.
+
+
+---
+
+Categories
+
+Completely redesign category cards.
+
+Each card should include:
+
+Category image
+
+Category name
+
+Medicine count
+
+Shop Now button
+
+
+Use:
+
+Large rounded cards
+
+Soft shadows
+
+Hover animation
+
+Clean spacing
+
+Modern grid layout
+
+
+Add:
+
+View All Categories
+
+
+---
+
+Promotional Banner
+
+Create a premium banner section with smooth sliding animations.
+
+Examples:
+
+Monsoon Essentials
+
+Baby Care
+
+Diabetes Care
+
+Healthcare Essentials
+
+
+Use clean healthcare illustrations.
+
+
+---
+
+Featured Medicines
+
+Redesign medicine cards.
+
+Each card should contain:
+
+Medicine image
+
+Medicine name
+
+Company
+
+Strength
+
+Price
+
+Availability
+
+Prescription badge (if required)
+
+
+Buttons:
+
+Add to Cart
+
+Buy Now / Upload Prescription
+
+
+
+---
+
+Home Delivery Section
+
+Improve layout.
+
+Use modern illustrations.
+
+Add premium cards.
+
+Improve spacing.
+
+Buttons:
+
+Request Medicine Delivery
+
+Explore All Medicines
+
+
+
+---
+
+How It Works
+
+Redesign as a premium timeline.
+
+Use animated icons.
+
+Better spacing.
+
+Modern cards.
+
+
+---
+
+New Arrivals
+
+Replace "Coming Soon" placeholders with premium empty-state cards.
+
+If data is unavailable, display:
+
+Browse Medicines
+
+button.
+
+
+---
+
+Testimonials
+
+Create a modern auto-sliding carousel.
+
+Add:
+
+Customer avatar
+
+Verified badge
+
+Star rating
+
+Better spacing
+
+
+
+---
+
+FAQ
+
+Improve accordion animations.
+
+Add search bar.
+
+Improve typography.
+
+
+---
+
+Forms
+
+Improve all input fields.
+
+Rounded inputs.
+
+Floating labels.
+
+Better upload UI.
+
+Premium buttons.
+
+Better validation styles.
+
+
+---
+
+Footer
+
+Create a premium footer.
+
+Improve spacing.
+
+Modern icons.
+
+Better typography.
+
+Professional layout.
+
+
+---
+
+Animations
+
+Add:
+
+Fade animations
+
+Hover animations
+
+Button ripple effect
+
+Smooth transitions
+
+Loading skeletons
+
+Card elevation
+
+
+
+---
+
+Mobile UI
+
+Improve responsiveness.
+
+Better spacing.
+
+Full-width buttons.
+
+Horizontal scrolling categories.
+
+Sticky search.
+
+Larger tap targets.
+
+
+---
+
+Final Goal
+
+The homepage should look like a premium, modern healthcare platform that builds trust immediately.
+
+The UI should feel clean, elegant, fast, and production-ready while preserving all existing functionality.
+
+Do not change any backend functionality. Improve only the frontend design, responsiveness, spacing, animations, typography, and overall user experience.

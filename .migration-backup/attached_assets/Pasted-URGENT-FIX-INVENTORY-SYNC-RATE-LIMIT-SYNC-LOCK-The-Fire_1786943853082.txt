@@ -1,0 +1,89 @@
+URGENT: FIX INVENTORY SYNC RATE LIMIT + SYNC LOCK
+
+The Firebase 401 authentication problem has been FIXED. Do NOT change Firebase configuration, Firebase project IDs, service accounts, Render environment variables, or authentication verification.
+
+The current production error is now:
+
+"Failed to upload chunk 1/1 of COMPANY.SDF: Sync rate limit exceeded. Please wait an hour before re-syncing."
+
+The inventory sync successfully reaches:
+- PRODUCT.SDF
+- STOCK.SDF
+- CATEGORY.SDF
+- DRUG.SDF
+and then COMPANY.SDF fails because the application's sync rate limiter is being exhausted.
+
+We need to fix the INVENTORY SYNC implementation, not authentication.
+
+FIRST inspect the complete sync flow in:
+- InventorySyncPage.tsx
+- /api/sync/session
+- sync upload/chunk endpoints
+- sync status/progress endpoints
+- any rate-limit middleware
+- any database sync/session tables
+- any frontend polling/retry logic
+
+Determine exactly why ONE normal inventory import is consuming the sync rate limit.
+
+IMPORTANT:
+Do not simply increase/remove the rate limit blindly.
+Do not disable rate limiting globally.
+Do not bypass authentication.
+Do not create an unlimited endpoint.
+
+The intended behavior is:
+
+1. User starts ONE inventory sync.
+2. Server creates ONE sync session.
+3. The selected SDF files upload sequentially/chunked.
+4. Multiple chunks belonging to the same active sync session must NOT be incorrectly treated as separate sync attempts.
+5. Normal chunk uploads must not exhaust the application's sync-session creation rate limit.
+6. Only creation of a NEW sync session should consume the session-creation rate limit.
+7. Chunk uploads should be authorized by the authenticated user AND the valid active sync session.
+8. A failed upload should not leave the sync permanently stuck in "running".
+9. On success, mark the sync completed.
+10. On failure, mark it failed and release/expire the active sync lock appropriately.
+11. A later sync should be allowed after a completed/failed sync without requiring a manual database reset.
+12. Do not allow two independent sync sessions for the same user to run simultaneously.
+
+Also inspect whether the frontend is accidentally:
+- creating multiple sync sessions,
+- retrying session creation,
+- polling an endpoint that consumes the same rate-limit bucket,
+- or restarting the sync session for every SDF file.
+
+Add proper server-side logging around:
+- sync session creation
+- sync session ID
+- file name
+- chunk number
+- chunk count
+- upload start
+- upload completion
+- rate-limit decision
+- sync completion
+- sync failure
+
+Do NOT log Firebase ID tokens, passwords, service-account JSON, or other secrets.
+
+The UI should display meaningful progress and distinguish:
+- Starting sync
+- Uploading PRODUCT.SDF
+- Uploading STOCK.SDF
+- Uploading COMPANY.SDF
+- Importing into PostgreSQL
+- Completed
+- Failed
+
+If a rate limit is genuinely necessary, return the actual retry/reset time rather than the generic "wait an hour".
+
+After making the fix:
+- run TypeScript checks
+- run the production build
+- verify the sync API routes
+- verify the sync lock lifecycle
+- do not modify unrelated features
+- commit the changes to the current main branch
+
+Most importantly: FIX THE ROOT CAUSE of the rate-limit being consumed during a single normal sync. Do not merely hide the error in the UI.

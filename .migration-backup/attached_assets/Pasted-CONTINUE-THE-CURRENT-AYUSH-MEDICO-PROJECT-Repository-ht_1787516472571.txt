@@ -1,0 +1,83 @@
+CONTINUE THE CURRENT AYUSH MEDICO PROJECT.
+
+Repository:
+https://github.com/Nasty-Developer/Ayush-Medicozip
+
+IMPORTANT:
+Do NOT switch to Ayush Foundation.
+Do NOT rebuild or re-import the project.
+Do NOT change application features.
+
+We are deploying the ENTIRE Ayush Medico root project as ONE Render Web Service.
+
+Render service:
+https://ayush-medicozip-4.onrender.com
+
+CURRENT STATUS:
+
+- Frontend build: SUCCESS
+- API build: SUCCESS
+- DATABASE_URL: WORKING
+- PostgreSQL: CONNECTED
+- Express server: STARTED
+- Render service: LIVE
+- /api/healthz should remain working
+
+CURRENT BLOCKER:
+
+Render production logs show:
+
+GET / → 404
+
+Fix ONLY this deployment problem.
+
+The existing Express server must serve the compiled Ayush Medico Vite frontend while continuing to serve all existing /api/* routes.
+
+Requirements:
+
+1. Inspect the actual Vite frontend output directory.
+2. Inspect the existing Express server entrypoint.
+3. Make the minimum required change so Express serves the compiled frontend at /.
+4. Serve static frontend assets correctly.
+5. For non-API frontend routes such as:
+   /medicines
+   /cart
+   /checkout
+   /about
+   /contact
+
+   return the real frontend index.html for SPA routing instead of 404.
+
+6. Keep /api/* routes handled by the existing API.
+7. Keep /api/healthz working.
+8. Use Render's PORT environment variable.
+9. Do not hardcode the port.
+10. Do not create another service.
+11. Do not use Vercel.
+12. Do not replace the PostgreSQL/API architecture.
+13. Do not create mock medicines.
+14. Do not change medicine/catalogue functionality.
+
+After the fix:
+
+- Run the production frontend build.
+- Run the API build.
+- Start the combined server locally.
+- Verify GET / returns HTTP 200 and the actual Ayush Medico frontend.
+- Verify GET /api/healthz returns HTTP 200.
+- Verify /medicines does not return 404.
+- Verify /cart does not return 404.
+- Verify /checkout does not return 404.
+- Verify the existing catalogue API still returns the real medicines from PostgreSQL.
+
+Then report:
+
+Frontend root status:
+API status:
+Database status:
+Medicines/catalogue status:
+SPA routes status:
+Remaining blocker:
+
+ONLY FIX THIS RENDER DEPLOYMENT BLOCKER.
+DO NOT START NEW FEATURES.

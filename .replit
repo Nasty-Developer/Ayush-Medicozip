@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 modules = ["nodejs-24", "python-3.11", "postgresql-16"]
+=======
+modules = ["nodejs-24", "python-3.11"]
+>>>>>>> origin/main
 
 [deployment]
 router = "application"

@@ -1,0 +1,113 @@
+IMPORTANT FINAL PRODUCTION CHANGE — DO NOT MODIFY APPLICATION LOGIC
+
+The Render backend is now successfully deployed and verified:
+
+Backend:
+https://ayush-medicozip-1.onrender.com
+
+Verified:
+GET /api/healthz → {"status":"ok"}
+GET /api/medicines/featured → {"data":[]}
+
+The Render PostgreSQL schema is also successfully provisioned.
+
+Our Vercel frontend must continue using:
+
+Root Directory:
+artifacts/ayush-medico
+
+This Root Directory MUST NOT be changed to "." because the frontend deployment works correctly with artifacts/ayush-medico as the Vercel project root.
+
+The previous Vercel deployment failed because Vercel tried to compile the repository-level serverless function:
+
+api/[...path].ts
+
+and produced:
+
+api/[...path].ts: Emit skipped
+
+We no longer want Vercel to run the Express API.
+
+Instead, Vercel must proxy all /api/* requests to the already-live Render Express backend.
+
+MAKE ONLY THE MINIMUM REQUIRED PRODUCTION CONFIGURATION CHANGE.
+
+For the Vercel frontend project, use this vercel.json:
+
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://ayush-medicozip-1.onrender.com/api/:path*"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
+  ]
+}
+
+IMPORTANT:
+
+1. Keep Vercel Root Directory as:
+   artifacts/ayush-medico
+
+2. The frontend must continue building exactly as it currently does.
+
+3. Do NOT change Firebase configuration.
+
+4. Do NOT change Firestore rules.
+
+5. Do NOT change Cloudinary.
+
+6. Do NOT change the Admin UI.
+
+7. Do NOT change the medicine/SDF sync code.
+
+8. Do NOT change the PostgreSQL schema.
+
+9. Do NOT change the Render backend.
+
+10. Do NOT create another API server.
+
+11. Do NOT create another database.
+
+12. Do NOT delete the working Express backend.
+
+13. Do NOT delete api/[...path].ts from the repository unless absolutely required. The important requirement is that the Vercel frontend deployment must no longer try to compile/use that repository-level Vercel serverless function.
+
+14. Because the Vercel Root Directory is artifacts/ayush-medico, make sure the vercel.json used by this Vercel project is located/configured relative to that frontend root.
+
+15. Make sure the SPA rewrite does not interfere with /api/* requests. The /api/* rewrite to Render must take precedence.
+
+16. Do not change the existing frontend API calls. They should continue using paths such as:
+   /api/sync/session
+   /api/sync/chunk
+   /api/sync/start
+   /api/sync/status
+
+After making the change:
+
+- Run the frontend production build.
+- Verify that it succeeds.
+- Verify that Vercel will no longer need to compile api/[...path].ts for this frontend project.
+- Do not claim the production upload works until it is actually tested.
+
+Expected production architecture:
+
+Browser
+  ↓
+Vercel frontend
+  ↓
+/api/*
+  ↓
+https://ayush-medicozip-1.onrender.com/api/*
+  ↓
+Express API
+  ↓
+Firebase authentication + Render PostgreSQL
+  ↓
+SDF medicine sync
+
+This is a production routing/configuration change only. Do not refactor the application.

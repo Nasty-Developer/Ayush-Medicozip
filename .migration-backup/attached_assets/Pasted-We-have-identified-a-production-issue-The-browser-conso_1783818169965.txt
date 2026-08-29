@@ -1,0 +1,162 @@
+We have identified a production issue.
+
+The browser console still shows:
+
+FirebaseError: Quota exceeded
+
+Firestore has exceeded its free quota.
+
+The medicine catalogue has already been migrated to SQL, so Firestore should no longer be used for medicine-related functionality.
+
+Please perform a complete audit.
+
+====================================================
+1. FIRESTORE AUDIT
+====================================================
+
+Find every remaining Firestore read and write in the project.
+
+List every collection that is still being used.
+
+Examples:
+
+• Medicines
+• Categories
+• Companies
+• Dashboard
+• Homepage
+• Search
+• Product Details
+• Inventory
+• Orders
+• Inquiry
+• Request Medicine
+• Testimonials
+• Notifications
+• Settings
+
+Generate a report showing which features still depend on Firestore.
+
+====================================================
+2. REMOVE UNNECESSARY FIRESTORE USAGE
+====================================================
+
+If medicines, categories, search or inventory are still reading from Firestore, migrate them completely to SQL.
+
+Do NOT keep duplicate reads from Firestore.
+
+====================================================
+3. INQUIRY FORM IS BROKEN
+====================================================
+
+The Inquiry form currently does not submit.
+
+Debug the complete flow:
+
+Customer submits inquiry
+
+↓
+
+Frontend validation
+
+↓
+
+API request
+
+↓
+
+Backend
+
+↓
+
+Database
+
+↓
+
+Admin Panel
+
+↓
+
+Success message
+
+Find exactly where it fails.
+
+If Firestore quota is blocking Inquiry, migrate Inquiry to SQL as well.
+
+====================================================
+4. REQUEST MEDICINE
+====================================================
+
+Request Medicine is also not working reliably.
+
+Debug the complete workflow.
+
+If Firestore quota is blocking requests, migrate the Request Medicine module to SQL.
+
+====================================================
+5. ORDERS
+====================================================
+
+Verify:
+
+Add to Cart
+
+↓
+
+Checkout
+
+↓
+
+Order Creation
+
+↓
+
+Admin receives order
+
+↓
+
+Status updates
+
+↓
+
+Customer sees updated status
+
+====================================================
+6. DASHBOARD
+====================================================
+
+Dashboard should show live counts from SQL.
+
+No Firestore reads for medicine statistics.
+
+====================================================
+7. PERFORMANCE
+====================================================
+
+Reduce unnecessary database calls.
+
+Avoid repeated queries.
+
+Implement caching where appropriate.
+
+====================================================
+8. FINAL REPORT
+====================================================
+
+Provide a detailed report:
+
+• Remaining Firestore collections
+• SQL collections/tables
+• APIs migrated
+• APIs still pending
+• Bugs fixed
+• Why Firestore quota was still being used
+• Any remaining production issues
+
+Do not mark the task complete until:
+✓ No unnecessary Firestore quota errors remain.
+✓ Inquiry works end-to-end.
+✓ Request Medicine works end-to-end.
+✓ Orders work end-to-end.
+✓ Dashboard works.
+✓ Medicines load from SQL.

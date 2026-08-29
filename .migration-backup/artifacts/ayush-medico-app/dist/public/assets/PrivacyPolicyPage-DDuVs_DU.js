@@ -1,0 +1,1 @@
+import{j as a,S as i}from"./index-D8PlsLKr.js";import{u as e}from"./useLegalContent-FBascFVX.js";import{D as r}from"./DynamicLegalPage-LHDTP3j8.js";function l(){const{content:o,loading:t}=e("privacy");return a.jsx(r,{title:"Privacy Policy",icon:i,content:o,loading:t})}export{l as default};

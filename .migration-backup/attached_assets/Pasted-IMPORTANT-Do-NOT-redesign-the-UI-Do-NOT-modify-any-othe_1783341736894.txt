@@ -1,0 +1,136 @@
+IMPORTANT
+
+Do NOT redesign the UI.
+Do NOT modify any other functionality.
+Do NOT modify Firebase configuration.
+Do NOT modify Firestore rules.
+Do NOT modify Admin Authentication.
+Do NOT change the Admin Panel layout.
+
+Only investigate and fix the Announcement Banner feature.
+
+===================================================
+
+BUG DESCRIPTION
+
+The Announcement section exists in the Admin Panel.
+
+The admin can:
+
+- Create Announcement
+- Edit Announcement
+- Enable/Disable Announcement
+
+However,
+
+Even after enabling the announcement in the Admin Panel, the announcement banner does NOT appear on the public website.
+
+The data is either not being fetched correctly, not being saved correctly, or the frontend is not rendering it.
+
+===================================================
+
+EXPECTED BEHAVIOUR
+
+When Admin:
+
+✅ Creates an announcement
+
+OR
+
+✅ Updates an announcement
+
+OR
+
+✅ Enables an announcement
+
+The public website should immediately display the announcement banner.
+
+If the announcement is disabled, the banner should automatically disappear.
+
+Realtime update is preferred.
+
+===================================================
+
+PLEASE INVESTIGATE
+
+Check the complete announcement workflow.
+
+Verify:
+
+• Firestore collection name
+• Firestore document ID
+• Read/write operations
+• Admin save logic
+• Enable/Disable toggle
+• Boolean field names
+• Query filters
+• React state
+• React Query cache
+• Firestore cache
+• Realtime listeners
+• useEffect dependencies
+• Component rendering
+• Data mapping
+• Default values
+• Fallback data
+• Collection path
+• Timestamp handling
+
+===================================================
+
+CHECK FOR COMMON ISSUES
+
+- Wrong collection name
+- Wrong document ID
+- Query filtering enabled=false
+- Field name mismatch
+  Example:
+  enabled
+  isEnabled
+  active
+  status
+
+- Cached data
+- Missing invalidateCache()
+- Missing Firestore listener
+- Wrong document overwrite
+- Frontend reading a different collection
+- Static data overriding Firebase data
+
+===================================================
+
+DO NOT
+
+❌ Redesign UI
+❌ Rewrite the component
+❌ Create duplicate announcement sections
+❌ Break any existing functionality
+
+===================================================
+
+AFTER FIXING
+
+Explain:
+
+1. What caused the issue.
+2. Which file(s) were modified.
+3. Which collection is used.
+4. Which document is read.
+5. Why it was not appearing.
+6. Why the fix is correct.
+
+Finally test:
+
+✔ Create Announcement
+
+✔ Edit Announcement
+
+✔ Enable Announcement
+
+✔ Disable Announcement
+
+✔ Refresh website
+
+✔ Verify the banner updates correctly.
+
+The feature must be production-ready.

@@ -1,0 +1,68 @@
+CONTINUE FROM THE CURRENT AYUSH MEDICOZIP PROJECT.
+
+Do NOT redesign or add new features.
+
+The combined Render deployment setup is already prepared and verified:
+- Vite frontend builds successfully
+- Express API builds successfully
+- Express serves the frontend
+- /api/* remains handled by the API
+- /api/healthz works
+- SPA fallback works
+
+CURRENT BLOCKER:
+The preview currently returns 500 for catalogue requests because PostgreSQL has not been initialized with the existing Ayush Medico catalogue schema/data.
+
+NOW FIX ONLY THE MEDICINE CATALOGUE/DATABASE DEPLOYMENT.
+
+1. Inspect the existing PostgreSQL schema and catalogue importer.
+2. Use the EXISTING real medicine catalogue/data already present in this repository.
+3. Do NOT create mock medicines.
+4. Do NOT invent prices or stock.
+5. Do NOT redesign the catalogue.
+6. Initialize the required database schema.
+7. Run the existing idempotent catalogue import correctly.
+8. Verify the real medicine count.
+9. Verify GET /api/healthz.
+10. Verify the catalogue API returns real medicines.
+11. Verify /medicines displays real medicines.
+12. Verify medicine details and Add to Cart still work.
+13. Verify the combined Express server serves both:
+    - frontend
+    - /api/*
+14. Run the production build again.
+
+Then prepare the project for ONE Render Web Service.
+
+Use:
+
+Root Directory:
+.
+
+Build Command:
+pnpm install --frozen-lockfile && pnpm --filter @workspace/ayush-medico run build && pnpm --filter @workspace/api-server run build
+
+Start Command:
+pnpm --filter @workspace/api-server run start
+
+Health Check:
+ /api/healthz
+
+IMPORTANT:
+Do not claim Render/Vercel production works until the actual deployed service is tested.
+
+The immediate goal is:
+
+DATABASE → REAL MEDICINES → API → FRONTEND → MEDICINES PAGE → DETAILS → CART
+
+Do not start payment, delivery, or Phase 3.
+
+At the end report:
+- database initialized?
+- real medicine count
+- API working?
+- medicines visible?
+- details working?
+- Add to Cart working?
+- production build result
+- exact remaining Render environment variables
