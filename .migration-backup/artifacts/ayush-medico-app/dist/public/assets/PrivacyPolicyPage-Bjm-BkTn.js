@@ -1,1 +1,0 @@
-import{j as a,S as i}from"./index-CAW-LK2_.js";import{u as e}from"./useLegalContent-u1SZj5vy.js";import{D as r}from"./DynamicLegalPage-DGaeBGPK.js";function l(){const{content:o,loading:t}=e("privacy");return a.jsx(r,{title:"Privacy Policy",icon:i,content:o,loading:t})}export{l as default};

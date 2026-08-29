@@ -1,1 +1,0 @@
-import{j as t,T as n}from"./index-Ds-rFBeg.js";import{u as e}from"./useLegalContent-DPJe2M5b.js";import{D as a}from"./DynamicLegalPage-XuberOW-.js";function c(){const{content:i,loading:o}=e("shipping");return t.jsx(a,{title:"Shipping & Delivery Policy",icon:n,content:i,loading:o})}export{c as default};

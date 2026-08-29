@@ -1,1 +1,0 @@
-import{j as t,a9 as i}from"./index-D8PlsLKr.js";import{u as r}from"./useLegalContent-FBascFVX.js";import{D as o}from"./DynamicLegalPage-LHDTP3j8.js";function l(){const{content:e,loading:a}=r("disclaimer");return t.jsx(o,{title:"Disclaimer",icon:i,iconBg:"bg-amber-500/10",iconCls:"text-amber-500",content:e,loading:a})}export{l as default};
