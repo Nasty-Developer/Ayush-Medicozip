@@ -212,7 +212,7 @@ function GeneralProductDialog({
               {([["Selling Price", sellingPrice, setSellingPrice], ["MRP", mrp, setMrp], ["Discount %", discount, setDiscount]] as const).map(([lbl, val, setter]) => (
                 <div key={lbl}>
                   <label className="block text-[10px] text-muted-foreground mb-1">{lbl}</label>
-                  <input type="number" min="0" value={String(val)} onChange={(e) => (setter as (v:string)=>void)(e.target.value)} placeholder="0"
+                  <input type="number" min="0" step="0.01" value={String(val)} onChange={(e) => (setter as (v:string)=>void)(e.target.value)} placeholder="0"
                     className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
                 </div>
               ))}

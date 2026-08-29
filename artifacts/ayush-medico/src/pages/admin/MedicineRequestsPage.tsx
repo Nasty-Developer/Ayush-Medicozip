@@ -233,7 +233,7 @@ function PricingPanel({ req, onSave }: {
         <div>
           <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Medicine Price (₹)</label>
           <input
-            type="number" min="0" value={medicinePrice}
+            type="number" min="0" step="0.01" value={medicinePrice}
             onChange={(e) => setMedicinePrice(e.target.value)}
             data-testid="input-medicine-price"
             className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -242,7 +242,7 @@ function PricingPanel({ req, onSave }: {
         <div>
           <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Delivery Charge (₹)</label>
           <input
-            type="number" min="0" value={deliveryCharge}
+            type="number" min="0" step="0.01" value={deliveryCharge}
             onChange={(e) => setDeliveryCharge(e.target.value)}
             data-testid="input-delivery-charge"
             className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -251,7 +251,7 @@ function PricingPanel({ req, onSave }: {
         <div className="col-span-2">
           <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Discount (₹)</label>
           <input
-            type="number" min="0" value={discount}
+            type="number" min="0" step="0.01" value={discount}
             onChange={(e) => setDiscount(e.target.value)}
             data-testid="input-discount"
             className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
