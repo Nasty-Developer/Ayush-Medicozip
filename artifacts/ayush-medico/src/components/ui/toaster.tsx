@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 import { useToast } from "@/hooks/use-toast"
+=======
+>>>>>>> 96e6827 (i;u;;;;j)
 import {
   Toast,
   ToastClose,
@@ -6,10 +9,18 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
+<<<<<<< HEAD
 } from "@/components/ui/toast"
 
 export function Toaster() {
   const { toasts } = useToast()
+=======
+} from '@/components/ui/toast';
+import { useToast } from '@/hooks/use-toast';
+
+export function Toaster() {
+  const { toasts } = useToast();
+>>>>>>> 96e6827 (i;u;;;;j)
 
   return (
     <ToastProvider>
@@ -25,9 +36,17 @@ export function Toaster() {
             {action}
             <ToastClose />
           </Toast>
+<<<<<<< HEAD
         )
       })}
       <ToastViewport />
     </ToastProvider>
   )
+=======
+        );
+      })}
+      <ToastViewport />
+    </ToastProvider>
+  );
+>>>>>>> 96e6827 (i;u;;;;j)
 }

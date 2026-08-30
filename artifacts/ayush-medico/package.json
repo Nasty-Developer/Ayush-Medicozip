@@ -73,8 +73,11 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+<<<<<<< HEAD
   },
   "dependencies": {
     "firebase": "^12.18.0"
+=======
+>>>>>>> 96e6827 (i;u;;;;j)
   }
 }
