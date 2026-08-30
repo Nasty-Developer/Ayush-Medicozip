@@ -116,6 +116,7 @@ export default function SignInModal({
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email address"
                 type="email"
+                autoComplete={mode === "signup" ? "email" : "username"}
                 data-testid="input-signin-email"
                 className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
@@ -127,6 +128,7 @@ export default function SignInModal({
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
                 type="password"
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
                 data-testid="input-signin-password"
                 className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />

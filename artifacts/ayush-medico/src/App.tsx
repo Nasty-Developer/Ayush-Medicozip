@@ -153,8 +153,8 @@ function App() {
     <ThemeProvider defaultTheme="light" storageKey="ayush-medico-theme">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <AuthProvider>
-            <CustomerAuthProvider>
+          <CustomerAuthProvider>
+            <AuthProvider>
               <CartProvider>
                 <RequestMedicineProvider>
                   <LoadingScreen />
@@ -416,8 +416,8 @@ function App() {
                   <Toaster />
                 </RequestMedicineProvider>
               </CartProvider>
-            </CustomerAuthProvider>
-          </AuthProvider>
+            </AuthProvider>
+          </CustomerAuthProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

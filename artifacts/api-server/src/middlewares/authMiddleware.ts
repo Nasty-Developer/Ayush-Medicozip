@@ -49,28 +49,32 @@ export async function requireAuth(req: AuthenticatedRequest, res: any, next: any
  * isAdminEmail — shared predicate used both by the requireAdminEmail
  * middleware and by routes that need to branch behavior (e.g. "customers can
  * see their own orders, admins can see all") without rejecting the request
- * outright. Mirrors the same VITE_ADMIN_EMAIL allowlist logic.
+ * outright. Mirrors the same admin allowlist logic used by the browser.
  */
 export function isAdminEmail(email: string | undefined | null): boolean {
-  const allowlist = process.env["VITE_ADMIN_EMAIL"];
-  if (!allowlist) {
-    // No allowlist configured — treat any authenticated user as admin,
-    // matching requireAdminEmail's permissive fallback.
-    return true;
-  }
   if (!email) return false;
-  const allowed = allowlist.split(",").map((e) => e.trim().toLowerCase());
+  const allowlist = process.env["VITE_ADMIN_EMAIL"] ?? process.env["ADMIN_EMAIL"] ?? "";
+  const allowed = allowlist
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
   return allowed.includes(email.toLowerCase());
 }
 
 /**
  * requireAdminEmail — after requireAuth, checks the verified email against
- * the VITE_ADMIN_EMAIL allowlist (comma-separated). If the env var is not set,
- * any authenticated user is accepted (set the var in production).
+ * the VITE_ADMIN_EMAIL/ADMIN_EMAIL allowlist (comma-separated). Admin access
+ * fails closed when no allowlist is configured.
  */
 export function requireAdminEmail(req: AuthenticatedRequest, res: any, next: any): void {
-  if (!process.env["VITE_ADMIN_EMAIL"]) {
-    logger.warn("VITE_ADMIN_EMAIL not set; any authenticated user can access admin routes");
+  const allowlist = process.env["VITE_ADMIN_EMAIL"] ?? process.env["ADMIN_EMAIL"] ?? "";
+  if (!allowlist.trim()) {
+    logger.error("Admin email allowlist is not configured; refusing admin access");
+    res.status(503).json({
+      error: "Admin access is not configured",
+      code: "admin_not_configured",
+    });
+    return;
   }
   if (!isAdminEmail(req.firebaseUser?.email)) {
     res.status(403).json({ error: "Forbidden: admin access required" });

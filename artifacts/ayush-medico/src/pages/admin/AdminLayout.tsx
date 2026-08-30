@@ -268,7 +268,7 @@ function Sidebar({
 }
 
 export default function AdminLayout() {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newInquiries, setNewInquiries] = useState(0);
   const [pendingRequests, setPendingRequests] = useState(0);
@@ -308,12 +308,35 @@ export default function AdminLayout() {
     return <AdminLogin />;
   }
 
-  // Optional email allowlist: set VITE_ADMIN_EMAIL to restrict which
-  // Firebase account can access the admin panel. If the env var is not
-  // set, any authenticated user is allowed (signup must be disabled in
-  // Firebase Console → Authentication → Settings → User actions).
-  const allowedEmail = import.meta.env.VITE_ADMIN_EMAIL as string | undefined;
-  if (allowedEmail && user.email !== allowedEmail) {
+  // Keep the browser check identical to the API middleware: comma-separated,
+  // case-insensitive, whitespace-tolerant allowlist entries are supported.
+  const allowedEmails = String(import.meta.env.VITE_ADMIN_EMAIL ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+  if (allowedEmails.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-6 text-center">
+        <Shield size={40} className="text-amber-500" />
+        <p className="text-lg font-semibold text-foreground">Admin access is not configured</p>
+        <p className="text-sm text-muted-foreground max-w-md">
+          Set the <span className="font-mono">VITE_ADMIN_EMAIL</span> environment variable to the
+          intended Firebase admin email before using this panel.
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => void signOut()}
+            className="px-4 py-2 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+          >
+            Sign Out
+          </button>
+          <a href="/" className="text-sm text-primary hover:underline">Back to website</a>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user.email || !allowedEmails.includes(user.email.toLowerCase())) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-6 text-center">
         <Shield size={40} className="text-destructive" />

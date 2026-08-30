@@ -1,11 +1,6 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import {
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  type User,
-} from "firebase/auth";
-import { auth, isFirebaseConfigured } from "@/lib/firebase";
+import { createContext, useContext, useCallback, type ReactNode } from "react";
+import { useCustomerAuth } from "./CustomerAuthContext";
+import type { User } from "firebase/auth";
 
 type AuthContextValue = {
   user: User | null;
@@ -17,30 +12,14 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!auth || !isFirebaseConfigured) {
-      setLoading(false);
-      return;
-    }
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return unsub;
-  }, []);
-
-  const signIn = async (email: string, password: string) => {
-    if (!auth) throw new Error("Firebase not configured");
-    await signInWithEmailAndPassword(auth, email, password);
-  };
-
-  const signOut = async () => {
-    if (!auth) return;
-    await firebaseSignOut(auth);
-  };
+  // CustomerAuthProvider owns the single Firebase auth listener. Admin
+  // screens consume the same live state instead of registering a second
+  // onAuthStateChanged listener against the same Firebase instance.
+  const { user, loading, signInWithEmail, signOut } = useCustomerAuth();
+  const signIn = useCallback(
+    (email: string, password: string) => signInWithEmail(email, password),
+    [signInWithEmail],
+  );
 
   return (
     <AuthContext.Provider value={{ user, loading, signIn, signOut }}>

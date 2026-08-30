@@ -1,6 +1,7 @@
-// Customer-facing authentication context — separate from the admin
-// AuthContext (which gates /admin routes with email/password only). This
-// context powers the "Sign In" / "My Account" nav item and My Orders.
+// Shared Firebase authentication context for customer and admin surfaces.
+// AuthContext derives its admin-facing API from this provider so Firebase only
+// has one live auth-state listener. This context powers the "Sign In" /
+// "My Account" nav item and My Orders.
 //
 // FUTURE PHONE AUTH: the architecture here is intentionally provider-agnostic
 // — `user` is just a Firebase `User | null`, and any order lookups key off
@@ -85,7 +86,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     return unsub;
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
     if (!auth) throw new Error("Firebase is not configured.");
     const provider = new GoogleAuthProvider();
     // Attempt popup first — better UX (no page navigation).
@@ -111,25 +112,29 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       // so SignInModal can display a meaningful toast.
       throw err;
     }
-  };
+  }, []);
 
-  const signInWithEmail = async (email: string, password: string) => {
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
     if (!auth) throw new Error("Firebase is not configured.");
     await signInWithEmailAndPassword(auth, email, password);
-  };
+  }, []);
 
-  const signUpWithEmail = async (name: string, email: string, password: string) => {
+  const signUpWithEmail = useCallback(async (name: string, email: string, password: string) => {
     if (!auth) throw new Error("Firebase is not configured.");
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     if (name.trim()) {
       await updateProfile(cred.user, { displayName: name.trim() });
     }
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     if (!auth) return;
     await firebaseSignOut(auth);
-  };
+    // Firebase normally notifies listeners immediately. Clearing the local
+    // state as well prevents a stale admin/customer view if that callback is
+    // delayed by the browser or network.
+    setUser(null);
+  }, []);
 
   return (
     <CustomerAuthContext.Provider
