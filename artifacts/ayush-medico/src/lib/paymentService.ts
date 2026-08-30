@@ -1,7 +1,4 @@
-// Payment Service — Razorpay (TEST MODE) only.
-//
-// COD and manual UPI are intentionally disabled.
-// All payments go through the Razorpay Secure Checkout modal.
+// Payment Service — manual UPI and legacy Razorpay helpers.
 //
 // Architecture:
 //   1. POST /api/payment/create-razorpay-order  → get Razorpay order ID + params
@@ -14,6 +11,21 @@
 
 import { authFetchJson } from "./apiAuth";
 import type { PaymentStatus, OrderPayment } from "./orderService";
+
+export const UPI_ID = "govind.chitara@okhdfcbank";
+
+/** Records a customer's UPI reference for admin verification.
+ * The server deliberately keeps the order unpaid until an admin verifies it.
+ */
+export async function submitUpiPayment(params: {
+  orderDbId: string;
+  upiTransactionId: string;
+}): Promise<void> {
+  await authFetchJson("/api/payment/submit-upi", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
 
 // ─── Admin: UPI verification helper (kept for existing UPI orders) ─────────────
 

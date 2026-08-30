@@ -7,7 +7,7 @@
  * GET    /api/orders/:id               → lookup by numeric id
  * POST   /api/orders                   → create order + items (customer)
  * PATCH  /api/orders/:id/status        → admin: set status
- * PATCH  /api/orders/:id/payment       → admin/customer: merge payment fields
+ * PATCH  /api/orders/:id/payment       → admin: merge payment fields
  * PATCH  /api/orders/:id/delivery      → admin: merge delivery fields
  * PATCH  /api/orders/:id/fields        → admin: generic field/dotted-path merge
  */
@@ -208,6 +208,10 @@ async function mergeJsonbColumn(req: AuthenticatedRequest, res: Response, column
     res.status(403).json({ error: "Forbidden" });
     return;
   }
+  if (!admin) {
+    res.status(403).json({ error: "Only an admin can update order payment, delivery, or prescription details" });
+    return;
+  }
 
   const merged = { ...(existing[column] as Record<string, unknown>), ...patch };
   const [updated] = await db
@@ -258,7 +262,7 @@ router.patch("/:id/fields", requireAuth, async (req: AuthenticatedRequest, res: 
     if (!existing) { res.status(404).json({ error: "Order not found" }); return; }
 
     const admin = isAdminEmail(req.firebaseUser?.email);
-    if (!admin && existing.customerId !== req.firebaseUser?.uid) {
+    if (!admin) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }

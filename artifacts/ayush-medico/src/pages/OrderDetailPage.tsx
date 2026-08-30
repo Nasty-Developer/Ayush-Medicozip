@@ -19,6 +19,7 @@ import {
 } from "@/lib/orderStatus";
 import { queueNotification } from "@/lib/notificationService";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import UpiPaymentPanel from "@/components/customer/UpiPaymentPanel";
 import {
   createRazorpayOrder,
   verifyRazorpayPayment,
@@ -320,7 +321,7 @@ export default function OrderDetailPage() {
                     ? "text-destructive"
                     : "text-amber-600 dark:text-amber-400"
                 }`}>
-                  {order.payment.status}
+                  {order.payment.status === "verification-pending" ? "Verification pending" : order.payment.status}
                 </span>
               </div>
               {order.payment.upiTransactionId && (
@@ -333,6 +334,17 @@ export default function OrderDetailPage() {
           </div>
 
           {/* ── Razorpay Pay Now panel ── */}
+          {order.status === "payment-pending" && order.payment.method === "upi" &&
+           !["paid", "verified", "completed"].includes(order.payment.status) && (
+            <UpiPaymentPanel
+              orderDbId={order.id}
+              orderId={order.orderId}
+              amount={order.pricing.grandTotal}
+              paymentStatus={order.payment.status}
+              upiTransactionId={order.payment.upiTransactionId}
+            />
+          )}
+
           {order.status === "payment-pending" && order.payment.method === "razorpay" && (
             <div className="p-5 rounded-2xl border border-primary/30 bg-primary/5">
               <h2 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">

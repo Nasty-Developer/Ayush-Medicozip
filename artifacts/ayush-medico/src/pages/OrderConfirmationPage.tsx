@@ -1,10 +1,11 @@
 // OrderConfirmationPage — Shown immediately after a successful order placement.
 // Route: /order-confirmation/:docId
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { CheckCircle2, Package, Phone, ArrowRight } from "lucide-react";
+import { CheckCircle2, Clock3, Package, Phone, ArrowRight, Loader2 } from "lucide-react";
+import { subscribeToOrder, type Order } from "@/lib/orderService";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -13,9 +14,16 @@ export default function OrderConfirmationPage() {
   const [, navigate] = useLocation();
 
   const docId = params?.docId ?? "";
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Confetti-free celebration: just a clean green success state
-  // (Lottie or canvas confetti can be added later without changing this page's structure)
+  useEffect(() => {
+    if (!docId) return;
+    return subscribeToOrder(docId, (next) => {
+      setOrder(next);
+      setLoading(false);
+    }, () => setLoading(false));
+  }, [docId]);
 
   if (!matched || !docId) {
     navigate("/");
@@ -35,7 +43,11 @@ export default function OrderConfirmationPage() {
         >
           <div className="relative">
             <div className="w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <CheckCircle2 size={52} className="text-green-600 dark:text-green-400" />
+               {order?.payment.status === "verification-pending" ? (
+                 <Clock3 size={52} className="text-amber-600 dark:text-amber-400" />
+               ) : (
+                 <CheckCircle2 size={52} className="text-green-600 dark:text-green-400" />
+               )}
             </div>
             {/* Pulse ring */}
             <motion.div
@@ -52,10 +64,16 @@ export default function OrderConfirmationPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <h1 className="text-2xl font-bold text-foreground mb-2">Order Placed!</h1>
+           <h1 className="text-2xl font-bold text-foreground mb-2">
+             {order?.payment.status === "verification-pending" ? "Payment submitted for verification" : "Order Placed!"}
+           </h1>
           <p className="text-muted-foreground">
-            Thank you for your order. We've received it and will start processing shortly.
+             {order?.payment.status === "verification-pending"
+               ? "Your order is saved. Our pharmacy team will verify your UPI transaction before preparing it."
+               : "Thank you for your order. We've received it and will start processing shortly."}
           </p>
+           {loading && <Loader2 size={16} className="animate-spin text-primary mx-auto mt-3" />}
+           {order && <p className="text-xs text-muted-foreground mt-3">Order ID: <strong className="font-mono text-foreground">{order.orderId}</strong></p>}
         </motion.div>
 
         {/* What happens next */}
@@ -67,23 +85,17 @@ export default function OrderConfirmationPage() {
         >
           <p className="text-sm font-bold text-foreground">What happens next?</p>
 
-          {[
-            {
-              icon: "📋",
-              title: "Order confirmed",
-              desc: "Our pharmacist will review your order and confirm availability.",
-            },
-            {
-              icon: "💊",
-              title: "Preparing",
-              desc: "Your medicines will be picked and packed carefully.",
-            },
-            {
-              icon: "🚴",
-              title: "Out for delivery",
-              desc: "Our delivery partner will bring it to your door.",
-            },
-          ].map((step, i) => (
+           {(order?.payment.status === "verification-pending"
+             ? [
+                 { icon: "🧾", title: "Payment reference received", desc: "Your UTR is saved with the order and waiting for pharmacist verification." },
+                 { icon: "✅", title: "Payment verified", desc: "Once verified, your order will move forward for preparation." },
+                 { icon: "🚴", title: "Out for delivery", desc: "Our delivery partner will bring it to your door." },
+               ]
+             : [
+                 { icon: "📋", title: "Order confirmed", desc: "Our pharmacist will review your order and confirm availability." },
+                 { icon: "💊", title: "Preparing", desc: "Your medicines will be picked and packed carefully." },
+                 { icon: "🚴", title: "Out for delivery", desc: "Our delivery partner will bring it to your door." },
+               ]).map((step, i) => (
             <div key={i} className="flex items-start gap-3">
               <span className="text-lg flex-shrink-0">{step.icon}</span>
               <div>

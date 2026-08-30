@@ -91,7 +91,7 @@ function buildWaMessages(order: Order) {
       `🏥 *Ayush Medico*\n\nHi ${n}! Your order *#${id}* has been received ✅\n\n*Total: ${total}*\nPayment: ${method}\n\nOur pharmacist will review and confirm shortly. We'll keep you updated!\n\n_For help: +91 98332 73838_`,
 
     paymentRequest:
-      `💳 *Payment Required — Ayush Medico*\n\nHi ${n}, please complete payment for order *#${id}*.\n\n*Amount: ${total}*\n\nUPI ID: ayushmedico@upi\n\nAfter payment, please share the UTR/transaction ID with us.\n\n_Queries: +91 98332 73838_`,
+      `💳 *Payment Required — Ayush Medico*\n\nHi ${n}, please complete payment for order *#${id}*.\n\n*Amount: ${total}*\n\nUPI ID: govind.chitara@okhdfcbank\n\nAfter payment, please share the UTR/transaction ID with us.\n\n_Queries: +91 98332 73838_`,
 
     preparing:
       `🔄 *Order Being Prepared — Ayush Medico*\n\nHi ${n}! Your order *#${id}* is being carefully prepared at our pharmacy.\n\nWe'll notify you once it's packed and ready! 💊`,
@@ -506,7 +506,7 @@ function OrderCard({ order, expanded, onToggle }: {
                       : order.payment.status === "failed" ? "text-destructive"
                       : "text-amber-600 dark:text-amber-400"
                   }`}>
-                    {order.payment.status}
+                     {order.payment.status === "verification-pending" ? "Verification pending" : order.payment.status}
                   </p>
                   {order.payment.upiTransactionId && (
                     <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">UTR: {order.payment.upiTransactionId}</p>
@@ -632,17 +632,17 @@ function OrderCard({ order, expanded, onToggle }: {
                 )}
 
                 {/* UPI payment verification */}
-                {order.payment.method === "upi" && order.payment.status === "pending" && (
+                 {order.payment.method === "upi" && ["pending", "verification-pending", "failed"].includes(order.payment.status) && (
                   <div className="w-full flex gap-2">
                     <input
                       value={upiInput}
                       onChange={(e) => setUpiInput(e.target.value)}
-                      placeholder="UPI transaction ID / UTR"
+                       placeholder={order.payment.status === "verification-pending" ? "Review or replace UTR before verifying" : "UPI transaction ID / UTR"}
                       className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-xs
                                  text-foreground outline-none focus:ring-2 focus:ring-primary/20"
                     />
                     <ActionBtn
-                      label="Verify Payment"
+                       label={order.payment.status === "verification-pending" ? "Confirm UPI Payment" : "Verify Payment"}
                       icon={<CreditCard size={12} />}
                       loading={actionLoading === "payment"}
                       onClick={handleVerifyPayment}
@@ -771,7 +771,7 @@ function OrderCard({ order, expanded, onToggle }: {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <WaBtn label="Send Confirmation"    onClick={() => openWa(customerPhone, wa.confirmation)} />
-                    {order.payment.method === "upi" && order.payment.status === "pending" && (
+                     {order.payment.method === "upi" && ["pending", "verification-pending", "failed"].includes(order.payment.status) && (
                       <WaBtn label="Send Payment Request" onClick={() => openWa(customerPhone, wa.paymentRequest)} color="orange" />
                     )}
                     {order.payment.method === "razorpay" && order.status === "payment-pending" && (

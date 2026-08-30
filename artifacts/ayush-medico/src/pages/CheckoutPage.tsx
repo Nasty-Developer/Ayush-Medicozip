@@ -1,16 +1,15 @@
 // CheckoutPage — Multi-step checkout flow.
 // Steps: 1. Address  →  2. Payment  →  3. Review & Confirm
 //
-// Payment is exclusively via Razorpay Secure Checkout.
-// No COD, no manual UPI, no wallet — one click opens the Razorpay modal.
+// Payment is completed by manual UPI transfer followed by pharmacist verification.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin, CreditCard, ClipboardCheck, Check, AlertCircle,
   Loader2, ShoppingCart, ArrowLeft, FileText, Lock, Shield,
-  Smartphone, Building2, Wallet, ChevronRight,
+  Smartphone, ChevronRight,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
@@ -20,12 +19,6 @@ import AddressForm from "@/components/customer/AddressForm";
 import PrescriptionUpload from "@/components/customer/PrescriptionUpload";
 import { createOrder, generateNewOrderId, type OrderAddress } from "@/lib/orderService";
 import { queueNotification } from "@/lib/notificationService";
-import {
-  createRazorpayOrder,
-  verifyRazorpayPayment,
-  reportRazorpayFailure,
-} from "@/lib/paymentService";
-import { loadRazorpayScript, normalizePhone, type RazorpaySuccessResponse } from "@/lib/razorpayCheckout";
 import type { CustomerAddress } from "@/lib/addressService";
 import SignInModal from "@/components/customer/SignInModal";
 
@@ -37,14 +30,6 @@ const STEPS: { id: Step; label: string; icon: typeof MapPin }[] = [
   { id: "address", label: "Address", icon: MapPin },
   { id: "payment", label: "Payment", icon: CreditCard },
   { id: "review",  label: "Review",  icon: ClipboardCheck },
-];
-
-// Supported payment modes shown inside the info card
-const PAYMENT_MODES = [
-  { icon: Smartphone,  label: "UPI",          detail: "GPay, PhonePe, Paytm, BHIM & more" },
-  { icon: CreditCard,  label: "Cards",         detail: "Credit & Debit (Visa, Mastercard, RuPay)" },
-  { icon: Building2,   label: "Net Banking",   detail: "All major Indian banks" },
-  { icon: Wallet,      label: "Wallets & EMI", detail: "Paytm, Mobikwik, No-cost EMI options" },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -63,6 +48,20 @@ export default function CheckoutPage() {
   const [error, setError]                 = useState<string | null>(null);
   const [showSignIn, setShowSignIn]       = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+
+  // If the customer refreshes or returns to checkout after creating an order,
+  // resume that order instead of creating a duplicate.
+  useEffect(() => {
+    if (!user) return;
+    const saved = localStorage.getItem(`ayush-medico-pending-order:${user.uid}`);
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved) as { docId?: string };
+      if (parsed.docId) navigate(`/payment/${parsed.docId}`);
+    } catch {
+      localStorage.removeItem(`ayush-medico-pending-order:${user.uid}`);
+    }
+  }, [user, navigate]);
 
   const [tempOrderId] = useState(
     () => `temp-${user?.uid?.slice(-6) ?? "guest"}-${Date.now()}`
@@ -139,8 +138,8 @@ export default function CheckoutPage() {
         lng: selectedAddress.lng,
       };
 
-      // Create order in DB first — payment-pending so the customer can retry
-      // if they close the Razorpay modal before completing payment.
+      // Create order in DB first — payment-pending so the customer can resume
+      // payment after a refresh without creating a duplicate order.
       const docId = await createOrder({
         orderId,
         customerId: user.uid,
@@ -167,7 +166,7 @@ export default function CheckoutPage() {
           couponCode: summary.couponCode,
         },
         payment: {
-          method: "razorpay",
+          method: "upi",
           status: "pending",
           upiTransactionId: null,
         },
@@ -181,89 +180,22 @@ export default function CheckoutPage() {
         source: "website",
       });
 
-      // ── Open Razorpay Checkout ────────────────────────────────────────────
-      let rzpData: Awaited<ReturnType<typeof createRazorpayOrder>>;
-      try {
-        rzpData = await createRazorpayOrder({ orderDbId: docId });
-      } catch {
-        setError("Could not reach the payment gateway. Your order is saved — you can pay from My Orders.");
-        setPlacing(false);
-        return;
-      }
-
-      await loadRazorpayScript();
-
-      const rzp = new window.Razorpay({
-        key: rzpData.keyId,
-        amount: rzpData.amount,
-        currency: rzpData.currency,
-        order_id: rzpData.razorpayOrderId,
-        name: "Ayush Medico",
-        description: `Order ${orderId}`,
-        prefill: {
-          name: user.displayName ?? undefined,
-          email: user.email ?? undefined,
-          // Normalise to 10-digit Indian mobile — Razorpay uses this to detect
-          // which UPI apps are installed on the customer's device.
-          contact: normalizePhone(selectedAddress.mobileNumber),
-        },
-        theme: { color: "#2F8F6D" },
-
-        // Keep all payment methods open — no `method` or `config.display.hide` set.
-        // Cards, Net Banking, UPI Collect, UPI Intent, Wallets, EMI all visible.
-
-        // Retry within modal: if a payment fails the customer stays inside the
-        // Razorpay modal and can try a different method instead of being sent back
-        // to the order page with a failed status.
-        retry: { enabled: true, max_count: 4 },
-
-        // Android: allow Razorpay to read the bank SMS OTP automatically.
-        send_sms_hash: true,
-
-        // Pharmacy app — don't save payment method for future checkouts.
-        remember_customer: false,
-
-        handler: async (response: RazorpaySuccessResponse) => {
-          try {
-            await verifyRazorpayPayment({
-              orderDbId: docId,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            await queueNotification({
-              orderId,
-              orderDocId: docId,
-              customerId: user.uid,
-              customerName: user.displayName ?? "Customer",
-              customerPhone: selectedAddress.mobileNumber,
-              customerEmail: user.email,
-              event: "order_placed",
-              channels: ["whatsapp", "email"],
-              metadata: { orderId, grandTotal: summary.grandTotal },
-            });
-            clearCart();
-            navigate(`/order-confirmation/${docId}`);
-          } catch {
-            setError(
-              "Payment received, but verification failed. Please contact us at +91 98332 73838 with your order ID."
-            );
-            setPlacing(false);
-          }
-        },
-
-        modal: {
-          ondismiss: async () => {
-            // Customer closed the modal — mark as failed and let them retry
-            // from the Order Detail page ("Pay Now" button).
-            try { await reportRazorpayFailure(docId); } catch { /* non-critical */ }
-            navigate(`/order/${docId}`);
-            setPlacing(false);
-          },
-        },
+      localStorage.setItem(
+        `ayush-medico-pending-order:${user.uid}`,
+        JSON.stringify({ docId, orderId }),
+      );
+      await queueNotification({
+        orderId,
+        orderDocId: docId,
+        customerId: user.uid,
+        customerName: user.displayName ?? "Customer",
+        customerPhone: selectedAddress.mobileNumber,
+        customerEmail: user.email,
+        event: "order_placed",
+        channels: ["whatsapp", "email"],
+        metadata: { orderId, grandTotal: summary.grandTotal },
       });
-
-      rzp.open();
+      navigate(`/payment/${docId}`);
     } catch (err) {
       console.error("Place order error:", err);
       setError("Failed to place order. Please try again.");
@@ -356,24 +288,23 @@ export default function CheckoutPage() {
               {step === "payment" && (
                 <motion.div key="payment" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} className="space-y-5">
 
-                  {/* Razorpay info card */}
+                   {/* UPI info card */}
                   <div className="rounded-2xl border border-border bg-card overflow-hidden">
                     {/* Header */}
                     <div className="px-5 pt-5 pb-4 border-b border-border">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                            <Lock size={15} className="text-primary" />
-                            Secure Online Payment
+                             <Smartphone size={15} className="text-primary" />
+                             Pay securely with UPI
                           </h2>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            Powered by Razorpay Secure Checkout
+                             Google Pay, PhonePe, Paytm, BHIM and all UPI apps accepted
                           </p>
                         </div>
-                        {/* Razorpay wordmark badge */}
-                        <div className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#072654]/5 border border-[#072654]/10">
-                          <Shield size={11} className="text-[#3395FF]" />
-                          <span className="text-[11px] font-bold text-[#072654] dark:text-[#3395FF] tracking-tight">razorpay</span>
+                        <div className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                          <Shield size={11} className="text-primary" />
+                          <span className="text-[11px] font-bold text-primary tracking-tight">100% secure</span>
                         </div>
                       </div>
                     </div>
@@ -381,23 +312,22 @@ export default function CheckoutPage() {
                     {/* Supported payment modes */}
                     <div className="px-5 py-4">
                       <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                        All payment modes supported
+                         How payment works
                       </p>
-                      <div className="grid grid-cols-2 gap-2.5">
-                        {PAYMENT_MODES.map(({ icon: Icon, label, detail }) => (
-                          <div
-                            key={label}
-                            className="flex items-start gap-2.5 p-3 rounded-xl bg-muted/40 border border-border/60"
-                          >
-                            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <Icon size={13} className="text-primary" />
-                            </div>
-                            <div>
-                              <p className="text-[12px] font-semibold text-foreground">{label}</p>
-                              <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{detail}</p>
-                            </div>
-                          </div>
-                        ))}
+                       <div className="grid sm:grid-cols-3 gap-2.5">
+                         {[
+                           ["1", "Scan the QR", "Use any UPI app"],
+                           ["2", "Pay exact amount", "₹" + summary.grandTotal.toFixed(2)],
+                           ["3", "Share your UTR", "We verify it securely"],
+                         ].map(([number, label, detail]) => (
+                           <div key={number} className="flex items-start gap-2.5 p-3 rounded-xl bg-muted/40 border border-border/60">
+                             <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary">{number}</div>
+                             <div>
+                               <p className="text-[12px] font-semibold text-foreground">{label}</p>
+                               <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{detail}</p>
+                             </div>
+                           </div>
+                         ))}
                       </div>
                     </div>
 
@@ -406,8 +336,7 @@ export default function CheckoutPage() {
                       <div className="flex items-start gap-2">
                         <Shield size={13} className="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                         <p className="text-[11px] text-green-700 dark:text-green-400 leading-relaxed">
-                          Your payment information is encrypted with 256-bit SSL. We never store your card details.
-                          Razorpay is PCI-DSS Level 1 certified.
+                           Your order is created before payment, so you can safely return to this page and continue if needed.
                         </p>
                       </div>
                     </div>
@@ -483,10 +412,10 @@ export default function CheckoutPage() {
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Payment</p>
                     <div className="flex items-center gap-2">
                       <Lock size={12} className="text-green-600 dark:text-green-400" />
-                      <p className="text-sm font-semibold text-foreground">Razorpay Secure Checkout</p>
+                       <p className="text-sm font-semibold text-foreground">UPI payment</p>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      UPI · Cards · Net Banking · Wallets · EMI
+                       Scan the QR on the next page, pay to the Ayush Medico UPI ID, and submit your UTR for verification.
                     </p>
                   </div>
 
@@ -558,9 +487,9 @@ export default function CheckoutPage() {
                                  bg-primary text-white font-bold text-sm hover:bg-primary/90
                                  disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-lg shadow-primary/20"
                     >
-                      {placing
-                        ? <><Loader2 size={15} className="animate-spin" /> Opening Razorpay…</>
-                        : <><Lock size={14} /> Proceed to Pay ₹{summary.grandTotal.toLocaleString("en-IN")}</>}
+                         {placing
+                         ? <><Loader2 size={15} className="animate-spin" /> Creating your order…</>
+                         : <><Lock size={14} /> Continue to UPI payment</>}
                     </button>
                   </div>
 
@@ -569,7 +498,7 @@ export default function CheckoutPage() {
                     <div className="flex items-center justify-center gap-2 pt-1">
                       <Shield size={11} className="text-muted-foreground/60" />
                       <p className="text-[10px] text-muted-foreground/60">
-                        Secured by Razorpay · 256-bit SSL · PCI-DSS Compliant
+                         UPI payment · Your order is saved before payment
                       </p>
                     </div>
                   )}
@@ -631,11 +560,10 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               )}
-              {/* Razorpay trust badge */}
+               {/* Payment trust badge */}
               <div className="mt-3 pt-3 border-t border-border flex items-center justify-center gap-1.5">
-                <Shield size={10} className="text-[#3395FF]" />
-                <span className="text-[10px] text-muted-foreground">Secured by </span>
-                <span className="text-[10px] font-bold text-[#072654] dark:text-[#3395FF]">razorpay</span>
+                 <Shield size={10} className="text-primary" />
+                 <span className="text-[10px] text-muted-foreground">Secure manual UPI verification</span>
               </div>
             </div>
           </div>

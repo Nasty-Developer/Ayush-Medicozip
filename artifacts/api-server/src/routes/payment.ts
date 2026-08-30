@@ -1,7 +1,8 @@
 /**
- * Razorpay Payment Routes — TEST MODE
+ * Payment routes for manual UPI and legacy Razorpay checkout.
  *
- * POST /api/payment/create-razorpay-order  → creates Razorpay order, stores razorpayOrderId in DB
+ * POST /api/payment/submit-upi             → customer submits a UPI reference for review
+ * POST /api/payment/create-razorpay-order  → legacy Razorpay order creation
  * POST /api/payment/verify                 → verifies HMAC signature, marks order paid
  * POST /api/payment/failure                → records failed/dismissed payment
  * POST /api/payment/send-request           → admin only — creates Razorpay Payment Link for customer
@@ -22,6 +23,7 @@ import { logger } from "../lib/logger.js";
 import { requireAuth, requireAdminEmail, isAdminEmail, type AuthenticatedRequest } from "../middlewares/authMiddleware.js";
 
 const router = Router();
+const UPI_ID = "govind.chitara@okhdfcbank";
 
 // ── Razorpay client factory ───────────────────────────────────────────────────
 // Built lazily so startup doesn't fail when keys are missing (e.g. in CI).
@@ -43,6 +45,70 @@ function getKeyId(): string {
   if (!keyId) throw new Error("VITE_RAZORPAY_KEY_ID not set");
   return keyId;
 }
+
+// ── POST /api/payment/submit-upi ─────────────────────────────────────────────
+// Customer-only endpoint. A customer can submit a reference, but cannot set a
+// paid/verified status. Admin verification remains the only paid transition.
+router.post(
+  "/submit-upi",
+  requireAuth,
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { orderDbId, upiTransactionId } = req.body as {
+      orderDbId?: string;
+      upiTransactionId?: string;
+    };
+    const transactionId = String(upiTransactionId ?? "").trim();
+    if (!orderDbId || transactionId.length < 4 || transactionId.length > 120) {
+      res.status(400).json({ error: "orderDbId and a valid UPI transaction ID are required" });
+      return;
+    }
+
+    try {
+      const [order] = await db
+        .select()
+        .from(ordersTable)
+        .where(eq(ordersTable.id, Number(orderDbId)));
+      if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+      if (order.customerId !== req.firebaseUser?.uid) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+      if (["cancelled", "delivered", "returned", "refunded"].includes(order.status)) {
+        res.status(409).json({ error: "This order can no longer receive payment" });
+        return;
+      }
+      const existingPayment = order.payment as Record<string, unknown>;
+      if (["paid", "verified", "completed"].includes(String(existingPayment.status))) {
+        res.status(409).json({ error: "This order is already marked as paid" });
+        return;
+      }
+      if (existingPayment.method !== "upi") {
+        res.status(409).json({ error: "This order does not use UPI payment" });
+        return;
+      }
+
+      const payment = {
+        ...existingPayment,
+        method: "upi",
+        status: "verification-pending",
+        upiId: UPI_ID,
+        upiTransactionId: transactionId,
+        submittedAt: new Date().toISOString(),
+      };
+      const [updated] = await db
+        .update(ordersTable)
+        .set({ payment, status: "payment-pending", updatedAt: new Date() })
+        .where(eq(ordersTable.id, Number(orderDbId)))
+        .returning();
+
+      logger.info({ orderDbId, orderId: order.orderId }, "Customer submitted UPI payment for verification");
+      res.json({ success: true, order: updated });
+    } catch (err) {
+      logger.error({ err }, "POST /payment/submit-upi failed");
+      res.status(500).json({ error: "Failed to submit UPI payment" });
+    }
+  }
+);
 
 // ── POST /api/payment/create-razorpay-order ───────────────────────────────────
 router.post(
@@ -142,7 +208,7 @@ router.post(
         return;
       }
 
-      // Signature valid — mark order as paid
+    // Signature valid — mark order as paid
       const [order] = await db
         .select()
         .from(ordersTable)

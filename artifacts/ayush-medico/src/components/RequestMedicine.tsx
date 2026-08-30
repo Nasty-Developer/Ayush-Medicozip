@@ -354,7 +354,8 @@ export default function RequestMedicine() {
     if (!requirePrescription()) return;
     setSubmitting("whatsapp");
     try {
-      await saveToAPI(values, "whatsapp");
+      const reqId = await saveToAPI(values, "whatsapp");
+      setLastRequestId(reqId);
     } catch (err) {
       console.error("[RequestMedicine] WhatsApp save failed:", err);
       // Non-fatal: open WhatsApp even if API save fails
@@ -380,7 +381,8 @@ export default function RequestMedicine() {
     if (!requirePrescription()) return;
     setSubmitting("email");
     try {
-      await saveToAPI(values, "email");
+      const reqId = await saveToAPI(values, "email");
+      setLastRequestId(reqId);
     } catch (err) {
       console.error("[RequestMedicine] Email save failed:", err);
       // Non-fatal: open email even if API save fails
@@ -400,14 +402,15 @@ export default function RequestMedicine() {
 
   const finishSubmission = () => {
     setSubmitted(true);
-    window.setTimeout(() => {
-      setSubmitted(false);
-      setLastRequestId("");
-      form.reset();
-      setPrescriptionFile(null);
-      setMedicinePhotoFile(null);
-      setPrescriptionError(null);
-    }, 5000);
+  };
+
+  const startAnotherRequest = () => {
+    setSubmitted(false);
+    setLastRequestId("");
+    form.reset();
+    setPrescriptionFile(null);
+    setMedicinePhotoFile(null);
+    setPrescriptionError(null);
   };
 
   const onInvalid = () => {
@@ -546,6 +549,13 @@ export default function RequestMedicine() {
                     Track Your Order
                   </Link>
                 )}
+                <button
+                  type="button"
+                  onClick={startAnotherRequest}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted/40 transition-all"
+                >
+                  Submit another request
+                </button>
               </motion.div>
             ) : (
               <motion.div

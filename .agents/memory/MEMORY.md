@@ -1,2 +1,3 @@
 - [Vercel workspace bundling](vercel-workspace-bundling.md) — root serverless entrypoints must bundle workspace TypeScript and avoid workspace-local external dependencies.
 - [Replit Vite preview HMR](replit-vite-preview-hmr.md) — the proxied preview may reject Vite's HMR websocket; disabling HMR can trigger React preamble errors, so preserve the stable default.
+- [Manual UPI verification](manual-upi-verification.md) — customer UPI references stay pending until an admin verifies them; never treat client submission as proof of payment.

@@ -328,7 +328,7 @@ export default function MyOrdersModal({ onClose }: { onClose: () => void }) {
                       : selected.payment.status === "failed" ? "text-destructive"
                       : "text-amber-600 dark:text-amber-400"
                   }`}>
-                    {selected.payment.status}
+                    {selected.payment.status === "verification-pending" ? "Verification pending" : selected.payment.status}
                   </p>
                 </div>
 

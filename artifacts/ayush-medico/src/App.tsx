@@ -46,6 +46,7 @@ const CartPage              = lazy(() => import("@/pages/CartPage"));
 const CheckoutPage          = lazy(() => import("@/pages/CheckoutPage"));
 const OrderConfirmationPage = lazy(() => import("@/pages/OrderConfirmationPage"));
 const OrderDetailPage       = lazy(() => import("@/pages/OrderDetailPage"));
+const UpiPaymentPage        = lazy(() => import("@/pages/UpiPaymentPage"));
 const NotFoundPage          = lazy(() => import("@/pages/not-found"));
 
 // Product collection pages
@@ -223,6 +224,17 @@ function App() {
                               </PublicLayout>
                             )}
                           </Route>
+
+                           {/* ── UPI payment ── */}
+                           <Route path="/payment/:docId">
+                             {() => (
+                               <PublicLayout>
+                                 <ErrorBoundary label="UpiPaymentPage">
+                                   <UpiPaymentPage />
+                                 </ErrorBoundary>
+                               </PublicLayout>
+                             )}
+                           </Route>
 
                           {/* ── Order detail / tracking ── */}
                           <Route path="/order/:docId">
