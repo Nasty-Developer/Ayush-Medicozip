@@ -39,6 +39,7 @@ export default function SignInModal({
       await signInWithGoogle();
       onClose();
     } catch (err: any) {
+      console.error("[Customer Auth] Google sign-in failed:", err);
       toast({
         variant: "destructive",
         title: "Sign in failed",
@@ -61,6 +62,7 @@ export default function SignInModal({
       }
       onClose();
     } catch (err: any) {
+      console.error("[Customer Auth] Email authentication failed:", err);
       toast({
         variant: "destructive",
         title: mode === "signup" ? "Sign up failed" : "Sign in failed",

@@ -11,6 +11,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
 import { useAnnouncement } from "@/context/AnnouncementContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import { getCustomerAuthErrorMessage } from "@/context/CustomerAuthContext";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import SignInModal from "@/components/customer/SignInModal";
@@ -104,6 +105,7 @@ export default function Header() {
   const [showSignIn,      setShowSignIn]       = useState(false);
   const [showMyOrders,    setShowMyOrders]     = useState(false);
   const [showMyProfile,   setShowMyProfile]    = useState(false);
+  const [signingOut,      setSigningOut]       = useState(false);
 
   const accountRef = useRef<HTMLDivElement>(null);
 
@@ -148,6 +150,25 @@ export default function Header() {
 
   const firstName = (user?.displayName || user?.email || "Account").split(/\s+/)[0];
   const isActive  = (href: string) => href === "/" ? location === "/" : location.startsWith(href);
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOut();
+      setAccountMenuOpen(false);
+      setMobileOpen(false);
+    } catch (err) {
+      console.error("[Customer Auth] Sign-out failed:", err);
+      toast({
+        variant: "destructive",
+        title: "Sign out failed",
+        description: getCustomerAuthErrorMessage(err),
+      });
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   return (
     <>
@@ -266,12 +287,14 @@ export default function Header() {
                             <UserCircle size={14} /> My Profile
                           </button>
                           <button
-                            onClick={() => { signOut(); setAccountMenuOpen(false); }}
+                            onClick={() => void handleSignOut()}
+                            disabled={signingOut}
+                            aria-busy={signingOut}
                             data-testid="menu-logout"
                             className="w-full flex items-center gap-2 px-3 py-2 text-sm
-                                       text-destructive hover:bg-destructive/5 transition-colors"
+                                       text-destructive hover:bg-destructive/5 transition-colors disabled:opacity-60"
                           >
-                            <LogOut size={14} /> Logout
+                            <LogOut size={14} /> {signingOut ? "Signing out…" : "Logout"}
                           </button>
                         </motion.div>
                       )}
@@ -417,13 +440,15 @@ export default function Header() {
                         <ChevronRight size={13} className="text-muted-foreground/50" />
                       </button>
                       <button
-                        onClick={() => { signOut(); setMobileOpen(false); }}
+                        onClick={() => void handleSignOut()}
+                        disabled={signingOut}
+                        aria-busy={signingOut}
                         data-testid="mobile-menu-logout"
                         className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium
-                                   text-destructive hover:bg-destructive/5 rounded-xl transition-all duration-200"
+                                   text-destructive hover:bg-destructive/5 rounded-xl transition-all duration-200 disabled:opacity-60"
                       >
                         <LogOut size={15} className="flex-shrink-0" />
-                        <span className="flex-1">Logout</span>
+                        <span className="flex-1">{signingOut ? "Signing out…" : "Logout"}</span>
                       </button>
                     </div>
                   ) : (

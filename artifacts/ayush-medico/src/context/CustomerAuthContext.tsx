@@ -138,6 +138,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       setUser(u);
       setLoading(false);
+    }, (err: unknown) => {
+      if (cancelled) return;
+      console.error("[Firebase Auth] Auth-state initialization failed:", err);
+      setUser(null);
+      setLoading(false);
+      setRedirectError(getCustomerAuthErrorMessage(err));
     });
 
     void setPersistence(configuredAuth, browserLocalPersistence)
@@ -167,8 +173,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     // Attempt popup first — better UX (no page navigation).
     // Falls back to redirect only when the browser blocked the popup, which is
     // common in Replit's sandboxed iframe preview. User-initiated close of the
-    // popup (auth/popup-closed-by-user) is treated as cancellation, not an error
-    // requiring redirect.
+    // A user-closed popup is surfaced as a cancellation message instead of
+    // being mistaken for a successful sign-in or swallowed silently.
     try {
       await signInWithPopup(configuredAuth, provider);
       setUser(configuredAuth.currentUser);
@@ -181,8 +187,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (err?.code === "auth/popup-closed-by-user") {
-        // User cancelled — not an error, just return silently.
-        return;
+        throw err;
       }
       // Re-throw all other errors (auth/unauthorized-domain, network errors, etc.)
       // so SignInModal can display a meaningful toast.
@@ -216,7 +221,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    if (!auth) return;
+    if (!auth) {
+      setUser(null);
+      return;
+    }
     await firebaseSignOut(auth);
     // Firebase normally notifies listeners immediately. Clearing the local
     // state as well prevents a stale admin/customer view if that callback is
