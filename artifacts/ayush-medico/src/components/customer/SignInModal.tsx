@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Mail, Lock, User as UserIcon, Loader2 } from "lucide-react";
-import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import {
+  getCustomerAuthErrorMessage,
+  useCustomerAuth,
+} from "@/context/CustomerAuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 function GoogleIcon() {
@@ -36,7 +39,11 @@ export default function SignInModal({
       await signInWithGoogle();
       onClose();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Sign in failed", description: err?.message || "Please try again." });
+      toast({
+        variant: "destructive",
+        title: "Sign in failed",
+        description: getCustomerAuthErrorMessage(err, "google"),
+      });
     } finally {
       setLoading(null);
     }
@@ -54,7 +61,11 @@ export default function SignInModal({
       }
       onClose();
     } catch (err: any) {
-      toast({ variant: "destructive", title: mode === "signup" ? "Sign up failed" : "Sign in failed", description: err?.message || "Please check your details and try again." });
+      toast({
+        variant: "destructive",
+        title: mode === "signup" ? "Sign up failed" : "Sign in failed",
+        description: getCustomerAuthErrorMessage(err, mode),
+      });
     } finally {
       setLoading(null);
     }

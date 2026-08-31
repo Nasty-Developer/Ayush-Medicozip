@@ -13,15 +13,22 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+const EXPECTED_FIREBASE_PROJECT_ID = "ayush-medico";
+
 function isValidEnv(v: string | undefined): boolean {
   return !!v && v !== "undefined" && v !== "null" && v.length > 0;
 }
 
-export const isFirebaseConfigured =
-  isValidEnv(firebaseConfig.apiKey) &&
-  isValidEnv(firebaseConfig.authDomain) &&
-  isValidEnv(firebaseConfig.projectId) &&
-  isValidEnv(firebaseConfig.appId);
+export const firebaseConfigurationError = !isValidEnv(firebaseConfig.apiKey) ||
+  !isValidEnv(firebaseConfig.authDomain) ||
+  !isValidEnv(firebaseConfig.projectId) ||
+  !isValidEnv(firebaseConfig.appId)
+  ? "Firebase configuration is incomplete. Please contact support."
+  : firebaseConfig.projectId !== EXPECTED_FIREBASE_PROJECT_ID
+    ? "This site is connected to the wrong Firebase project."
+    : null;
+
+export const isFirebaseConfigured = firebaseConfigurationError === null;
 
 export const firebaseProjectId = firebaseConfig.projectId;
 
