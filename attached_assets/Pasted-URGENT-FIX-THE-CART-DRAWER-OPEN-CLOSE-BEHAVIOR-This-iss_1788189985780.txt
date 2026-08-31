@@ -1,0 +1,201 @@
+URGENT: FIX THE CART DRAWER OPEN/CLOSE BEHAVIOR.
+
+This issue has already been reported multiple times, so do NOT just patch the visible X button without checking the underlying cart/drawer state.
+
+CURRENT PROBLEM:
+
+When the customer opens:
+
+My Cart
+
+the cart drawer opens from the right side.
+
+However, when the customer tries to close it, the cart drawer does NOT reliably close.
+
+The customer must be able to close the cart immediately.
+
+==================================================
+EXPECTED BEHAVIOR
+==================================================
+
+When cart is CLOSED:
+
+Click cart icon
+→ cart drawer opens
+
+When cart is OPEN:
+
+Click the X / Close button
+→ cart drawer closes completely
+→ customer returns to the current page
+→ cart data remains intact
+
+Also support:
+
+Click outside the drawer
+→ drawer closes
+
+Press Escape
+→ drawer closes
+
+Do NOT clear the cart when closing the drawer.
+
+Closing the cart is NOT the same thing as removing products.
+
+==================================================
+CHECK THE ROOT CAUSE
+==================================================
+
+Do not simply add another onClick handler.
+
+Inspect the actual cart/drawer state management.
+
+Find:
+
+- cart open state
+- cart close state
+- drawer component
+- overlay/backdrop
+- close button
+- cart context/store
+- route/navigation logic
+- mobile/desktop drawer behavior
+
+Make sure there is a single reliable source of truth for whether the cart drawer is open.
+
+For example:
+
+isCartOpen
+
+Opening:
+
+setIsCartOpen(true)
+
+Closing:
+
+setIsCartOpen(false)
+
+Do not create competing states that can cause the drawer to immediately reopen.
+
+==================================================
+CHECK FOR EVENT PROPAGATION
+==================================================
+
+Inspect whether:
+
+- clicking the close button bubbles to the cart trigger
+- clicking the overlay reopens the cart
+- parent click handlers interfere with closing
+- navigation causes the cart to reopen
+- state is being reset by a React effect
+
+If necessary, use proper event propagation handling.
+
+==================================================
+CHECK ROUTING
+==================================================
+
+Opening and closing the cart should NOT unexpectedly navigate the customer.
+
+If the cart is an overlay/drawer:
+
+Open cart
+→ stay on current page
+
+Close cart
+→ stay on current page
+
+Do not redirect to Home.
+
+==================================================
+MOBILE + DESKTOP
+==================================================
+
+Test the cart drawer at:
+
+- Desktop
+- Mobile
+- 400px width
+- 919px height
+
+Make sure it closes correctly in every layout.
+
+==================================================
+CART DATA MUST REMAIN
+==================================================
+
+When closing the drawer:
+
+DO NOT:
+- empty cart
+- remove products
+- change quantities
+- reset totals
+- lose checkout data
+
+Closing means ONLY:
+
+hide the cart drawer.
+
+==================================================
+TEST THIS EXACTLY
+==================================================
+
+Test:
+
+1. Open Categories
+2. Add a product
+3. Open My Cart
+4. Click X
+5. Verify drawer disappears
+
+Then:
+
+6. Open My Cart again
+7. Click outside drawer
+8. Verify drawer disappears
+
+Then:
+
+9. Open My Cart again
+10. Press Escape
+11. Verify drawer disappears
+
+Then:
+
+12. Open My Cart
+13. Change quantity
+14. Close drawer
+15. Reopen drawer
+16. Verify quantity is still correct
+
+Then:
+
+17. Open cart
+18. Click Proceed to Checkout
+19. Verify checkout opens normally
+20. Verify cart/order data is preserved
+
+==================================================
+IMPORTANT
+==================================================
+
+Do NOT consider the task complete because the X button exists.
+
+The actual drawer must visibly close.
+
+Do not create another cart implementation.
+
+Do not rewrite unrelated checkout/payment functionality.
+
+Fix the existing cart drawer at the ROOT CAUSE level.
+
+The final behavior must be:
+
+CART OPEN
+↓
+X / outside click / Escape
+↓
+CART CLOSED
+
+while preserving all cart contents and state.

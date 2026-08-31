@@ -33,10 +33,8 @@ export default function CartDrawer() {
       e.stopPropagation();
       closeCart();
     };
-    // Capture Escape before any nested control can stop propagation. Closing
-    // the drawer is intentionally independent from removing cart contents.
-    document.addEventListener("keydown", handler, true);
-    return () => document.removeEventListener("keydown", handler, true);
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, [isOpen, closeCart]);
 
   const handleCheckout = () => {
@@ -54,11 +52,9 @@ export default function CartDrawer() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            // Pointer events cover mouse, touch, and pen input. The drawer
-            // stops propagation below, so every outside press reaches this
-            // single close action without relying on target matching.
-            onPointerDown={closeCart}
-            onClick={closeCart}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) closeCart();
+            }}
             data-testid="cart-backdrop"
             className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
           />
@@ -69,7 +65,6 @@ export default function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 340, damping: 35 }}
-            onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"

@@ -1,0 +1,434 @@
+# Ayush Medico: Permanent Vercel Deployment and TypeScript Fix
+
+Work directly on the current Ayush Medico repository/project.
+
+Repository:
+https://github.com/Nasty-Developer/Ayush-Medicozip
+
+## OBJECTIVE
+
+Make this repository permanently deployable on Vercel with:
+
+1. Frontend on Vercel.
+2. Express/API backend on Vercel through the existing bundled API approach.
+3. PostgreSQL/database functionality preserved.
+4. Existing application behavior preserved.
+5. Replit development workflow preserved.
+6. Render configuration preserved unless it conflicts with the Vercel fix.
+7. No recurring `Emit skipped` errors.
+8. No Vercel runtime errors caused by workspace packages resolving to raw `.ts` files.
+9. No workaround that merely suppresses TypeScript errors.
+10. Do not remove working application features just to make deployment pass.
+
+Do not stop after making the build green. Verify the actual production-style API bundle and runtime.
+
+---
+
+# IMPORTANT CONTEXT
+
+The current Vercel failure has repeatedly shown errors similar to:
+
+`lib/db/src/index.ts: Emit skipped`
+
+and previously:
+
+`lib/api-zod/src/index.ts: Emit skipped`
+
+There have also been runtime errors where the deployed API attempted to resolve workspace source files such as:
+
+`@workspace/api-zod/src/index.ts`
+
+The repository also contains a TypeScript workspace/project-reference structure.
+
+A previous investigation found that the frontend build succeeds and the failure occurs in the TypeScript/backend deployment path.
+
+A separate old `ts-node`/commitlint issue was supplied as a possible explanation for `Emit skipped`. Treat that issue as background information only. Do NOT assume that commitlint/ts-node is the cause of this repository's Vercel failure without proving it.
+
+The actual repository must be inspected and the real failure reproduced.
+
+---
+
+# STEP 1: AUDIT BEFORE CHANGING ANYTHING
+
+Inspect all of these:
+
+* `package.json`
+* `pnpm-workspace.yaml`
+* `tsconfig.json`
+* `tsconfig.base.json`
+* every `lib/*/tsconfig.json`
+* `artifacts/api-server/package.json`
+* `artifacts/api-server/tsconfig.json`
+* `artifacts/api-server/src/**`
+* `api/build.mjs`
+* `api/[...path].*`
+* `vercel.json`
+* frontend build configuration
+* `.gitignore`
+* `.replit`
+* Render configuration
+* package manager/lockfile configuration
+
+Search the entire repository for:
+
+* `ts-node`
+* `commitlint`
+* `husky`
+* `Emit skipped`
+* `noEmitOnError`
+* `rootDir`
+* `references`
+* `@workspace/api-zod`
+* `@workspace/db`
+* `@workspace/api-client-react`
+
+Do not modify anything until you understand which files are source files and which are generated files.
+
+---
+
+# STEP 2: REPRODUCE THE FAILURE LOCALLY
+
+Run the real repository commands rather than guessing.
+
+At minimum:
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+Then run:
+
+```bash
+pnpm run typecheck:libs
+```
+
+and:
+
+```bash
+pnpm run typecheck
+```
+
+Then run the frontend build:
+
+```bash
+pnpm --filter @workspace/ayush-medico run build
+```
+
+Then run the existing API bundle:
+
+```bash
+node api/build.mjs
+```
+
+Verify that:
+
+```text
+api/.vercel-build/app.mjs
+```
+
+is actually produced.
+
+If possible, run the Vercel build locally or with the Vercel CLI using the repository's actual configuration.
+
+Record the FIRST real TypeScript diagnostic before the final `Emit skipped` message.
+
+Do not treat `Emit skipped` as the root cause automatically.
+
+---
+
+# STEP 3: FIX GENERATED JAVASCRIPT MIXED INTO TYPESCRIPT SOURCE
+
+Inspect:
+
+```text
+artifacts/api-server/src
+```
+
+If generated `.js`, `.js.map`, `.d.ts`, or other build artifacts exist beside the TypeScript source files, determine whether they are generated duplicates.
+
+The backend source should not contain stale compiled JavaScript copies of the same TypeScript modules.
+
+In particular, investigate cases like:
+
+```text
+routes/health.ts
+routes/health.js
+```
+
+and similar duplicate `.ts` + `.js` files.
+
+If those `.js` files are generated artifacts, remove them from source control and from the source tree.
+
+Do NOT blindly change valid ESM TypeScript imports such as:
+
+```ts
+import router from "./routes/index.js";
+```
+
+to `.ts`.
+
+The goal is to let the TypeScript/esbuild pipeline resolve the TypeScript source correctly and produce the JavaScript bundle.
+
+Add appropriate generated-output rules to `.gitignore` so these files cannot silently return.
+
+Do not delete any `.js` file that is intentionally authored source. Verify first.
+
+---
+
+# STEP 4: FIX THE TYPESCRIPT PROJECT-REFERENCE ARCHITECTURE
+
+The root `tsconfig.json` currently references workspace libraries.
+
+Do not blindly change every `rootDir` to `"."`.
+
+Do not use `rootDir` as a band-aid.
+
+Keep each library's source boundary logically correct.
+
+Determine whether the root project-reference configuration is unnecessarily being used during the Vercel deployment.
+
+The deployment build should not require Vercel to compile the entire TypeScript workspace as one deployment unit.
+
+Separate:
+
+1. development/editor configuration
+2. explicit library typechecking/building
+3. Vercel frontend build
+4. Vercel backend bundling
+
+If project references are retained, make them explicit and valid.
+
+If the root `tsconfig.json` should remain a solution config, ensure Vercel does not accidentally treat it as the production backend compilation entrypoint.
+
+The final architecture must have a clear reason for every `tsconfig`.
+
+---
+
+# STEP 5: FIX THE BACKEND DEPLOYMENT MODEL
+
+The repository already has:
+
+```text
+api/build.mjs
+```
+
+which uses esbuild and starts from:
+
+```text
+artifacts/api-server/src/app.ts
+```
+
+Keep and improve this architecture rather than replacing it unnecessarily.
+
+The intended flow is:
+
+```text
+artifacts/api-server/src/app.ts
+        ↓
+      esbuild
+        ↓
+api/.vercel-build/app.mjs
+        ↓
+Vercel API Function
+```
+
+The deployed function must NOT depend on:
+
+```text
+@workspace/api-zod/src/index.ts
+@workspace/db/src/index.ts
+```
+
+being present as runtime TypeScript source.
+
+Workspace packages that are safe to bundle should be bundled into the API.
+
+Runtime external dependencies should remain external only when they are guaranteed to exist in the Vercel deployment environment.
+
+Do not leave a production dependency pointing at a workspace `.ts` source file unless there is a proven and intentional Vercel runtime mechanism for it.
+
+---
+
+# STEP 6: REVIEW `vercel.json`
+
+The current configuration contains a frontend build and an API function configuration.
+
+Verify that the API entrypoint in `vercel.json` exactly matches the file that actually exists in the repository.
+
+Do not leave stale references to:
+
+```text
+api/[...path].ts
+```
+
+if the actual function is:
+
+```text
+api/[...path].js
+```
+
+or vice versa.
+
+Make the Vercel configuration consistent with the actual repository.
+
+Use the simplest supported Vercel configuration.
+
+Do not add unnecessary custom routing or legacy `builds` configuration unless it is genuinely required.
+
+Vercel supports version-controlled `vercel.json` configuration and explicit build configuration. Use that rather than relying on accidental auto-detection.
+
+---
+
+# STEP 7: DO NOT SOLVE THE PROBLEM BY HIDING ERRORS
+
+Do NOT:
+
+* disable all TypeScript checking
+* set `skipLibCheck` as the only fix
+* remove `strict`
+* set `noEmitOnError: false` merely to bypass failure
+* change every `rootDir` to `.`
+* delete project references without understanding their purpose
+* remove backend functionality
+* remove API routes
+* remove database code
+* remove workspace packages
+* add random Vercel ignores
+* add a fake health endpoint
+* hard-code production secrets
+* make the API static
+* replace the Express backend with a mock
+
+The final solution must actually compile and run.
+
+---
+
+# STEP 8: VERIFY THE BACKEND BUNDLE
+
+After fixing the repository:
+
+```bash
+rm -rf api/.vercel-build
+node api/build.mjs
+```
+
+Confirm that:
+
+```text
+api/.vercel-build/app.mjs
+```
+
+exists.
+
+Inspect the generated bundle and verify that it does NOT contain runtime imports such as:
+
+```text
+@workspace/api-zod/src/index.ts
+@workspace/db/src/index.ts
+```
+
+or other workspace source paths that Vercel would be unable to resolve at runtime.
+
+---
+
+# STEP 9: VERIFY THE COMPLETE BUILD
+
+Run all relevant checks:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm run typecheck:libs
+pnpm run typecheck
+pnpm --filter @workspace/ayush-medico run build
+node api/build.mjs
+```
+
+If any command fails, fix the underlying error.
+
+Do not declare success because only the frontend builds.
+
+---
+
+# STEP 10: VERIFY THE ACTUAL API
+
+The backend must be tested after bundling.
+
+At minimum test:
+
+```text
+/api/healthz
+```
+
+Then test a safe read-only API endpoint such as the medicines/categories endpoint if available.
+
+Confirm:
+
+* HTTP response is valid
+* Express starts correctly
+* workspace packages resolve
+* database initialization does not crash
+* environment variables are read correctly
+* no `.ts` workspace source is requested at runtime
+
+If a database is required, use the configured environment variables. Never commit secrets.
+
+---
+
+# STEP 11: CHECK FOR REPLIT REGRESSIONS
+
+The repository is also used in Replit.
+
+Do not break the Replit development/start command.
+
+After the Vercel changes, verify that the normal Replit development command still starts the application.
+
+If Replit generates build artifacts, make sure those artifacts are ignored and do not become source files.
+
+---
+
+# STEP 12: CHECK GIT DIFF CAREFULLY
+
+Before finishing:
+
+```bash
+git status
+git diff --stat
+git diff
+```
+
+Make sure there are no accidental deletions of application code, assets, routes, database schemas, or configuration.
+
+Do not overwrite unrelated user work.
+
+---
+
+# SUCCESS CRITERIA
+
+Do not report "fixed" unless ALL of these are true:
+
+* [ ] frontend builds successfully
+* [ ] backend bundle builds successfully
+* [ ] `api/.vercel-build/app.mjs` is produced
+* [ ] library typechecks succeed
+* [ ] no unexplained `Emit skipped`
+* [ ] no stale generated JS duplicates remain in TypeScript source directories
+* [ ] Vercel configuration points to the real API entrypoint
+* [ ] production API does not attempt to import workspace `.ts` source files
+* [ ] `/api/healthz` works in the production-style deployment
+* [ ] database initialization does not crash
+* [ ] Replit development still works
+* [ ] existing application functionality is preserved
+* [ ] no secrets are added to source control
+* [ ] the fix survives a clean install
+* [ ] the fix survives a clean Vercel build with no cache
+
+Finally, give me:
+
+1. the exact root cause you found
+2. every file you changed
+3. why each change was necessary
+4. the exact commands you ran
+5. the result of each verification
+6. the final Vercel deployment architecture
+
+Do not stop at diagnosis. Implement the fix and verify it end-to-end.
