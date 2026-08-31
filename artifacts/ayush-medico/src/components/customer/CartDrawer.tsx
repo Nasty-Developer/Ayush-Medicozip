@@ -1,7 +1,7 @@
 // CartDrawer — slide-out cart panel displayed on every page.
 // Opened via useCart().openCart() or the cart icon in the header.
 
-import { useRef, useEffect } from "react";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2, Plus, Minus, ShoppingCart, AlertCircle, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
@@ -13,7 +13,6 @@ import { resolveMedicineImage } from "@/lib/medicineImage";
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, summary } = useCart();
   const [, navigate] = useLocation();
-  const overlayRef = useRef<HTMLDivElement>(null);
 
   // Lock body scroll when open
   useEffect(() => {
@@ -27,10 +26,16 @@ export default function CartDrawer() {
 
   // Escape key to close
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") closeCart(); };
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      closeCart();
+    };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [closeCart]);
+  }, [isOpen, closeCart]);
 
   const handleCheckout = () => {
     closeCart();
@@ -43,12 +48,14 @@ export default function CartDrawer() {
         <>
           {/* Backdrop */}
           <motion.div
-            ref={overlayRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={closeCart}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) closeCart();
+            }}
+            data-testid="cart-backdrop"
             className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
           />
 
@@ -58,6 +65,11 @@ export default function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 340, damping: 35 }}
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Shopping cart"
+            data-testid="cart-drawer"
             className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[420px] flex flex-col
                        bg-background border-l border-border shadow-2xl"
           >
@@ -73,7 +85,10 @@ export default function CartDrawer() {
                 )}
               </div>
               <button
+                 type="button"
                 onClick={closeCart}
+                 aria-label="Close cart"
+                 data-testid="cart-close-btn"
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground
                            hover:text-foreground hover:bg-muted/50 transition-colors"
               >

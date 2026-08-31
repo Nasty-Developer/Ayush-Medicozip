@@ -262,6 +262,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCouponDiscount(0);
   }, []);
 
+  const openCart = useCallback(() => setIsOpen(true), []);
+  const closeCart = useCallback(() => setIsOpen(false), []);
   const summary = computeSummary(items, couponDiscount, couponCode);
 
   return (
@@ -278,8 +280,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         couponCode,
         couponDiscount,
         isOpen,
-        openCart: () => setIsOpen(true),
-        closeCart: () => setIsOpen(false),
+        openCart,
+        closeCart,
       }}
     >
       {children}
