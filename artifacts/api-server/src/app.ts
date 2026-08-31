@@ -31,6 +31,11 @@ app.set("trust proxy", 1);
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    // Firebase signInWithPopup completes through a cross-origin Firebase
+    // handler. Strict same-origin COOP severs the popup/opener relationship
+    // during that return and Firebase reports auth/popup-closed-by-user even
+    // after the customer clicks Continue successfully.
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
     contentSecurityPolicy: false, // Handled by Vite/frontend
   })
 );
