@@ -14,7 +14,10 @@
 
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { ordersTable, orderItemsTable, type InsertOrder, type InsertOrderItem } from "@workspace/db";
+import {
+  ordersTable, orderItemsTable, medicinesTable, generalProductsTable, vetMedicinesTable,
+  couponsTable, type InsertOrder, type InsertOrderItem,
+} from "@workspace/db";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { requireAuth, isAdminEmail, type AuthenticatedRequest } from "../middlewares/authMiddleware.js";
@@ -155,26 +158,117 @@ router.get("/:id", requireAuth, async (req: AuthenticatedRequest, res: Response)
 // ── POST /api/orders ──────────────────────────────────────────────────────────
 router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { items, ...orderData } = req.body as { items?: InsertOrderItem[]; [key: string]: unknown };
-    const data = orderData as InsertOrder;
-    if (!data.orderId || !data.customerName || !data.customerPhone) {
-      res.status(400).json({ error: "orderId, customerName, and customerPhone are required" });
+    const body = req.body as Record<string, unknown>;
+    const items = body.items;
+    const orderId = typeof body.orderId === "string" ? body.orderId.trim().toUpperCase() : "";
+    const customerName = typeof body.customerName === "string" ? body.customerName.trim() : "";
+    const customerPhone = typeof body.customerPhone === "string" ? body.customerPhone.trim() : "";
+    const address = body.address;
+    if (!/^AYM-\d{4}-\d{6}$/.test(orderId) || !customerName || !/^[0-9+\-()\s]{7,20}$/.test(customerPhone)) {
+      res.status(400).json({ error: "Valid orderId, customerName, and customerPhone are required" });
       return;
     }
-    // Force customerId to the authenticated caller — never trust the client.
-    data.customerId = req.firebaseUser!.uid;
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ error: "A non-empty items array is required" });
+      return;
+    }
+    if (!address || typeof address !== "object" ||
+      !["fullName", "mobileNumber", "houseNumber", "street", "pincode"].every((k) =>
+        typeof (address as Record<string, unknown>)[k] === "string" &&
+        String((address as Record<string, unknown>)[k]).trim().length > 0)) {
+      res.status(400).json({ error: "A complete delivery address is required" });
+      return;
+    }
+    const rawPricing = body.pricing && typeof body.pricing === "object"
+      ? body.pricing as Record<string, unknown> : {};
+    const couponCode = typeof rawPricing.couponCode === "string" ? rawPricing.couponCode.trim().toUpperCase() : "";
 
     const result = await db.transaction(async (tx: Tx) => {
-      const [created] = await tx.insert(ordersTable).values(data).returning();
-      if (Array.isArray(items) && items.length > 0) {
-        await tx.insert(orderItemsTable).values(items.map((i) => ({ ...i, orderId: created!.id })));
+      const checkedItems: InsertOrderItem[] = [];
+      let subtotal = 0;
+      let requiresPrescription = false;
+
+      for (const raw of items) {
+        if (!raw || typeof raw !== "object") throw new Error("INVALID_ITEM");
+        const item = raw as Record<string, unknown>;
+        const itemId = typeof item.medicineId === "string" ? item.medicineId.trim() : "";
+        const quantity = item.quantity;
+        if (!itemId || !Number.isInteger(quantity) || (quantity as number) <= 0) throw new Error("INVALID_ITEM");
+
+        let product: { id: number; name: string; status: string; sellingPrice: string | null; stockStatus: string; stockQty: number; prescriptionRequired?: boolean; categoryId?: number | null } | undefined;
+        let kind: "medicine" | "general" | "vet" = "medicine";
+        if (/^\d+$/.test(itemId)) {
+          const [row] = await tx.select().from(medicinesTable).where(eq(medicinesTable.id, Number(itemId)));
+          product = row;
+        } else {
+          const match = itemId.match(/^(?:general|product)[-_:]?(\d+)$/i) ?? itemId.match(/^vet(?:erinary)?[-_:](\d+)$/i);
+          if (!match) throw new Error("INVALID_ITEM");
+          kind = /^vet/i.test(itemId) ? "vet" : "general";
+          if (kind === "general") {
+            const [row] = await tx.select().from(generalProductsTable).where(eq(generalProductsTable.id, Number(match[1])));
+            product = row;
+          } else {
+            const [row] = await tx.select().from(vetMedicinesTable).where(eq(vetMedicinesTable.id, Number(match[1])));
+            product = row;
+          }
+        }
+        if (!product || product.status !== "active" || product.stockStatus === "out_of_stock") throw new Error("ITEM_UNAVAILABLE");
+        if (product.stockQty < (quantity as number)) throw new Error("INSUFFICIENT_STOCK");
+        if (product.sellingPrice == null || String(product.sellingPrice).trim() === "") {
+          throw new Error("ITEM_UNAVAILABLE");
+        }
+        const unitPrice = Number(product.sellingPrice);
+        if (!Number.isFinite(unitPrice) || unitPrice <= 0) throw new Error("ITEM_UNAVAILABLE");
+        const totalPrice = Math.round(unitPrice * (quantity as number) * 100) / 100;
+        subtotal += totalPrice;
+        requiresPrescription ||= product.prescriptionRequired === true;
+        checkedItems.push({
+          orderId: 0, medicineId: itemId, medicineName: product.name,
+          categoryName: null, brandName: null, quantity: quantity as number,
+          unitPrice: unitPrice.toFixed(2), totalPrice: totalPrice.toFixed(2),
+          prescriptionRequired: product.prescriptionRequired === true,
+        });
+        const table = kind === "medicine" ? medicinesTable : kind === "general" ? generalProductsTable : vetMedicinesTable;
+        await tx.update(table).set({ stockQty: sql`${table.stockQty} - ${quantity}` }).where(eq(table.id, product.id));
       }
+      subtotal = Math.round(subtotal * 100) / 100;
+      const deliveryCharge = subtotal > 0 && subtotal < 500 ? 40 : 0;
+      const gst = Math.round(subtotal * 0.05 * 100) / 100;
+      let discount = 0;
+      if (couponCode) {
+        const [coupon] = await tx.select().from(couponsTable).where(eq(couponsTable.code, couponCode));
+        const now = new Date();
+        if (coupon && coupon.isActive && (!coupon.usageLimit || coupon.usedCount < coupon.usageLimit) &&
+          (!coupon.validFrom || coupon.validFrom <= now) && (!coupon.validUntil || coupon.validUntil >= now) &&
+          subtotal >= Number(coupon.minimumOrderAmount)) {
+          discount = coupon.discountType === "percent"
+            ? subtotal * Number(coupon.discountValue) / 100 : Number(coupon.discountValue);
+          if (coupon.maximumDiscount != null) discount = Math.min(discount, Number(coupon.maximumDiscount));
+          discount = Math.max(0, Math.min(subtotal, Math.round(discount * 100) / 100));
+        }
+      }
+      const grandTotal = Math.max(0, Math.round((subtotal + deliveryCharge + gst - discount) * 100) / 100);
+      const data: InsertOrder = {
+        orderId, customerId: req.firebaseUser!.uid, customerName,
+        customerEmail: req.firebaseUser!.email ?? null, customerPhone,
+        address, pricing: { subtotal, deliveryCharge, gst, discount, grandTotal, couponCode: couponCode || null },
+        payment: { method: "upi", status: "pending", upiTransactionId: null },
+        prescription: { required: requiresPrescription, verified: false, status: requiresPrescription ? "pending" : "not-required", url: null },
+        delivery: { status: "not-assigned", partnerId: null, trackingId: null },
+        status: "payment-pending", notes: typeof body.notes === "string" ? body.notes.trim().slice(0, 2000) : null,
+        source: body.source === "app" ? "app" : "website",
+      };
+      const [created] = await tx.insert(ordersTable).values(data).returning();
+      await tx.insert(orderItemsTable).values(checkedItems.map((i) => ({ ...i, orderId: created!.id })));
       return created!;
     });
 
     res.status(201).json(await attachItems(result));
   } catch (err: any) {
     if (err.code === "23505") { res.status(409).json({ error: "Order ID already exists" }); return; }
+    if (err.message === "INVALID_ITEM") { res.status(400).json({ error: "Invalid order item" }); return; }
+    if (err.message === "ITEM_UNAVAILABLE") { res.status(409).json({ error: "One or more items are unavailable" }); return; }
+    if (err.message === "INSUFFICIENT_STOCK") { res.status(409).json({ error: "Insufficient stock" }); return; }
     logger.error({ err }, "Failed to create order");
     res.status(500).json({ error: "Failed to create order" });
   }

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, numeric } from "drizzle-orm/pg-core";
 
 /**
  * Unified inquiries table — stores both general inquiries and medicine requests
@@ -36,6 +36,12 @@ export const inquiriesTable = pgTable("inquiries", {
   prescriptionUrl:   text("prescription_url"),
   hasPrescription:   boolean("has_prescription").default(false).notNull(),
   medicinePhotoUrl:  text("medicine_photo_url"),
+  // Admin quote fields for medicine requests
+  medicinePrice:     numeric("medicine_price", { precision: 10, scale: 2 }),
+  deliveryCharge:    numeric("delivery_charge", { precision: 10, scale: 2 }),
+  discount:          numeric("discount", { precision: 10, scale: 2 }),
+  grandTotal:        numeric("grand_total", { precision: 10, scale: 2 }),
+  paymentStatus:     text("payment_status"),
   // Metadata
   source:            text("source", { enum: ["website", "whatsapp", "email"] }).default("website").notNull(),
   status:            text("status").default("pending").notNull(),

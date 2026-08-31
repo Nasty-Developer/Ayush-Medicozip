@@ -58,6 +58,11 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       prescriptionUrl:    (body.prescriptionUrl    as string)  || null,
       hasPrescription:    Boolean(body.hasPrescription),
       medicinePhotoUrl:   (body.medicinePhotoUrl   as string)  || null,
+      medicinePrice:      body.medicinePrice != null ? String(body.medicinePrice) : null,
+      deliveryCharge:     body.deliveryCharge != null ? String(body.deliveryCharge) : null,
+      discount:           body.discount != null ? String(body.discount) : null,
+      grandTotal:         body.grandTotal != null ? String(body.grandTotal) : null,
+      paymentStatus:      (body.paymentStatus as string) || null,
       source:             (body.source as "website" | "whatsapp" | "email") || "website",
       notes:              (body.notes              as string)  || null,
       status:             "new",
@@ -77,12 +82,17 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 router.patch("/:inquiryId/prescription", async (req: Request<{ inquiryId: string }>, res: Response): Promise<void> => {
   try {
     const { inquiryId } = req.params;
-    const { prescriptionUrl, hasPrescription } = req.body as { prescriptionUrl?: string; hasPrescription?: boolean };
+    const { prescriptionUrl, hasPrescription, medicinePhotoUrl } = req.body as {
+      prescriptionUrl?: string;
+      hasPrescription?: boolean;
+      medicinePhotoUrl?: string;
+    };
 
     await db.update(inquiriesTable)
       .set({
         ...(prescriptionUrl !== undefined ? { prescriptionUrl } : {}),
         ...(hasPrescription !== undefined ? { hasPrescription: Boolean(hasPrescription) } : {}),
+        ...(medicinePhotoUrl !== undefined ? { medicinePhotoUrl } : {}),
         updatedAt: sql`now()`,
       })
       .where(eq(inquiriesTable.inquiryId, inquiryId));
@@ -150,7 +160,11 @@ router.get(
         .where(
           and(
             eq(inquiriesTable.type, "medicine-request"),
-            eq(inquiriesTable.status, "pending"),
+            or(
+              eq(inquiriesTable.status, "pending"),
+              eq(inquiriesTable.status, "new"),
+              eq(inquiriesTable.status, "pending-verification"),
+            )!,
           )
         );
 
@@ -220,6 +234,11 @@ router.patch(
       if ("prescriptionUrl"  in extra) updateFields.prescriptionUrl  = extra.prescriptionUrl  as string | null;
       if ("hasPrescription"  in extra) updateFields.hasPrescription  = Boolean(extra.hasPrescription);
       if ("medicinePhotoUrl" in extra) updateFields.medicinePhotoUrl = extra.medicinePhotoUrl as string | null;
+       if ("medicinePrice" in extra) updateFields.medicinePrice = extra.medicinePrice == null ? null : String(extra.medicinePrice);
+       if ("deliveryCharge" in extra) updateFields.deliveryCharge = extra.deliveryCharge == null ? null : String(extra.deliveryCharge);
+       if ("discount" in extra) updateFields.discount = extra.discount == null ? null : String(extra.discount);
+       if ("grandTotal" in extra) updateFields.grandTotal = extra.grandTotal == null ? null : String(extra.grandTotal);
+       if ("paymentStatus" in extra) updateFields.paymentStatus = extra.paymentStatus == null ? null : String(extra.paymentStatus);
 
       await db.update(inquiriesTable).set(updateFields).where(eq(inquiriesTable.id, id));
 

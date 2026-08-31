@@ -17,7 +17,7 @@ import { useAddresses } from "@/hooks/useAddresses";
 import AddressList from "@/components/customer/AddressList";
 import AddressForm from "@/components/customer/AddressForm";
 import PrescriptionUpload from "@/components/customer/PrescriptionUpload";
-import { createOrder, generateNewOrderId, type OrderAddress } from "@/lib/orderService";
+import { createOrder, generateNewOrderId, getOrderById, type OrderAddress } from "@/lib/orderService";
 import { queueNotification } from "@/lib/notificationService";
 import type { CustomerAddress } from "@/lib/addressService";
 import SignInModal from "@/components/customer/SignInModal";
@@ -31,6 +31,15 @@ const STEPS: { id: Step; label: string; icon: typeof MapPin }[] = [
   { id: "payment", label: "Payment", icon: CreditCard },
   { id: "review",  label: "Review",  icon: ClipboardCheck },
 ];
+
+const pendingOrderKey = (uid: string) => `ayush-medico-pending-order:${uid}`;
+
+function cartFingerprint(items: { medicineId: string; quantity: number; unitPrice: number }[]) {
+  return [...items]
+    .sort((a, b) => a.medicineId.localeCompare(b.medicineId))
+    .map((item) => `${item.medicineId}:${item.quantity}:${item.unitPrice.toFixed(2)}`)
+    .join("|");
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -49,19 +58,38 @@ export default function CheckoutPage() {
   const [showSignIn, setShowSignIn]       = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
-  // If the customer refreshes or returns to checkout after creating an order,
-  // resume that order instead of creating a duplicate.
+  // Only resume an existing payment order when it was created from this exact
+  // cart. This prevents an abandoned order from hijacking a new checkout.
   useEffect(() => {
-    if (!user) return;
-    const saved = localStorage.getItem(`ayush-medico-pending-order:${user.uid}`);
+    if (!user || items.length === 0) return;
+    let cancelled = false;
+    const key = pendingOrderKey(user.uid);
+    const saved = localStorage.getItem(key);
     if (!saved) return;
+
     try {
-      const parsed = JSON.parse(saved) as { docId?: string };
-      if (parsed.docId) navigate(`/payment/${parsed.docId}`);
+      const parsed = JSON.parse(saved) as { docId?: string; cartFingerprint?: string };
+      if (!parsed.docId || parsed.cartFingerprint !== cartFingerprint(items)) {
+        localStorage.removeItem(key);
+        return;
+      }
+      void getOrderById(parsed.docId).then((order) => {
+        if (cancelled) return;
+        const resumable = order?.customerId === user.uid &&
+          ["payment-pending", "payment-verification-pending"].includes(order.status);
+        if (resumable) {
+          navigate(`/payment/${parsed.docId}`);
+        } else {
+          localStorage.removeItem(key);
+        }
+      }).catch(() => {
+        if (!cancelled) localStorage.removeItem(key);
+      });
     } catch {
-      localStorage.removeItem(`ayush-medico-pending-order:${user.uid}`);
+      localStorage.removeItem(key);
     }
-  }, [user, navigate]);
+    return () => { cancelled = true; };
+  }, [user, items, navigate]);
 
   const [tempOrderId] = useState(
     () => `temp-${user?.uid?.slice(-6) ?? "guest"}-${Date.now()}`
@@ -120,7 +148,7 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
-      const orderId = await generateNewOrderId();
+      let orderId = await generateNewOrderId();
       const addr: OrderAddress = {
         fullName: selectedAddress.fullName,
         mobileNumber: selectedAddress.mobileNumber,
@@ -140,7 +168,7 @@ export default function CheckoutPage() {
 
       // Create order in DB first — payment-pending so the customer can resume
       // payment after a refresh without creating a duplicate order.
-      const docId = await createOrder({
+      const orderInput = {
         orderId,
         customerId: user.uid,
         customerName: user.displayName ?? user.email ?? "Customer",
@@ -166,24 +194,32 @@ export default function CheckoutPage() {
           couponCode: summary.couponCode,
         },
         payment: {
-          method: "upi",
-          status: "pending",
+          method: "upi" as const,
+          status: "pending" as const,
           upiTransactionId: null,
         },
         prescription: {
           required: prescriptionRequired,
           url: prescriptionUrl,
           verified: false,
-           status: prescriptionRequired ? "pending" : "not-required",
+          status: prescriptionRequired ? "pending" as const : "not-required" as const,
         },
-        delivery: { status: "not-assigned" },
-        status: "payment-pending",
-        source: "website",
-      });
+        delivery: { status: "not-assigned" as const },
+        status: "payment-pending" as const,
+        source: "website" as const,
+      };
+      let docId: string;
+      try {
+        docId = await createOrder(orderInput);
+      } catch (err) {
+        if (!(err instanceof Error) || !err.message.toLowerCase().includes("already exists")) throw err;
+        orderId = await generateNewOrderId();
+        docId = await createOrder({ ...orderInput, orderId });
+      }
 
       localStorage.setItem(
-        `ayush-medico-pending-order:${user.uid}`,
-        JSON.stringify({ docId, orderId }),
+        pendingOrderKey(user.uid),
+        JSON.stringify({ docId, orderId, cartFingerprint: cartFingerprint(items) }),
       );
       await queueNotification({
         orderId,

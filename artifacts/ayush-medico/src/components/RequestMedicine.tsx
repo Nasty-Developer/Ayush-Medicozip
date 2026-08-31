@@ -146,7 +146,9 @@ export default function RequestMedicine() {
   function generateRequestId(): string {
     const now = new Date();
     const datePart = now.toISOString().slice(0, 10).replace(/-/g, "");
-    const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+    const rand = typeof crypto?.randomUUID === "function"
+      ? crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()
+      : Math.random().toString(36).slice(2, 10).toUpperCase();
     return `REQ-${datePart}-${rand}`;
   }
 
@@ -203,36 +205,25 @@ export default function RequestMedicine() {
       throw new Error(err.error ?? "Failed to submit request");
     }
 
-    // Fire-and-forget uploads — never blocks channel launch
-    // Prescription/photo files upload to Firebase Storage (separate quota from Firestore)
-    // then patch the URL back to PG via REST
+    // Upload attachments before confirming the request. The request row is
+    // still saved if an upload fails, but the customer sees the real failure
+    // instead of a false "submitted" confirmation.
+    const uploadedFields: { prescriptionUrl?: string; medicinePhotoUrl?: string } = {};
     if (fileToUpload) {
-      void (async () => {
-        try {
-          const url = await uploadPrescription(fileToUpload, requestId);
-          await fetch(`/api/inquiries/${requestId}/prescription`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prescriptionUrl: url, hasPrescription: true }),
-          });
-        } catch (uploadErr) {
-          console.error("[RequestMedicine] Prescription upload failed:", uploadErr);
-        }
-      })();
+      uploadedFields.prescriptionUrl = await uploadPrescription(fileToUpload, requestId);
     }
     if (photoToUpload) {
-      void (async () => {
-        try {
-          const url = await uploadRequestMedicinePhoto(photoToUpload, requestId);
-          await fetch(`/api/inquiries/${requestId}/prescription`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ medicinePhotoUrl: url }),
-          });
-        } catch (uploadErr) {
-          console.error("[RequestMedicine] Medicine photo upload failed:", uploadErr);
-        }
-      })();
+      uploadedFields.medicinePhotoUrl = await uploadRequestMedicinePhoto(photoToUpload, requestId);
+    }
+    if (Object.keys(uploadedFields).length > 0) {
+      const patchRes = await fetch(`/api/inquiries/${requestId}/prescription`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...uploadedFields, hasPrescription: Boolean(fileToUpload) }),
+      });
+      if (!patchRes.ok) {
+        throw new Error("Request saved, but the attachment could not be linked. Please submit again.");
+      }
     }
     return requestId;
   };
@@ -333,8 +324,6 @@ export default function RequestMedicine() {
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error("[RequestMedicine] Send request failed:", err);
-      alert(errMsg);
-
       toast({
         variant: "destructive",
         title: "Submission failed",
@@ -358,18 +347,22 @@ export default function RequestMedicine() {
       setLastRequestId(reqId);
     } catch (err) {
       console.error("[RequestMedicine] WhatsApp save failed:", err);
-      // Non-fatal: open WhatsApp even if API save fails
+      toast({
+        variant: "destructive",
+        title: "Request was not saved",
+        description: err instanceof Error ? err.message : "Please try again before opening WhatsApp.",
+      });
+      setSubmitting(null);
+      return;
     }
     const message = encodeURIComponent(buildWAMessage(values));
-    window.setTimeout(() => {
-      window.open(`https://wa.me/${WA_NUMBER}?text=${message}`, "_blank");
-      toast({
-        title: "WhatsApp opened!",
-        description: "Please attach your prescription photo before sending.",
-      });
-      finishSubmission();
-      setSubmitting(null);
-    }, 600);
+    window.open(`https://wa.me/${WA_NUMBER}?text=${message}`, "_blank", "noopener,noreferrer");
+    toast({
+      title: "WhatsApp opened!",
+      description: "Your request is saved. Please attach your prescription photo before sending.",
+    });
+    finishSubmission();
+    setSubmitting(null);
   };
 
   const handleEmail = async (values: RequestFormValues) => {
@@ -385,19 +378,23 @@ export default function RequestMedicine() {
       setLastRequestId(reqId);
     } catch (err) {
       console.error("[RequestMedicine] Email save failed:", err);
-      // Non-fatal: open email even if API save fails
+      toast({
+        variant: "destructive",
+        title: "Request was not saved",
+        description: err instanceof Error ? err.message : "Please try again before opening email.",
+      });
+      setSubmitting(null);
+      return;
     }
     const subject = encodeURIComponent(`Medicine Request - Ayush Medico`);
     const body = encodeURIComponent(buildEmailBody(values));
-    window.setTimeout(() => {
-      window.location.href = `mailto:${REQUEST_EMAIL}?subject=${subject}&body=${body}`;
-      toast({
-        title: "Email app opened!",
-        description: "Please attach your prescription file before sending.",
-      });
-      finishSubmission();
-      setSubmitting(null);
-    }, 600);
+    window.location.href = `mailto:${REQUEST_EMAIL}?subject=${subject}&body=${body}`;
+    toast({
+      title: "Email app opened!",
+      description: "Your request is saved. Please attach your prescription file before sending.",
+    });
+    finishSubmission();
+    setSubmitting(null);
   };
 
   const finishSubmission = () => {

@@ -7,11 +7,13 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
   ShoppingBag, Search, X, Package,
-  Loader2, ChevronDown, Phone,
+  Loader2, ChevronDown, Phone, ShoppingCart, Plus, Minus, PackageSearch,
 } from "lucide-react";
 import { useAnnouncement } from "@/context/AnnouncementContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Link } from "wouter";
+import { useCart } from "@/context/CartContext";
+import { useRequestMedicine } from "@/context/RequestMedicineContext";
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
 type GeneralProduct = {
@@ -45,9 +47,20 @@ function GeneralProductCard({ item, index }: { item: GeneralProduct; index: numb
   const ref    = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
   const inStock = item.stockStatus === "in_stock";
+  const [imageFailed, setImageFailed] = useState(false);
+  const { addItem, items, updateQuantity, removeItem } = useCart();
+  const { triggerRequest } = useRequestMedicine();
+  const cartId = `general-${item.id}`;
+  const cartItem = items.find((cartItem) => cartItem.medicineId === cartId);
+  const sellingPrice = item.sellingPrice ? Number(item.sellingPrice) : 0;
+  const canAdd = inStock && Number.isFinite(sellingPrice) && sellingPrice > 0;
   const discountPct = item.mrp && item.sellingPrice && parseFloat(item.mrp) > parseFloat(item.sellingPrice)
     ? Math.round((1 - parseFloat(item.sellingPrice) / parseFloat(item.mrp)) * 100)
     : 0;
+
+  const requestProduct = () => {
+    triggerRequest(item.name, item.brand ?? undefined, item.subCategory ?? item.categoryName ?? undefined);
+  };
 
   return (
     <motion.div
@@ -59,10 +72,10 @@ function GeneralProductCard({ item, index }: { item: GeneralProduct; index: numb
     >
       {/* Image */}
       <div className="relative aspect-square bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20 overflow-hidden">
-        {item.imageUrl ? (
+        {item.imageUrl && !imageFailed ? (
           <img src={item.imageUrl} alt={item.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            onError={() => setImageFailed(true)} />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <ShoppingBag size={40} className="text-violet-300 dark:text-violet-700" />
@@ -104,25 +117,69 @@ function GeneralProductCard({ item, index }: { item: GeneralProduct; index: numb
           <div>
             {item.sellingPrice ? (
               <>
-                <p className="text-base font-bold text-foreground">₹{parseFloat(item.sellingPrice).toFixed(0)}</p>
+                <p className="text-base font-bold text-foreground">₹{sellingPrice.toFixed(2)}</p>
                 {item.mrp && parseFloat(item.mrp) > parseFloat(item.sellingPrice) && (
-                  <p className="text-[10px] text-muted-foreground line-through">₹{parseFloat(item.mrp).toFixed(0)}</p>
+                  <p className="text-[10px] text-muted-foreground line-through">₹{parseFloat(item.mrp).toFixed(2)}</p>
                 )}
               </>
             ) : (
               <p className="text-sm text-muted-foreground font-medium">Enquire</p>
             )}
           </div>
-          {inStock ? (
+          {cartItem ? (
+            <div className="flex items-center gap-1 rounded-xl border border-violet-300 dark:border-violet-700 overflow-hidden">
+              <button
+                onClick={() => cartItem.quantity <= 1 ? removeItem(cartId) : updateQuantity(cartId, cartItem.quantity - 1)}
+                className="w-7 h-7 flex items-center justify-center text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30"
+                aria-label={`Decrease ${item.name} quantity`}
+              >
+                <Minus size={12} />
+              </button>
+              <span className="text-xs font-bold text-violet-700 min-w-5 text-center">{cartItem.quantity}</span>
+              <button
+                onClick={() => updateQuantity(cartId, cartItem.quantity + 1)}
+                className="w-7 h-7 flex items-center justify-center text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30"
+                aria-label={`Increase ${item.name} quantity`}
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+          ) : canAdd ? (
+            <button
+              onClick={() => addItem({
+                medicineId: cartId,
+                medicineName: item.name,
+                categoryName: item.categoryName ?? item.subCategory ?? "General Products",
+                brandName: item.brand ?? undefined,
+                unitPrice: sellingPrice,
+                prescriptionRequired: false,
+                imageUrl: item.imageUrl ?? undefined,
+              })}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all"
+              style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)" }}
+            >
+              <ShoppingCart size={11} /> Add to cart
+            </button>
+          ) : !inStock ? (
+            <button
+              onClick={requestProduct}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold hover:bg-amber-100 active:scale-95 transition-all"
+            >
+              <PackageSearch size={11} /> Request
+            </button>
+          ) : (
             <a href="tel:+919833273838"
               className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all"
               style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)" }}>
-              <Phone size={11} /> Order
+              <Phone size={11} /> Call to order
             </a>
-          ) : (
-            <span className="px-3 py-1.5 rounded-xl bg-muted text-muted-foreground text-xs font-medium">Unavailable</span>
           )}
         </div>
+        {!inStock && (
+          <button onClick={requestProduct} className="mt-2 text-[10px] text-muted-foreground hover:text-violet-700 hover:underline text-left">
+            Ask us to source this product
+          </button>
+        )}
       </div>
     </motion.div>
   );

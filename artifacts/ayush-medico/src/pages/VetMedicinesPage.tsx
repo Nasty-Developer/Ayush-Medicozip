@@ -7,11 +7,13 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
   PawPrint, Search, X, Package, PackageSearch,
-  Loader2, ChevronDown, ShoppingCart, Phone,
+  Loader2, ChevronDown, ShoppingCart, Phone, Plus, Minus,
 } from "lucide-react";
 import { useAnnouncement } from "@/context/AnnouncementContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Link } from "wouter";
+import { useCart } from "@/context/CartContext";
+import { useRequestMedicine } from "@/context/RequestMedicineContext";
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
 type VetMedicine = {
@@ -26,6 +28,7 @@ type VetMedicine = {
   sellingPrice: string | null;
   discount: string | null;
   stockStatus: "in_stock" | "low_stock" | "out_of_stock";
+  stockQty?: number;
   imageUrl: string | null;
   featured: boolean;
   categoryName: string | null;
@@ -48,6 +51,17 @@ function VetMedicineCard({ item, index }: { item: VetMedicine; index: number }) 
 
   const inStock = item.stockStatus === "in_stock";
   const lowStock = item.stockStatus === "low_stock";
+  const [imageFailed, setImageFailed] = useState(false);
+  const { addItem, items, updateQuantity, removeItem } = useCart();
+  const { triggerRequest } = useRequestMedicine();
+  const cartId = `vet-${item.id}`;
+  const cartItem = items.find((cartItem) => cartItem.medicineId === cartId);
+  const sellingPrice = item.sellingPrice ? Number(item.sellingPrice) : 0;
+  const canAdd = (inStock || lowStock) && Number.isFinite(sellingPrice) && sellingPrice > 0;
+
+  const requestProduct = () => {
+    triggerRequest(item.name, item.brand ?? undefined, item.categoryName ?? "Veterinary Medicine");
+  };
 
   return (
     <motion.div
@@ -59,10 +73,10 @@ function VetMedicineCard({ item, index }: { item: VetMedicine; index: number }) 
     >
       {/* Image */}
       <div className="relative aspect-square bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 overflow-hidden">
-        {item.imageUrl ? (
+        {item.imageUrl && !imageFailed ? (
           <img src={item.imageUrl} alt={item.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            onError={() => setImageFailed(true)} />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <PawPrint size={40} className="text-secondary/30" />
@@ -120,19 +134,62 @@ function VetMedicineCard({ item, index }: { item: VetMedicine; index: number }) 
             )}
           </div>
 
-          {inStock ? (
+          {cartItem ? (
+            <div className="flex items-center gap-1 rounded-xl border border-secondary/40 overflow-hidden">
+              <button
+                onClick={() => cartItem.quantity <= 1 ? removeItem(cartId) : updateQuantity(cartId, cartItem.quantity - 1)}
+                className="w-7 h-7 flex items-center justify-center text-secondary hover:bg-secondary/10"
+                aria-label={`Decrease ${item.name} quantity`}
+              >
+                <Minus size={12} />
+              </button>
+              <span className="text-xs font-bold text-secondary min-w-5 text-center">{cartItem.quantity}</span>
+              <button
+                onClick={() => updateQuantity(cartId, cartItem.quantity + 1)}
+                disabled={Boolean(item.stockQty && cartItem.quantity >= item.stockQty)}
+                className="w-7 h-7 flex items-center justify-center text-secondary hover:bg-secondary/10 disabled:opacity-40"
+                aria-label={`Increase ${item.name} quantity`}
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+          ) : canAdd ? (
+            <button
+              onClick={() => addItem({
+                medicineId: cartId,
+                medicineName: item.name,
+                categoryName: item.categoryName ?? "Veterinary Medicine",
+                brandName: item.brand ?? undefined,
+                unitPrice: sellingPrice,
+                prescriptionRequired: item.prescriptionRequired,
+                imageUrl: item.imageUrl ?? undefined,
+                maxStock: item.stockQty,
+              })}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-secondary text-white text-xs font-semibold hover:bg-secondary/90 active:scale-95 transition-all"
+            >
+              <ShoppingCart size={11} /> Add to cart
+            </button>
+          ) : !inStock && !lowStock ? (
+            <button
+              onClick={requestProduct}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold hover:bg-amber-100 active:scale-95 transition-all"
+            >
+              <PackageSearch size={11} /> Request
+            </button>
+          ) : (
             <a
               href="tel:+919833273838"
               className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-secondary text-white text-xs font-semibold hover:bg-secondary/90 active:scale-95 transition-all"
             >
-              <Phone size={11} /> Order
+              <Phone size={11} /> Call to order
             </a>
-          ) : (
-            <span className="px-3 py-1.5 rounded-xl bg-muted text-muted-foreground text-xs font-medium">
-              Unavailable
-            </span>
           )}
         </div>
+        {!inStock && !lowStock && (
+          <button onClick={requestProduct} className="mt-2 text-[10px] text-muted-foreground hover:text-secondary hover:underline text-left">
+            Ask us to source this medicine
+          </button>
+        )}
       </div>
     </motion.div>
   );

@@ -57,6 +57,7 @@ type CartContextValue = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "ayush_medico_cart_v1";
+const COUPON_STORAGE_KEY = "ayush_medico_coupon_v1";
 const GST_RATE = 0.05; // 5% GST on medicines
 const FREE_DELIVERY_THRESHOLD = 500; // Free delivery above ₹500
 const BASE_DELIVERY_CHARGE = 40; // ₹40 flat delivery
@@ -70,9 +71,41 @@ const CartContext = createContext<CartContextValue | null>(null);
 function loadFromStorage(): CartItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CartItem[]) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is CartItem => (
+      item &&
+      typeof item.medicineId === "string" &&
+      item.medicineId.length > 0 &&
+      typeof item.medicineName === "string" &&
+      Number.isFinite(Number(item.unitPrice)) &&
+      Number(item.unitPrice) >= 0 &&
+      Number.isInteger(Number(item.quantity)) &&
+      Number(item.quantity) > 0
+    )).map((item) => ({
+      ...item,
+      unitPrice: Number(item.unitPrice),
+      quantity: Number(item.quantity),
+      prescriptionRequired: Boolean(item.prescriptionRequired),
+      maxStock: item.maxStock && item.maxStock > 0 ? Number(item.maxStock) : undefined,
+    }));
   } catch {
     return [];
+  }
+}
+
+function loadCouponFromStorage(): { code: string | null; discount: number } {
+  try {
+    const raw = localStorage.getItem(COUPON_STORAGE_KEY);
+    if (!raw) return { code: null, discount: 0 };
+    const parsed = JSON.parse(raw) as { code?: unknown; discount?: unknown };
+    const discount = Number(parsed.discount);
+    return {
+      code: typeof parsed.code === "string" && parsed.code.trim() ? parsed.code : null,
+      discount: Number.isFinite(discount) && discount > 0 ? roundCurrency(discount) : 0,
+    };
+  } catch {
+    return { code: null, discount: 0 };
   }
 }
 
@@ -84,21 +117,25 @@ function saveToStorage(items: CartItem[]) {
   }
 }
 
+function roundCurrency(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 function computeSummary(
   items: CartItem[],
   couponDiscount: number,
   couponCode: string | null
 ): CartSummary {
-  const subtotal = items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+  const subtotal = roundCurrency(items.reduce((s, i) => s + roundCurrency(i.unitPrice) * i.quantity, 0));
   const deliveryCharge =
     subtotal === 0
       ? 0
       : subtotal >= FREE_DELIVERY_THRESHOLD
       ? 0
       : BASE_DELIVERY_CHARGE;
-  const gst = Math.round(subtotal * GST_RATE);
-  const discount = Math.min(couponDiscount, subtotal); // can't discount more than subtotal
-  const grandTotal = Math.max(0, subtotal + deliveryCharge + gst - discount);
+  const gst = roundCurrency(subtotal * GST_RATE);
+  const discount = roundCurrency(Math.min(Math.max(0, couponDiscount), subtotal)); // can't discount more than subtotal
+  const grandTotal = roundCurrency(Math.max(0, subtotal + deliveryCharge + gst - discount));
   const requiresPrescription = items.some((i) => i.prescriptionRequired);
   const itemCount = items.reduce((s, i) => s + i.quantity, 0);
 
@@ -119,8 +156,9 @@ function computeSummary(
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(loadFromStorage);
-  const [couponCode, setCouponCode] = useState<string | null>(null);
-  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [{ code: storedCouponCode, discount: storedCouponDiscount }] = useState(loadCouponFromStorage);
+  const [couponCode, setCouponCode] = useState<string | null>(storedCouponCode);
+  const [couponDiscount, setCouponDiscount] = useState(storedCouponDiscount);
   const [isOpen, setIsOpen] = useState(false);
 
   // Persist on every change
@@ -128,19 +166,50 @@ export function CartProvider({ children }: { children: ReactNode }) {
     saveToStorage(items);
   }, [items]);
 
+  useEffect(() => {
+    if (items.length === 0) {
+      setCouponCode(null);
+      setCouponDiscount(0);
+      localStorage.removeItem(COUPON_STORAGE_KEY);
+      return;
+    }
+    try {
+      if (couponCode) {
+        localStorage.setItem(
+          COUPON_STORAGE_KEY,
+          JSON.stringify({ code: couponCode, discount: couponDiscount }),
+        );
+      } else {
+        localStorage.removeItem(COUPON_STORAGE_KEY);
+      }
+    } catch {
+      // Private browsing or quota limits should not block checkout.
+    }
+  }, [items.length, couponCode, couponDiscount]);
+
   const addItem = useCallback(
     (item: Omit<CartItem, "quantity">, qty = 1) => {
       setItems((prev) => {
         const existing = prev.find((i) => i.medicineId === item.medicineId);
         if (existing) {
-          const max = existing.maxStock ?? Infinity;
-          const newQty = Math.min(existing.quantity + qty, max > 0 ? max : Infinity);
+          const max = item.maxStock ?? existing.maxStock ?? Infinity;
+          const newQty = Math.min(existing.quantity + Math.max(1, Math.floor(qty)), max > 0 ? max : Infinity);
           return prev.map((i) =>
-            i.medicineId === item.medicineId ? { ...i, quantity: newQty } : i
+            i.medicineId === item.medicineId
+              ? { ...i, ...item, unitPrice: roundCurrency(item.unitPrice), quantity: newQty }
+              : i
           );
         }
         const max = item.maxStock ?? Infinity;
-        return [...prev, { ...item, quantity: Math.min(qty, max > 0 ? max : qty) }];
+        const requestedQty = Math.max(1, Math.floor(qty));
+        return [
+          ...prev,
+          {
+            ...item,
+            unitPrice: roundCurrency(item.unitPrice),
+            quantity: Math.min(requestedQty, max > 0 ? max : requestedQty),
+          },
+        ];
       });
       setIsOpen(true);
     },
@@ -172,8 +241,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const applyCoupon = useCallback((code: string, discount: number) => {
-    setCouponCode(code);
-    setCouponDiscount(discount);
+    setCouponCode(code.trim().toUpperCase());
+    setCouponDiscount(roundCurrency(Math.max(0, discount)));
   }, []);
 
   const removeCoupon = useCallback(() => {
