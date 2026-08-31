@@ -1,1 +1,2 @@
+- [Firebase on Render](firebase-render-deployment.md) — browser config is build-time and the exact production hostname must be Firebase-authorized.
 - [Imported monorepo artifacts](imported-monorepo-artifacts.md) — register imported runnable folders separately from their source code, then refresh dependencies, declarations, and schema.

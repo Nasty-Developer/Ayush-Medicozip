@@ -46,6 +46,23 @@ const ORDER_STATUSES = [
   "refunded",
 ] as const;
 
+const ALLOWED_STATUS_TRANSITIONS: Record<string, readonly string[]> = {
+  pending: ["payment-pending", "confirmed", "cancelled"],
+  "payment-pending": ["payment-verification-pending", "cancelled"],
+  "payment-verification-pending": ["payment-verified", "cancelled"],
+  "payment-verified": ["confirmed", "preparing", "cancelled"],
+  confirmed: ["preparing", "cancelled"],
+  preparing: ["packed", "cancelled"],
+  packed: ["ready-for-pickup", "cancelled"],
+  "ready-for-pickup": ["delivery-assigned", "cancelled"],
+  "delivery-assigned": ["out-for-delivery", "cancelled"],
+  "out-for-delivery": ["delivered", "returned"],
+  delivered: ["returned", "refunded"],
+  returned: ["refunded"],
+  cancelled: [],
+  refunded: [],
+};
+
 async function attachItems(order: typeof ordersTable.$inferSelect) {
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id));
   return { ...order, items };
@@ -74,6 +91,66 @@ router.get("/next-id", requireAuth, async (_req: Request, res: Response): Promis
   } catch (err) {
     logger.error({ err }, "GET /orders/next-id failed");
     res.status(500).json({ error: "Failed to generate order id" });
+  }
+});
+
+// ── GET /api/orders/lookup ─────────────────────────────────────────────────────
+// Public tracking lookup for cart orders. The order ID and mobile number must
+// match the same record; return only the fields needed by the tracking screen.
+router.get("/lookup", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const orderId = String(req.query.orderId ?? "").trim().toUpperCase();
+    const mobile = String(req.query.mobile ?? "").replace(/\D/g, "").replace(/^91/, "");
+    if (!orderId || mobile.length < 10) {
+      res.status(400).json({ error: "Order ID and mobile number are required" });
+      return;
+    }
+
+    const [order] = await db
+      .select()
+      .from(ordersTable)
+      .where(eq(ordersTable.orderId, orderId));
+    if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+
+    const storedMobile = String(order.customerPhone ?? "").replace(/\D/g, "").replace(/^91/, "");
+    if (storedMobile !== mobile) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    const items = await db
+      .select()
+      .from(orderItemsTable)
+      .where(eq(orderItemsTable.orderId, order.id));
+    const address = (order.address as Record<string, unknown>) ?? {};
+    const fullAddress = [
+      address.houseNumber,
+      address.buildingName,
+      address.street,
+      address.area,
+      address.landmark,
+      address.city,
+      address.state,
+      address.pincode,
+    ].filter(Boolean).join(", ");
+
+    res.json({
+      id: String(order.id),
+      inquiryId: order.orderId,
+      customerName: order.customerName,
+      mobileNumber: order.customerPhone,
+      medicineName: items.map((item) => item.medicineName).join(", "),
+      quantity: items.map((item) => `${item.medicineName} × ${item.quantity}`).join(", "),
+      fullAddress,
+      status: order.status,
+      grandTotal: Number((order.pricing as Record<string, unknown>)?.grandTotal ?? 0),
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      flow: "order",
+    });
+  } catch (err) {
+    logger.error({ err }, "GET /orders/lookup failed");
+    res.status(500).json({ error: "Failed to look up order" });
   }
 });
 
@@ -299,10 +376,19 @@ router.patch("/:id/status", requireAuth, async (req: AuthenticatedRequest, res: 
     if (admin) {
       const payment = (existing.payment as Record<string, unknown>) ?? {};
       const paymentIsVerified = ["paid", "verified", "completed"].includes(String(payment.status));
+      const isCod = payment.method === "cod";
       const prescription = (existing.prescription as Record<string, unknown>) ?? {};
       const prescriptionIsApproved = prescription.required !== true || prescription.verified === true || prescription.status === "approved";
 
-      if (["payment-verified", "confirmed", "preparing"].includes(status) && !paymentIsVerified) {
+      if (status !== existing.status && !(ALLOWED_STATUS_TRANSITIONS[existing.status] ?? []).includes(status)) {
+        res.status(409).json({ error: `Invalid status transition from ${existing.status} to ${status}` });
+        return;
+      }
+      if (status === "payment-verified" && !paymentIsVerified) {
+        res.status(409).json({ error: "Payment must be verified before this order can move forward" });
+        return;
+      }
+      if (["confirmed", "preparing"].includes(status) && !isCod && !paymentIsVerified) {
         res.status(409).json({ error: "Payment must be verified before this order can move forward" });
         return;
       }

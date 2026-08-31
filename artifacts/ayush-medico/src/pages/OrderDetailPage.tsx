@@ -36,6 +36,7 @@ export default function OrderDetailPage() {
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [payNowLoading, setPayNowLoading] = useState(false);
@@ -47,8 +48,15 @@ export default function OrderDetailPage() {
     if (!docId) return;
     const unsub = subscribeToOrder(
       docId,
-      (o) => { setOrder(o); setLoading(false); },
-      () => setLoading(false)
+       (o) => {
+         setOrder(o);
+         setLoading(false);
+         setLoadError(o ? null : "Order not found.");
+       },
+       () => {
+         setLoading(false);
+         setLoadError("We couldn't load this order right now. Please refresh and try again.");
+       }
     );
     return unsub;
   }, [docId]);
@@ -140,12 +148,12 @@ export default function OrderDetailPage() {
     );
   }
 
-  if (!order) {
+   if (!order || loadError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 pt-16 text-center">
-        <AlertCircle size={40} className="text-destructive/60" />
-        <p className="text-lg font-semibold text-foreground">Order not found</p>
-        <button onClick={() => navigate("/")} className="text-primary hover:underline text-sm">Go home</button>
+         <AlertCircle size={40} className="text-amber-500" />
+         <p className="text-lg font-semibold text-foreground">{loadError ?? "Order not found"}</p>
+         <button onClick={() => navigate("/track")} className="text-primary hover:underline text-sm">Track Order</button>
       </div>
     );
   }

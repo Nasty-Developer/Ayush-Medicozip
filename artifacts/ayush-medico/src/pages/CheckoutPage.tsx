@@ -46,7 +46,7 @@ function cartFingerprint(items: { medicineId: string; quantity: number; unitPric
 export default function CheckoutPage() {
   const { items, summary, clearCart } = useCart();
   const { user } = useCustomerAuth();
-  const { addresses, loading: loadingAddresses } = useAddresses();
+  const { addresses, loading: loadingAddresses, error: addressesError } = useAddresses();
   const [, navigate] = useLocation();
 
   const [step, setStep]                   = useState<Step>("address");
@@ -148,7 +148,24 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
-      let orderId = await generateNewOrderId();
+      const draftKey = `ayush-medico-order-draft:${user.uid}`;
+      let orderId = "";
+      try {
+        const draft = JSON.parse(localStorage.getItem(draftKey) ?? "null") as
+          { orderId?: string; cartFingerprint?: string } | null;
+        if (draft?.orderId && draft.cartFingerprint === cartFingerprint(items)) {
+          orderId = draft.orderId;
+        }
+      } catch {
+        localStorage.removeItem(draftKey);
+      }
+      if (!orderId) {
+        orderId = await generateNewOrderId();
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({ orderId, cartFingerprint: cartFingerprint(items) }),
+        );
+      }
       const addr: OrderAddress = {
         fullName: selectedAddress.fullName,
         mobileNumber: selectedAddress.mobileNumber,
@@ -168,7 +185,7 @@ export default function CheckoutPage() {
 
       // Create order in DB first — payment-pending so the customer can resume
       // payment after a refresh without creating a duplicate order.
-      const orderInput = {
+      let orderInput = {
         orderId,
         customerId: user.uid,
         customerName: user.displayName ?? user.email ?? "Customer",
@@ -213,25 +230,46 @@ export default function CheckoutPage() {
         docId = await createOrder(orderInput);
       } catch (err) {
         if (!(err instanceof Error) || !err.message.toLowerCase().includes("already exists")) throw err;
-        orderId = await generateNewOrderId();
-        docId = await createOrder({ ...orderInput, orderId });
+        // A lost response can make a successfully-created order look like a
+        // failed request. Reuse the same order ID and recover the existing
+        // order instead of consuming stock a second time.
+        const existing = await getOrderById(orderId);
+        if (existing?.customerId === user.uid) {
+          docId = existing.id;
+        } else {
+          orderId = await generateNewOrderId();
+          orderInput = { ...orderInput, orderId };
+          localStorage.setItem(
+            draftKey,
+            JSON.stringify({ orderId, cartFingerprint: cartFingerprint(items) }),
+          );
+          docId = await createOrder(orderInput);
+        }
       }
 
+      localStorage.removeItem(draftKey);
       localStorage.setItem(
         pendingOrderKey(user.uid),
         JSON.stringify({ docId, orderId, cartFingerprint: cartFingerprint(items) }),
       );
-      await queueNotification({
-        orderId,
-        orderDocId: docId,
-        customerId: user.uid,
-        customerName: user.displayName ?? "Customer",
-        customerPhone: selectedAddress.mobileNumber,
-        customerEmail: user.email,
-        event: "order_placed",
-        channels: ["whatsapp", "email"],
-        metadata: { orderId, grandTotal: summary.grandTotal },
-      });
+      try {
+        await queueNotification({
+          orderId,
+          orderDocId: docId,
+          customerId: user.uid,
+          customerName: user.displayName ?? "Customer",
+          customerPhone: selectedAddress.mobileNumber,
+          customerEmail: user.email,
+          event: "order_placed",
+          channels: ["whatsapp", "email"],
+          metadata: { orderId, grandTotal: summary.grandTotal },
+        });
+      } catch (notificationError) {
+        // Notification delivery is secondary to placing the order. Never tell
+        // a customer to retry a successful order just because a message queue
+        // is temporarily unavailable.
+        console.warn("Order notification could not be queued:", notificationError);
+      }
       navigate(`/payment/${docId}`);
     } catch (err) {
       console.error("Place order error:", err);
@@ -297,6 +335,10 @@ export default function CheckoutPage() {
                     {loadingAddresses ? (
                       <div className="flex justify-center py-8">
                         <Loader2 size={24} className="animate-spin text-primary" />
+                      </div>
+                    ) : addressesError ? (
+                      <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+                        Could not load saved addresses. Please refresh and try again.
                       </div>
                     ) : showAddressForm ? (
                       <AddressForm onSuccess={() => setShowAddressForm(false)} onCancel={() => setShowAddressForm(false)} />

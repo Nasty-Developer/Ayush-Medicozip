@@ -88,6 +88,12 @@ router.post(
         res.status(409).json({ error: "This order does not use UPI payment" });
         return;
       }
+      if (existingPayment.status === "verification-pending") {
+        // Make repeated taps/retries idempotent while the pharmacist review is
+        // still pending.
+        res.json({ success: true, order });
+        return;
+      }
 
       const payment = {
         ...existingPayment,
@@ -271,7 +277,9 @@ router.post(
         return;
       }
 
-    // Signature valid — mark order as paid
+      // Signature valid is not enough by itself. It must belong to the
+      // Razorpay order created for this exact database order; otherwise a
+      // valid payment from another order could be attached here.
       const [order] = await db
         .select()
         .from(ordersTable)
@@ -287,8 +295,28 @@ router.post(
         return;
       }
 
+      const existingPayment = (order.payment as Record<string, unknown>) ?? {};
+      if (existingPayment.method !== "razorpay") {
+        res.status(409).json({ error: "This order does not use Razorpay payment" });
+        return;
+      }
+      if (existingPayment.razorpayOrderId !== razorpay_order_id) {
+        logger.warn({ orderDbId, razorpay_order_id }, "Razorpay order ID mismatch");
+        res.status(400).json({ error: "Payment does not match this order" });
+        return;
+      }
+      if (["paid", "verified", "completed"].includes(String(existingPayment.status))) {
+        res.status(409).json({ error: "This order is already marked as paid" });
+        return;
+      }
+
+      const prescription = (order.prescription as Record<string, unknown>) ?? {};
+      const prescriptionApproved =
+        prescription.required !== true ||
+        prescription.verified === true ||
+        prescription.status === "approved";
       const payment = {
-        ...(order.payment as Record<string, unknown>),
+        ...existingPayment,
         status: "paid",
         razorpayPaymentId: razorpay_payment_id,
         paidAt: new Date().toISOString(),
@@ -296,7 +324,11 @@ router.post(
 
       const [updated] = await db
         .update(ordersTable)
-        .set({ payment, status: "payment-verified", updatedAt: new Date() })
+        .set({
+          payment,
+          status: prescriptionApproved ? "confirmed" : "payment-verified",
+          updatedAt: new Date(),
+        })
         .where(eq(ordersTable.id, Number(orderDbId)))
         .returning();
 
@@ -335,8 +367,23 @@ router.post(
         return;
       }
 
+      const existingPayment = (order.payment as Record<string, unknown>) ?? {};
+      if (existingPayment.method !== "razorpay") {
+        res.status(409).json({ error: "This order does not use Razorpay payment" });
+        return;
+      }
+      if (["paid", "verified", "completed"].includes(String(existingPayment.status))) {
+        // A late modal-dismiss event must never regress a successful payment.
+        res.status(409).json({ error: "This order is already marked as paid" });
+        return;
+      }
+      if (["cancelled", "delivered", "returned", "refunded"].includes(order.status)) {
+        res.status(409).json({ error: "This order can no longer receive a payment failure" });
+        return;
+      }
+
       const payment = {
-        ...(order.payment as Record<string, unknown>),
+        ...existingPayment,
         status: "failed",
         failedAt: new Date().toISOString(),
       };

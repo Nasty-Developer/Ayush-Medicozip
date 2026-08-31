@@ -11,6 +11,7 @@ import {
 } from "@/lib/addressService";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import AddressForm from "./AddressForm";
+import { useToast } from "@/hooks/use-toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ export default function AddressList({
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleDelete = async (address: CustomerAddress) => {
     if (!user) return;
@@ -48,6 +50,13 @@ export default function AddressList({
     setDeletingId(address.id);
     try {
       await deleteAddress(user.uid, address.id);
+      toast({ title: "Address deleted" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Could not delete address",
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
     } finally {
       setDeletingId(null);
     }
@@ -58,6 +67,13 @@ export default function AddressList({
     setSettingDefaultId(address.id);
     try {
       await setDefaultAddress(user.uid, address.id);
+      toast({ title: "Default address updated" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Could not update default address",
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
     } finally {
       setSettingDefaultId(null);
     }

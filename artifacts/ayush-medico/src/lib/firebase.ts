@@ -22,6 +22,8 @@ function isValidEnv(v: string | undefined): boolean {
 export const firebaseConfigurationError = !isValidEnv(firebaseConfig.apiKey) ||
   !isValidEnv(firebaseConfig.authDomain) ||
   !isValidEnv(firebaseConfig.projectId) ||
+  !isValidEnv(firebaseConfig.storageBucket) ||
+  !isValidEnv(firebaseConfig.messagingSenderId) ||
   !isValidEnv(firebaseConfig.appId)
   ? "Firebase configuration is incomplete. Please contact support."
   : firebaseConfig.projectId !== EXPECTED_FIREBASE_PROJECT_ID
@@ -38,7 +40,8 @@ let storage: FirebaseStorage | undefined;
 let analytics: Analytics | undefined;
 
 if (isFirebaseConfigured) {
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  const existingApp = getApps().find((candidate) => candidate.options.projectId === firebaseConfig.projectId);
+  app = existingApp ?? initializeApp(firebaseConfig, "ayush-medico");
   auth = getAuth(app);
   storage = getStorage(app);
 

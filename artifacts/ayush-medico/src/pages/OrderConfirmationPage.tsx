@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { CheckCircle2, Clock3, Package, Phone, ArrowRight, Loader2 } from "lucide-react";
+import { CheckCircle2, Clock3, Package, Phone, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { subscribeToOrder, type Order } from "@/lib/orderService";
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -16,18 +16,50 @@ export default function OrderConfirmationPage() {
   const docId = params?.docId ?? "";
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!docId) return;
     return subscribeToOrder(docId, (next) => {
       setOrder(next);
       setLoading(false);
-    }, () => setLoading(false));
+      setLoadError(next ? null : "We couldn't find this order. Please open Track Order and search using your Order ID and mobile number.");
+    }, () => {
+      setLoading(false);
+      setLoadError("We couldn't load this order right now. Please try again or use Track Order.");
+    });
   }, [docId]);
 
   if (!matched || !docId) {
     navigate("/");
     return null;
+  }
+
+  if (loading || loadError || !order) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4 pt-28 pb-12">
+        <div className="max-w-md w-full text-center">
+          {loading ? (
+            <>
+              <Loader2 size={34} className="animate-spin text-primary mx-auto mb-4" />
+              <h1 className="text-xl font-bold text-foreground">Loading your order…</h1>
+            </>
+          ) : (
+            <>
+              <AlertCircle size={38} className="text-amber-500 mx-auto mb-4" />
+              <h1 className="text-xl font-bold text-foreground">Order details unavailable</h1>
+              <p className="text-sm text-muted-foreground mt-2">{loadError}</p>
+              <button
+                onClick={() => navigate("/track")}
+                className="mt-6 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-sm font-semibold"
+              >
+                Track Order <ArrowRight size={15} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (

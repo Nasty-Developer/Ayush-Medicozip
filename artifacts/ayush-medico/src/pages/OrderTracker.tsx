@@ -13,7 +13,17 @@ import {
   MapPin,
   LockKeyhole,
 } from "lucide-react";
-import { STATUS_LABELS, isNegativeStatus, getPipelineIndex, type RequestStatus } from "@/lib/orderStatus";
+import {
+  STATUS_LABELS,
+  isNegativeStatus,
+  getPipelineIndex,
+  ORDER_STATUS_PIPELINE,
+  ORDER_STATUS_LABELS,
+  isNegativeOrderStatus,
+  getOrderPipelineIndex,
+  getOrderStatusLabel,
+  type RequestStatus,
+} from "@/lib/orderStatus";
 import OrderStatusTimeline, { NegativeStatusBanner } from "@/components/customer/OrderStatusTimeline";
 import WaitingBanner from "@/components/customer/WaitingBanner";
 import PaymentRequiredPanel from "@/components/customer/PaymentRequiredPanel";
@@ -40,6 +50,7 @@ type TrackedRequest = {
   grandTotal?: number | null;
   createdAt?: { seconds: number };
   updatedAt?: { seconds: number };
+  flow?: "inquiry" | "order";
 };
 
 const GENERIC_NOT_FOUND =
@@ -71,7 +82,31 @@ async function lookupOrder(orderId: string, mobileNumber: string): Promise<Track
   const res = await fetch(
     `/api/inquiries/lookup?inquiryId=${encodeURIComponent(normalizedId)}&mobile=${encodeURIComponent(normalizedMobile)}`
   );
-  if (res.status === 404) return null;
+  if (res.status === 404) {
+    // Cart checkout orders live in the SQL orders table, while older
+    // prescription requests live in inquiries. Both are trackable with the
+    // same Order ID + mobile-number form.
+    const orderRes = await fetch(
+      `/api/orders/lookup?orderId=${encodeURIComponent(normalizedId)}&mobile=${encodeURIComponent(normalizedMobile)}`
+    );
+    if (orderRes.status === 404) return null;
+    if (!orderRes.ok) throw new Error(`Lookup failed: ${orderRes.status}`);
+    const order = await orderRes.json();
+    return {
+      id: String(order.id),
+      requestId: order.inquiryId,
+      customerName: order.customerName,
+      mobileNumber: order.mobileNumber,
+      medicineName: order.medicineName,
+      quantity: order.quantity,
+      fullAddress: order.fullAddress,
+      status: order.status,
+      grandTotal: order.grandTotal,
+      createdAt: order.createdAt ? { seconds: Math.floor(new Date(order.createdAt).getTime() / 1000) } : undefined,
+      updatedAt: order.updatedAt ? { seconds: Math.floor(new Date(order.updatedAt).getTime() / 1000) } : undefined,
+      flow: "order",
+    };
+  }
   if (!res.ok) throw new Error(`Lookup failed: ${res.status}`);
 
   const row = await res.json();
@@ -90,7 +125,33 @@ async function lookupOrder(orderId: string, mobileNumber: string): Promise<Track
     grandTotal: row.grandTotal,
     createdAt: row.createdAt ? { seconds: Math.floor(new Date(row.createdAt).getTime() / 1000) } : undefined,
     updatedAt: row.updatedAt ? { seconds: Math.floor(new Date(row.updatedAt).getTime() / 1000) } : undefined,
+    flow: "inquiry",
   } satisfies TrackedRequest;
+}
+
+function CartOrderTimeline({ status }: { status: string }) {
+  if (isNegativeOrderStatus(status)) {
+    return (
+      <div className="mb-6 rounded-xl bg-destructive/10 text-destructive px-4 py-3 text-sm font-semibold">
+        {getOrderStatusLabel(status)}
+      </div>
+    );
+  }
+  const activeIndex = getOrderPipelineIndex(status);
+  return (
+    <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {ORDER_STATUS_PIPELINE.map((stage, index) => (
+        <div
+          key={stage}
+          className={`rounded-lg px-2 py-2 text-center text-[11px] font-semibold ${
+            index <= activeIndex ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {index <= activeIndex ? "✓ " : ""}{ORDER_STATUS_LABELS[stage]}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function useOrderLookup() {
@@ -143,8 +204,12 @@ export default function OrderTracker() {
     if (fromQuery) setOrderId(fromQuery);
   }, [params.requestId, search]);
 
-  const activeIndex = data ? getPipelineIndex(data.status) : -1;
-  const isNegative = data ? isNegativeStatus(data.status) : false;
+  const activeIndex = data
+    ? data.flow === "order" ? getOrderPipelineIndex(data.status) : getPipelineIndex(data.status)
+    : -1;
+  const isNegative = data
+    ? data.flow === "order" ? isNegativeOrderStatus(data.status) : isNegativeStatus(data.status)
+    : false;
 
   const computedTotal =
     (data?.medicinePrice || 0) + (data?.deliveryCharge || 0) - (data?.discount || 0);
@@ -243,13 +308,15 @@ export default function OrderTracker() {
             </div>
 
             {/* Timeline */}
-            {!isNegative && (
+            {data.flow === "order" ? (
+              <CartOrderTimeline status={data.status} />
+            ) : !isNegative && (
               <div className="mb-6">
                 <OrderStatusTimeline status={data.status} />
               </div>
             )}
 
-            {data.status === "payment-pending" && (
+             {data.flow !== "order" && data.status === "payment-pending" && (
               <div className="mb-6">
                 <PaymentRequiredPanel amount={grandTotal} />
               </div>
@@ -267,7 +334,11 @@ export default function OrderTracker() {
               </div>
               <div className="flex gap-3">
                 <span className="text-xs font-semibold text-muted-foreground w-28 flex-shrink-0">Current Status</span>
-                <span className="text-foreground font-semibold">{STATUS_LABELS[data.status as RequestStatus] ?? data.status}</span>
+                <span className="text-foreground font-semibold">
+                  {data.flow === "order"
+                    ? getOrderStatusLabel(data.status)
+                    : STATUS_LABELS[data.status as RequestStatus] ?? data.status}
+                </span>
               </div>
               {data.fullAddress && (
                 <div className="flex gap-3">

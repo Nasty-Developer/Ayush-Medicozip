@@ -15,8 +15,7 @@ import {
   updateOrderStatus,
   updateOrderPayment,
   updateOrderDelivery,
-  updateOrderPrescription,
-  updateOrderFields,
+  reviewOrderPrescription,
   type Order,
 } from "@/lib/orderService";
 import {
@@ -345,10 +344,11 @@ function OrderCard({ order, expanded, onToggle }: {
   };
 
   const handleVerifyPayment = async () => {
-    if (!upiInput.trim()) { setActionError("Enter UPI transaction ID first."); return; }
     await action("payment", async () => {
-      await verifyUpiPayment(order.id, upiInput.trim());
-      await updateOrderStatus(order.id, "payment-verified");
+      // The customer confirmation is intentionally enough to create a review
+      // item; a UTR is useful but optional because some UPI apps do not expose
+      // it consistently. The pharmacist still performs the actual verification.
+      await verifyUpiPayment(order.id, upiInput.trim() || undefined);
       await queueNotification({
         orderId: order.orderId, orderDocId: order.id,
         customerId: order.customerId, customerName: order.customerName,
@@ -381,7 +381,7 @@ function OrderCard({ order, expanded, onToggle }: {
 
   const handleApprovePrescription = async () => {
     await action("rx-approve", async () => {
-      await updateOrderPrescription(order.id, { verified: true });
+      await reviewOrderPrescription(order.id, "approved");
       await queueNotification({
         orderId: order.orderId, orderDocId: order.id,
         customerId: order.customerId, customerName: order.customerName,
@@ -393,11 +393,8 @@ function OrderCard({ order, expanded, onToggle }: {
 
   const handleRejectPrescription = async () => {
     await action("rx-reject", async () => {
-      await updateOrderPrescription(order.id, { verified: false });
-      await updateOrderFields(order.id, {
-        "prescription.rejectionReason": rejectReason.trim() || "Could not be verified",
-        notes: `Prescription rejected: ${rejectReason.trim() || "Could not be verified"}`,
-      });
+      const reason = rejectReason.trim() || "Could not be verified";
+      await reviewOrderPrescription(order.id, "rejected", reason);
       setShowRejectInput(false);
       setRejectReason("");
     });
@@ -632,7 +629,7 @@ function OrderCard({ order, expanded, onToggle }: {
                 )}
 
                 {/* UPI payment verification */}
-                 {order.payment.method === "upi" && ["pending", "verification-pending", "failed"].includes(order.payment.status) && (
+                 {order.payment.method === "upi" && order.payment.status === "verification-pending" && (
                   <div className="w-full flex gap-2">
                     <input
                       value={upiInput}
@@ -650,6 +647,11 @@ function OrderCard({ order, expanded, onToggle }: {
                     />
                   </div>
                 )}
+                 {order.payment.method === "upi" && order.payment.status === "pending" && (
+                   <p className="w-full rounded-xl bg-muted/50 border border-border px-3 py-2 text-xs text-muted-foreground">
+                     Waiting for the customer to confirm that the UPI payment was completed.
+                   </p>
+                 )}
 
                 {/* Delivery assignment */}
                 {order.status === "ready-for-pickup" && (
@@ -888,8 +890,11 @@ function getNextAction(
 
   const map: Partial<Record<OrderStatus, NextAction>> = {
     pending: isCod
-      ? { label: "Accept & Prepare", icon: <CheckCircle2 size={12} />, next: "payment-verified", color: "green" }
+      ? { label: "Accept & Prepare", icon: <CheckCircle2 size={12} />, next: "confirmed", color: "green" }
       : { label: "Accept Order",     icon: <CheckCircle2 size={12} />, next: "payment-pending",  color: "green" },
+    confirmed: {
+      label: "Start Preparing", icon: <Package size={12} />, next: "preparing", color: "blue",
+    },
     "payment-verified": {
       label: "Start Preparing", icon: <Package size={12} />, next: "preparing", color: "blue",
     },

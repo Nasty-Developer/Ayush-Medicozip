@@ -32,6 +32,7 @@ export default function SignInModal({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const isBusy = !!loading;
 
   const handleGoogle = async () => {
     setLoading("google");
@@ -75,7 +76,7 @@ export default function SignInModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => !isBusy && onClose()}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -88,7 +89,7 @@ export default function SignInModal({
             <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
               {mode === "signup" ? "Create Account" : "Sign In"}
             </h3>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
+             <button onClick={onClose} disabled={isBusy} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors disabled:opacity-40">
               <X size={16} />
             </button>
           </div>

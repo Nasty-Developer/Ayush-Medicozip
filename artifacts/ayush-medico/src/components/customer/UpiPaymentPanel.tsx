@@ -65,6 +65,7 @@ export default function UpiPaymentPanel({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (submitting || awaitingVerification) return;
     setSubmitting(true);
     try {
       await submitUpiPayment({ orderDbId });
@@ -146,7 +147,7 @@ export default function UpiPaymentPanel({
                    You do not need to enter a transaction ID. This confirmation sends the order to our team for payment verification.
                  </p>
                </div>
-               <button type="submit" disabled={submitting} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-secondary text-white text-sm font-bold hover:bg-secondary/90 disabled:opacity-60 transition-colors">
+                <button type="submit" disabled={submitting || awaitingVerification} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-secondary text-white text-sm font-bold hover:bg-secondary/90 disabled:opacity-60 transition-colors">
                  {submitting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
                  {submitting ? "Saving confirmation…" : "I Have Completed the Payment"}
                </button>

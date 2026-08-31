@@ -211,6 +211,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           },
         ];
       });
+      // A coupon is tied to the subtotal it was validated against. Requiring
+      // re-validation after cart changes prevents the UI total from diverging
+      // from the server's checkout calculation.
+      setCouponCode(null);
+      setCouponDiscount(0);
       setIsOpen(true);
     },
     []
@@ -218,20 +223,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const removeItem = useCallback((medicineId: string) => {
     setItems((prev) => prev.filter((i) => i.medicineId !== medicineId));
+    setCouponCode(null);
+    setCouponDiscount(0);
   }, []);
 
   const updateQuantity = useCallback((medicineId: string, qty: number) => {
-    if (qty <= 0) {
+    if (!Number.isFinite(qty) || qty <= 0) {
       setItems((prev) => prev.filter((i) => i.medicineId !== medicineId));
+      setCouponCode(null);
+      setCouponDiscount(0);
       return;
     }
+    const safeQty = Math.floor(qty);
     setItems((prev) =>
       prev.map((i) => {
         if (i.medicineId !== medicineId) return i;
         const max = i.maxStock ?? Infinity;
-        return { ...i, quantity: Math.min(qty, max > 0 ? max : qty) };
+        return { ...i, quantity: Math.min(safeQty, max > 0 ? max : safeQty) };
       })
     );
+    setCouponCode(null);
+    setCouponDiscount(0);
   }, []);
 
   const clearCart = useCallback(() => {

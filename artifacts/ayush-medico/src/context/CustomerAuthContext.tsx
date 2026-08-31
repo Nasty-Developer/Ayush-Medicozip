@@ -21,6 +21,7 @@ import {
   updateProfile,
   setPersistence,
   browserLocalPersistence,
+  browserSessionPersistence,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   type User,
@@ -83,7 +84,9 @@ export function getCustomerAuthErrorMessage(
     case "auth/popup-blocked":
       return "Your browser blocked the Google sign-in window. Please allow pop-ups and try again.";
     case "auth/popup-closed-by-user":
-      return "Google sign-in was cancelled.";
+      return "The Google sign-in window closed before sign-in finished. If you did not close it, allow pop-ups for this site and try again.";
+    case "auth/cancelled-popup-request":
+      return "Another Google sign-in is already in progress. Finish or close that window, then try again.";
     case "auth/network-request-failed":
       return "We couldn’t reach Firebase. Check your connection and try again.";
     case "auth/too-many-requests":
@@ -125,6 +128,20 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
     const configuredAuth = auth;
     let cancelled = false;
+    let authStateResolved = false;
+    const redirectWasPending = (() => {
+      try {
+        return sessionStorage.getItem("ayush-medico-google-redirect") === "1";
+      } catch {
+        return false;
+      }
+    })();
+    const initializationTimeout = window.setTimeout(() => {
+      if (cancelled || authStateResolved) return;
+      console.warn("[Firebase Auth] Auth-state initialization timed out.");
+      setLoading(false);
+      setRedirectError("Firebase sign-in is taking too long to respond. Check your connection and try again.");
+    }, 12000);
 
     // Process any pending redirect result on page load (fires after signInWithRedirect
     // is used as a popup fallback). A null result means no redirect was pending.
@@ -136,6 +153,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     // single `auth.currentUser` is sufficient without a second Firebase app.
     const unsub = onAuthStateChanged(configuredAuth, (u) => {
       if (cancelled) return;
+      authStateResolved = true;
       setUser(u);
       setLoading(false);
     }, (err: unknown) => {
@@ -143,14 +161,15 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       console.error("[Firebase Auth] Auth-state initialization failed:", err);
       setUser(null);
       setLoading(false);
-      setRedirectError(getCustomerAuthErrorMessage(err));
+      setRedirectError(getCustomerAuthErrorMessage(err, redirectWasPending ? "google" : "signin"));
     });
 
     void setPersistence(configuredAuth, browserLocalPersistence)
       .catch((err: unknown) => {
-        // Auth should remain usable if a browser blocks local storage, but the
-        // error is kept visible in logs because it affects refresh persistence.
+        // Auth should remain usable if a browser blocks local storage. Session
+        // persistence is a safe fallback for private browsing/blocked storage.
         console.warn("[Firebase Auth] Local persistence unavailable:", err);
+        return setPersistence(configuredAuth, browserSessionPersistence);
       })
       .then(() => getRedirectResult(configuredAuth))
       .catch((err: unknown) => {
@@ -159,10 +178,18 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         if (typeof authError.code !== "string") return;
         console.error("[Firebase Auth] Redirect sign-in failed:", authError.code);
         setRedirectError(getCustomerAuthErrorMessage(err, "google"));
+      })
+      .finally(() => {
+        try {
+          sessionStorage.removeItem("ayush-medico-google-redirect");
+        } catch {
+          // Storage can be unavailable; auth itself remains usable.
+        }
       });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(initializationTimeout);
       unsub();
     };
   }, []);
@@ -183,6 +210,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         // signInWithRedirect navigates the page away; execution does not resume
         // here. On return the page reloads, getRedirectResult fires above, and
         // onAuthStateChanged sets the user.
+        try {
+          sessionStorage.setItem("ayush-medico-google-redirect", "1");
+        } catch {
+          // Redirect still works when session storage is unavailable.
+        }
         await signInWithRedirect(configuredAuth, provider);
         return;
       }
