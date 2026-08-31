@@ -347,7 +347,7 @@ function OrderCard({ order, expanded, onToggle }: {
   const handleVerifyPayment = async () => {
     if (!upiInput.trim()) { setActionError("Enter UPI transaction ID first."); return; }
     await action("payment", async () => {
-      await verifyUpiPayment(null, order.id, upiInput.trim());
+      await verifyUpiPayment(order.id, upiInput.trim());
       await updateOrderStatus(order.id, "payment-verified");
       await queueNotification({
         orderId: order.orderId, orderDocId: order.id,
