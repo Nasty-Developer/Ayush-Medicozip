@@ -2,7 +2,6 @@
 // Opened via useCart().openCart() or the cart icon in the header.
 
 import { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2, Plus, Minus, ShoppingCart, AlertCircle, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
 import { useCart } from "@/context/CartContext";
@@ -54,29 +53,20 @@ export default function CartDrawer() {
   };
 
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
         <>
-          {/* Give the backdrop and panel separate layers instead of nesting
-              them under a pointer-events-none wrapper. This keeps Chrome's
-              hit testing reliable while the panel is being animated. */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+          {/* Keep the backdrop and drawer as plain sibling layers. Avoiding
+              animated/full-screen compositor layers makes close controls
+              reliable even in slower Chrome/PWA rendering paths. */}
+          <div
             onClick={closeCart}
             data-testid="cart-backdrop"
-            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
+            aria-hidden="true"
+            className="fixed inset-0 z-[100] bg-black/50"
           />
 
-          {/* Drawer */}
-          <motion.div
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 340, damping: 35 }}
-            onClick={(event) => event.stopPropagation()}
+          <div
             role="dialog"
             aria-modal="true"
             aria-label="Shopping cart"
@@ -149,11 +139,9 @@ export default function CartDrawer() {
                       Add ₹{(500 - summary.subtotal).toLocaleString("en-IN")} more for free delivery!
                     </p>
                     <div className="h-1.5 rounded-full bg-primary/15 overflow-hidden">
-                      <motion.div
+                      <div
                         className="h-full rounded-full bg-primary"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min((summary.subtotal / 500) * 100, 100)}%` }}
-                        transition={{ duration: 0.4 }}
+                        style={{ width: `${Math.min((summary.subtotal / 500) * 100, 100)}%` }}
                       />
                     </div>
                   </div>
@@ -168,17 +156,11 @@ export default function CartDrawer() {
 
                 {/* Item list */}
                 <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-                  <AnimatePresence initial={false}>
-                    {items.map((item) => (
-                      <motion.div
-                        key={item.medicineId}
-                        layout
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex gap-3 p-3 rounded-2xl border border-border bg-card"
-                      >
+                  {items.map((item) => (
+                    <div
+                      key={item.medicineId}
+                      className="flex gap-3 p-3 rounded-2xl border border-border bg-card"
+                    >
                         {/* Medicine image placeholder */}
                         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
                           <img
@@ -233,9 +215,8 @@ export default function CartDrawer() {
                             </button>
                           </div>
                         </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Summary + Checkout */}
@@ -281,9 +262,9 @@ export default function CartDrawer() {
                 </div>
               </>
             )}
-          </motion.div>
+          </div>
         </>
       )}
-    </AnimatePresence>
+    </>
   );
 }
