@@ -17,6 +17,7 @@ export type CartItem = {
   medicineId: string;
   medicineName: string;
   categoryName?: string;
+  categoryImageUrl?: string;
   brandName?: string;
   unitPrice: number;
   quantity: number;

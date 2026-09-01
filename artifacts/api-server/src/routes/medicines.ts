@@ -234,6 +234,7 @@ router.get("/medicines/:id", async (req: Request<{ id: string }>, res: Response)
         m: medicinesTable,
         companyName: companiesTable.name,
         categoryName: categoriesTable.name,
+        categoryImageUrl: categoriesTable.imageUrl,
       })
       .from(medicinesTable)
       .leftJoin(companiesTable, eq(medicinesTable.companyId, companiesTable.id))
@@ -243,7 +244,12 @@ router.get("/medicines/:id", async (req: Request<{ id: string }>, res: Response)
 
     if (!rows[0]) { res.status(404).json({ error: "Medicine not found" }); return; }
     const r = rows[0];
-    res.json(toPublicMedicine({ ...r.m, companyName: r.companyName, categoryName: r.categoryName }));
+    res.json(toPublicMedicine({
+      ...r.m,
+      companyName: r.companyName,
+      categoryName: r.categoryName,
+      categoryImageUrl: r.categoryImageUrl,
+    }));
   } catch (err) {
     logger.error({ err }, "GET /medicines/:id failed");
     res.status(500).json({ error: "Failed to fetch medicine" });

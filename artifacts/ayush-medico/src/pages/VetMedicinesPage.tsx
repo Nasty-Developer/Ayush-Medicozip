@@ -177,12 +177,12 @@ function VetMedicineCard({ item, index }: { item: VetMedicine; index: number }) 
               <PackageSearch size={11} /> Request
             </button>
           ) : (
-            <a
-              href="tel:+919833273838"
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-secondary text-white text-xs font-semibold hover:bg-secondary/90 active:scale-95 transition-all"
+            <button
+              onClick={requestProduct}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold hover:bg-amber-100 active:scale-95 transition-all"
             >
-              <Phone size={11} /> Call to order
-            </a>
+              <PackageSearch size={11} /> Request
+            </button>
           )}
         </div>
         {!inStock && !lowStock && (

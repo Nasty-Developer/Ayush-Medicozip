@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
   ShoppingBag, Search, X, Package,
-  Loader2, ChevronDown, Phone, ShoppingCart, Plus, Minus, PackageSearch,
+  Loader2, ChevronDown, ShoppingCart, Plus, Minus, PackageSearch,
 } from "lucide-react";
 import { useAnnouncement } from "@/context/AnnouncementContext";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -168,11 +168,12 @@ function GeneralProductCard({ item, index }: { item: GeneralProduct; index: numb
               <PackageSearch size={11} /> Request
             </button>
           ) : (
-            <a href="tel:+919833273838"
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all"
-              style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)" }}>
-              <Phone size={11} /> Call to order
-            </a>
+            <button
+              onClick={requestProduct}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold hover:bg-amber-100 active:scale-95 transition-all"
+            >
+              <PackageSearch size={11} /> Request
+            </button>
           )}
         </div>
         {!inStock && (

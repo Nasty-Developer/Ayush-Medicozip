@@ -16,8 +16,9 @@ import {
 import { useCart } from "@/context/CartContext";
 import { useRequestMedicine } from "@/context/RequestMedicineContext";
 import { resolveMedicineImage } from "@/lib/medicineImage";
+import { Link } from "wouter";
 
-type StockStatus = "in_stock" | "out_of_stock" | "coming_soon";
+type StockStatus = "in_stock" | "low_stock" | "out_of_stock" | "coming_soon";
 
 type Medicine = {
   id: string;
@@ -26,6 +27,7 @@ type Medicine = {
   description?: string;
   imageUrl?: string;
   categoryName?: string;
+  categoryImageUrl?: string;
   stockStatus?: StockStatus;
   available?: boolean;
   sellingPrice?: number;
@@ -44,6 +46,7 @@ function getStockStatus(item: Medicine): StockStatus {
 function StockBadge({ status }: { status: StockStatus }) {
   const map = {
     in_stock:    { label: "Available",   icon: <PackageCheck size={9} />, cls: "bg-secondary/90 text-white" },
+    low_stock:   { label: "Low Stock",  icon: <PackageCheck size={9} />, cls: "bg-amber-500/90 text-white" },
     out_of_stock:{ label: "Out of Stock",icon: <PackageX size={9} />,    cls: "bg-muted/90 text-muted-foreground" },
     coming_soon: { label: "Coming Soon", icon: <Clock size={9} />,       cls: "bg-amber-500/90 text-white" },
   };
@@ -77,7 +80,7 @@ function FeaturedCard({ item, index }: { item: Medicine; index: number }) {
 
   const cartItem = items.find((i) => i.medicineId === item.id);
   const inCart   = !!cartItem;
-  const canAdd   = status === "in_stock" && !!item.sellingPrice;
+  const canAdd   = (status === "in_stock" || status === "low_stock") && !!item.sellingPrice;
   const { triggerRequest } = useRequestMedicine();
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -86,6 +89,8 @@ function FeaturedCard({ item, index }: { item: Medicine; index: number }) {
     addItem({
       medicineId:          item.id,
       medicineName:        item.name,
+      categoryName:        item.categoryName,
+      categoryImageUrl:    item.categoryImageUrl,
       brandName:           item.brand,
       unitPrice:           item.sellingPrice!,
       prescriptionRequired: item.prescriptionRequired ?? false,
@@ -123,8 +128,8 @@ function FeaturedCard({ item, index }: { item: Medicine; index: number }) {
       <div className="relative h-44 bg-gradient-to-br from-primary/8 to-secondary/8 overflow-hidden flex-shrink-0">
         <img
           src={imgErr
-            ? resolveMedicineImage(null, item.categoryName)
-            : resolveMedicineImage(item.imageUrl, item.categoryName)}
+            ? resolveMedicineImage(null, null, item.categoryName)
+            : resolveMedicineImage(item.imageUrl, item.categoryImageUrl, item.categoryName)}
           alt={item.name}
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -153,12 +158,14 @@ function FeaturedCard({ item, index }: { item: Medicine; index: number }) {
             {item.brand}
           </p>
         )}
-        <h3
-          className="text-sm font-bold text-foreground mb-1.5 leading-tight"
+        <Link
+          href={`/medicine/${item.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-sm font-bold text-foreground mb-1.5 leading-tight hover:text-primary transition-colors"
           style={{ fontFamily: "'Poppins', sans-serif" }}
         >
           {item.name}
-        </h3>
+        </Link>
         {item.description && (
           <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
             {item.description}

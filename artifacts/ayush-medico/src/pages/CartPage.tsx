@@ -142,7 +142,7 @@ export default function CartPage() {
                     {/* Image */}
                     <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
                       <img
-                        src={resolveMedicineImage(item.imageUrl, item.categoryName)}
+                        src={resolveMedicineImage(item.imageUrl, item.categoryImageUrl, item.categoryName)}
                         alt={item.medicineName}
                         className="w-full h-full object-contain rounded-xl"
                       />

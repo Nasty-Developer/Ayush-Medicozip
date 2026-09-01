@@ -114,6 +114,7 @@ export default function MedicineDetailPage() {
       medicineId: medicine.id,
       medicineName: medicine.name,
       categoryName: medicine.categoryName ?? undefined,
+      categoryImageUrl: medicine.categoryImageUrl ?? undefined,
       brandName: medicine.brand ?? undefined,
       unitPrice: medicine.sellingPrice!,
       prescriptionRequired: medicine.prescriptionRequired ?? false,
@@ -153,8 +154,8 @@ export default function MedicineDetailPage() {
         <div className="relative h-56 sm:h-72 bg-gradient-to-br from-primary/5 to-secondary/5 flex items-center justify-center">
           <img
             src={imgErr
-              ? resolveMedicineImage(null, medicine.categoryName)
-              : resolveMedicineImage(medicine.imageUrl, medicine.categoryName)}
+              ? resolveMedicineImage(null, null, medicine.categoryName)
+              : resolveMedicineImage(medicine.imageUrl, medicine.categoryImageUrl, medicine.categoryName)}
             alt={medicine.name}
             className="w-full h-full object-cover"
             onError={() => setImgErr(true)}
