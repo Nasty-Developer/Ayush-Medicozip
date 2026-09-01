@@ -9,6 +9,7 @@ type UseAddressesResult = {
   loading: boolean;
   error: Error | null;
   defaultAddress: CustomerAddress | null;
+  retry: () => void;
 };
 
 export function useAddresses(): UseAddressesResult {
@@ -16,15 +17,18 @@ export function useAddresses(): UseAddressesResult {
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     if (!user) {
       setAddresses([]);
       setLoading(false);
+      setError(null);
       return;
     }
 
     setLoading(true);
+    setError(null);
     const unsub = subscribeToAddresses(
       user.uid,
       (data) => {
@@ -39,9 +43,15 @@ export function useAddresses(): UseAddressesResult {
     );
 
     return () => unsub();
-  }, [user?.uid]);
+  }, [user?.uid, retryToken]);
 
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0] ?? null;
 
-  return { addresses, loading, error, defaultAddress };
+  return {
+    addresses,
+    loading,
+    error,
+    defaultAddress,
+    retry: () => setRetryToken((value) => value + 1),
+  };
 }

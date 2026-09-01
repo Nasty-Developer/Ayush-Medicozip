@@ -12,7 +12,7 @@ import { resolveMedicineImage } from "@/lib/medicineImage";
 
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, summary } = useCart();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
 
   // Lock body scroll when open
   useEffect(() => {
@@ -38,6 +38,15 @@ export default function CartDrawer() {
     document.addEventListener("keydown", handler, true);
     return () => document.removeEventListener("keydown", handler, true);
   }, [isOpen, closeCart]);
+
+  // The checkout action changes the URL and closes the drawer in the same
+  // click. Keep this route-level guard as a second safety net for production
+  // builds where navigation and context updates can be batched together.
+  useEffect(() => {
+    if (isOpen && location === "/checkout") {
+      closeCart();
+    }
+  }, [isOpen, location, closeCart]);
 
   const handleCheckout = () => {
     closeCart();
@@ -264,6 +273,7 @@ export default function CartDrawer() {
 
                   {/* Checkout button */}
                   <button
+                    type="button"
                     onClick={handleCheckout}
                     className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl
                                bg-primary text-white font-bold text-sm hover:bg-primary/90

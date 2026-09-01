@@ -15,7 +15,6 @@ import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { useAddresses } from "@/hooks/useAddresses";
 import AddressList from "@/components/customer/AddressList";
-import AddressForm from "@/components/customer/AddressForm";
 import PrescriptionUpload from "@/components/customer/PrescriptionUpload";
 import { createOrder, generateNewOrderId, getOrderById, type OrderAddress } from "@/lib/orderService";
 import { queueNotification } from "@/lib/notificationService";
@@ -45,18 +44,35 @@ function cartFingerprint(items: { medicineId: string; quantity: number; unitPric
 
 export default function CheckoutPage() {
   const { items, summary, clearCart } = useCart();
-  const { user } = useCustomerAuth();
-  const { addresses, loading: loadingAddresses, error: addressesError } = useAddresses();
+  const { user, loading: loadingAuth } = useCustomerAuth();
+  const {
+    addresses,
+    loading: loadingAddresses,
+    error: addressesError,
+    retry: retryAddresses,
+  } = useAddresses();
   const [, navigate] = useLocation();
 
   const [step, setStep]                   = useState<Step>("address");
   const [selectedAddress, setSelectedAddress] = useState<CustomerAddress | null>(null);
-  const [showAddressForm, setShowAddressForm] = useState(false);
   const [prescriptionUrl, setPrescriptionUrl] = useState<string | null>(null);
   const [placing, setPlacing]             = useState(false);
   const [error, setError]                 = useState<string | null>(null);
   const [showSignIn, setShowSignIn]       = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+
+  // A saved default address should be ready to use as soon as checkout opens.
+  // Without this, customers with an address could see a permanently disabled
+  // Continue button until they happened to click the card manually.
+  useEffect(() => {
+    if (!user || loadingAddresses) return;
+    setSelectedAddress((current) => {
+      if (current && addresses.some((address) => address.id === current.id)) {
+        return current;
+      }
+      return addresses.find((address) => address.isDefault) ?? addresses[0] ?? null;
+    });
+  }, [user?.uid, addresses, loadingAddresses]);
 
   // Only resume an existing payment order when it was created from this exact
   // cart. This prevents an abandoned order from hijacking a new checkout.
@@ -96,8 +112,32 @@ export default function CheckoutPage() {
   );
 
   if (items.length === 0 && !placing) {
-    navigate("/cart");
-    return null;
+    return (
+      <div className="min-h-screen pt-28 pb-20 flex flex-col items-center justify-center gap-5 px-4">
+        <ShoppingCart size={40} className="text-muted-foreground/40" />
+        <div className="text-center">
+          <p className="text-lg font-semibold text-foreground">Your cart is empty</p>
+          <p className="text-muted-foreground mt-1">
+            Add a medicine before starting checkout.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate("/cart")}
+          className="px-6 py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary/90 transition-colors"
+        >
+          Back to Cart
+        </button>
+      </div>
+    );
+  }
+
+  if (loadingAuth) {
+    return (
+      <div className="min-h-screen pt-28 pb-20 flex flex-col items-center justify-center gap-3 px-4">
+        <Loader2 size={28} className="animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Checking your sign-in…</p>
+      </div>
+    );
   }
 
   if (!user) {
@@ -338,10 +378,15 @@ export default function CheckoutPage() {
                       </div>
                     ) : addressesError ? (
                       <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
-                        Could not load saved addresses. Please refresh and try again.
+                        <p>Could not load saved addresses.</p>
+                        <button
+                          type="button"
+                          onClick={retryAddresses}
+                          className="mt-3 rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-semibold hover:bg-destructive/10 transition-colors"
+                        >
+                          Try again
+                        </button>
                       </div>
-                    ) : showAddressForm ? (
-                      <AddressForm onSuccess={() => setShowAddressForm(false)} onCancel={() => setShowAddressForm(false)} />
                     ) : (
                       <AddressList
                         addresses={addresses}
