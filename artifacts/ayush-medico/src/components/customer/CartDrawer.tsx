@@ -56,10 +56,10 @@ export default function CartDrawer() {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] pointer-events-none">
-          {/* Keep the backdrop and panel in one explicit stacking context.
-              This prevents transformed animated layers from sitting above the
-              controls in Chrome's compositor. */}
+        <>
+          {/* Give the backdrop and panel separate layers instead of nesting
+              them under a pointer-events-none wrapper. This keeps Chrome's
+              hit testing reliable while the panel is being animated. */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -67,7 +67,7 @@ export default function CartDrawer() {
             transition={{ duration: 0.2 }}
             onClick={closeCart}
             data-testid="cart-backdrop"
-            className="absolute inset-0 z-0 bg-black/50 backdrop-blur-sm pointer-events-auto"
+            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
           />
 
           {/* Drawer */}
@@ -81,8 +81,8 @@ export default function CartDrawer() {
             aria-modal="true"
             aria-label="Shopping cart"
             data-testid="cart-drawer"
-            className="fixed right-0 top-0 bottom-0 z-10 w-full sm:w-[420px] flex flex-col
-                       bg-background border-l border-border shadow-2xl pointer-events-auto"
+            className="fixed right-0 top-0 bottom-0 z-[101] w-full sm:w-[420px] flex flex-col
+                       bg-background border-l border-border shadow-2xl"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
@@ -282,7 +282,7 @@ export default function CartDrawer() {
               </>
             )}
           </motion.div>
-        </div>
+        </>
       )}
     </AnimatePresence>
   );
