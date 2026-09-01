@@ -56,20 +56,18 @@ export default function CartDrawer() {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          {/* Backdrop */}
+        <div className="fixed inset-0 z-[100] pointer-events-none">
+          {/* Keep the backdrop and panel in one explicit stacking context.
+              This prevents transformed animated layers from sitting above the
+              controls in Chrome's compositor. */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            // Pointer events cover mouse, touch, and pen input. The drawer
-            // stops propagation below, so every outside press reaches this
-            // single close action without relying on target matching.
-            onPointerDown={closeCart}
             onClick={closeCart}
             data-testid="cart-backdrop"
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 z-0 bg-black/50 backdrop-blur-sm pointer-events-auto"
           />
 
           {/* Drawer */}
@@ -78,14 +76,13 @@ export default function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 340, damping: 35 }}
-            onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label="Shopping cart"
             data-testid="cart-drawer"
-            className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[420px] flex flex-col
-                       bg-background border-l border-border shadow-2xl"
+            className="fixed right-0 top-0 bottom-0 z-10 w-full sm:w-[420px] flex flex-col
+                       bg-background border-l border-border shadow-2xl pointer-events-auto"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
@@ -285,7 +282,7 @@ export default function CartDrawer() {
               </>
             )}
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
