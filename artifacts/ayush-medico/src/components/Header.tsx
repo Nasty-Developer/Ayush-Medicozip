@@ -15,7 +15,6 @@ import { getCustomerAuthErrorMessage } from "@/context/CustomerAuthContext";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import SignInModal from "@/components/customer/SignInModal";
-import MyOrdersModal from "@/components/customer/MyOrdersModal";
 import MyProfileModal from "@/components/customer/MyProfileModal";
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -96,14 +95,13 @@ export default function Header() {
   const { enabled: announcementEnabled }                      = useAnnouncement();
   const { user, signOut, redirectError, clearRedirectError }  = useCustomerAuth();
   const { summary, openCart }                                 = useCart();
-  const [location]                                            = useLocation();
+  const [location, navigate]                                  = useLocation();
   const { toast }                                             = useToast();
 
   const [scrolled,        setScrolled]        = useState(false);
   const [mobileOpen,      setMobileOpen]       = useState(false);
   const [accountMenuOpen, setAccountMenuOpen]  = useState(false);
   const [showSignIn,      setShowSignIn]       = useState(false);
-  const [showMyOrders,    setShowMyOrders]     = useState(false);
   const [showMyProfile,   setShowMyProfile]    = useState(false);
   const [signingOut,      setSigningOut]       = useState(false);
 
@@ -245,6 +243,18 @@ export default function Header() {
                 <Phone size={14} /> Call Now
               </a>
 
+              {user && (
+                <button
+                  onClick={() => navigate("/orders")}
+                  data-testid="nav-my-orders"
+                  className="hidden md:flex items-center gap-1.5 px-3 py-2 text-sm font-medium
+                             text-muted-foreground hover:text-primary rounded-lg hover:bg-primary/5
+                             transition-all duration-200"
+                >
+                  <ClipboardList size={15} /> My Orders
+                </button>
+              )}
+
               {/* Account (desktop) */}
               <div className="relative hidden md:block" ref={accountRef}>
                 {user ? (
@@ -271,7 +281,7 @@ export default function Header() {
                             {firstName}
                           </p>
                           <button
-                            onClick={() => { setShowMyOrders(true); setAccountMenuOpen(false); }}
+                            onClick={() => { navigate("/orders"); setAccountMenuOpen(false); }}
                             data-testid="menu-my-orders"
                             className="w-full flex items-center gap-2 px-3 py-2 text-sm
                                        text-foreground hover:bg-primary/5 hover:text-primary transition-colors"
@@ -420,7 +430,7 @@ export default function Header() {
                     <div className="space-y-0.5">
                       <p className="px-3 py-1.5 text-xs text-muted-foreground truncate">{firstName}</p>
                       <button
-                        onClick={() => { setShowMyOrders(true); setMobileOpen(false); }}
+                        onClick={() => { navigate("/orders"); setMobileOpen(false); }}
                         data-testid="mobile-menu-my-orders"
                         className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium
                                    text-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all duration-200"
@@ -493,7 +503,6 @@ export default function Header() {
       </AnimatePresence>
 
       {showSignIn    && <SignInModal    onClose={() => setShowSignIn(false)} />}
-      {showMyOrders  && <MyOrdersModal  onClose={() => setShowMyOrders(false)} />}
       {showMyProfile && <MyProfileModal onClose={() => setShowMyProfile(false)} />}
     </>
   );

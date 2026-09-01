@@ -52,6 +52,7 @@ export type OrderItem = {
   medicineName: string;
   categoryName?: string;
   brandName?: string;
+  imageUrl?: string | null;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
@@ -155,6 +156,7 @@ function mapRow(row: OrderRow): Order {
       medicineName: i.medicineName,
       categoryName: i.categoryName ?? undefined,
       brandName: i.brandName ?? undefined,
+      imageUrl: i.imageUrl ?? null,
       quantity: i.quantity,
       unitPrice: Number(i.unitPrice),
       totalPrice: Number(i.totalPrice),

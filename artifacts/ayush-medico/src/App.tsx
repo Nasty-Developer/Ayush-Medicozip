@@ -46,6 +46,7 @@ const CartPage              = lazy(() => import("@/pages/CartPage"));
 const CheckoutPage          = lazy(() => import("@/pages/CheckoutPage"));
 const OrderConfirmationPage = lazy(() => import("@/pages/OrderConfirmationPage"));
 const OrderDetailPage       = lazy(() => import("@/pages/OrderDetailPage"));
+const OrdersPage            = lazy(() => import("@/pages/OrdersPage"));
 const UpiPaymentPage        = lazy(() => import("@/pages/UpiPaymentPage"));
 const NotFoundPage          = lazy(() => import("@/pages/not-found"));
 
@@ -237,6 +238,16 @@ function App() {
                            </Route>
 
                           {/* ── Order detail / tracking ── */}
+                           <Route path="/orders">
+                             {() => (
+                               <PublicLayout>
+                                 <ErrorBoundary label="OrdersPage">
+                                   <OrdersPage />
+                                 </ErrorBoundary>
+                               </PublicLayout>
+                             )}
+                           </Route>
+
                           <Route path="/order/:docId">
                             {() => (
                               <PublicLayout>

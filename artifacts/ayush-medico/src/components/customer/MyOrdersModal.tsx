@@ -256,11 +256,11 @@ export default function MyOrdersModal({ onClose }: { onClose: () => void }) {
                   }`}>
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Prescription</p>
                     {selected.prescription.verified ? (
-                      <p className="text-sm font-semibold text-green-700 dark:text-green-400">✓ Verified by pharmacist</p>
+                      <p className="text-sm font-semibold text-green-700 dark:text-green-400">Verified by pharmacist</p>
                     ) : selected.prescription.url ? (
-                      <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">⏳ Pending pharmacist review</p>
+                      <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Pending pharmacist review</p>
                     ) : (
-                      <p className="text-sm font-semibold text-destructive">⚠ No prescription uploaded</p>
+                      <p className="text-sm font-semibold text-destructive">No prescription uploaded</p>
                     )}
                   </div>
                 )}

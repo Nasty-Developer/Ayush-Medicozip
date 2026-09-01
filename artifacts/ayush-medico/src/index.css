@@ -59,18 +59,18 @@
 
 /* LIGHT MODE */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
-  --border: 214 32% 91%;
-  --card: 210 40% 98%;
+  --background: 210 33% 98%;
+  --foreground: 222 36% 15%;
+  --border: 211 28% 88%;
+  --card: 210 30% 99%;
   --card-foreground: 222 47% 11%;
-  --popover: 210 40% 98%;
+  --popover: 210 30% 99%;
   --popover-foreground: 222 47% 11%;
   --primary: 205 69% 38%;
   --primary-foreground: 0 0% 100%;
   --secondary: 160 84% 39%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 210 40% 96%;
+  --muted: 207 28% 94%;
   --muted-foreground: 215 16% 47%;
   --accent: 199 89% 60%;
   --accent-foreground: 222 47% 11%;
@@ -102,12 +102,12 @@
 }
 
 .dark {
-  --background: 222 47% 11%;
-  --foreground: 210 40% 96%;
-  --border: 215 28% 27%;
-  --card: 222 47% 18%;
+  --background: 218 34% 12%;
+  --foreground: 210 32% 95%;
+  --border: 215 25% 28%;
+  --card: 220 31% 17%;
   --card-foreground: 210 40% 96%;
-  --popover: 222 47% 18%;
+  --popover: 220 31% 17%;
   --popover-foreground: 210 40% 96%;
   --primary: 199 89% 60%;
   --primary-foreground: 222 47% 11%;
@@ -350,4 +350,21 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Customer invoice surface */
+.invoice-label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+@media print {
+  .invoice-print-sheet {
+    box-shadow: none !important;
+    border-top-width: 0 !important;
+  }
 }

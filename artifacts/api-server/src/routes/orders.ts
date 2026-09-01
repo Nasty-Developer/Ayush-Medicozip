@@ -18,7 +18,7 @@ import {
   ordersTable, orderItemsTable, medicinesTable, generalProductsTable, vetMedicinesTable,
   couponsTable, type InsertOrder, type InsertOrderItem,
 } from "@workspace/db";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { requireAuth, isAdminEmail, type AuthenticatedRequest } from "../middlewares/authMiddleware.js";
 
@@ -66,6 +66,27 @@ const ALLOWED_STATUS_TRANSITIONS: Record<string, readonly string[]> = {
 async function attachItems(order: typeof ordersTable.$inferSelect) {
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id));
   return { ...order, items };
+}
+
+async function attachItemsToOrders(orders: (typeof ordersTable.$inferSelect)[]) {
+  if (orders.length === 0) return orders.map((order) => ({ ...order, items: [] }));
+
+  const items = await db
+    .select()
+    .from(orderItemsTable)
+    .where(inArray(orderItemsTable.orderId, orders.map((order) => order.id)));
+  const itemsByOrder = new Map<number, typeof items>();
+
+  for (const item of items) {
+    const existing = itemsByOrder.get(item.orderId) ?? [];
+    existing.push(item);
+    itemsByOrder.set(item.orderId, existing);
+  }
+
+  return orders.map((order) => ({
+    ...order,
+    items: itemsByOrder.get(order.id) ?? [],
+  }));
 }
 
 // ── GET /api/orders/next-id ───────────────────────────────────────────────────
@@ -167,13 +188,14 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res: Response): P
         res.status(403).json({ error: "Forbidden" });
         return;
       }
-    } else if (!admin) {
-      res.status(403).json({ error: "Forbidden: admin access required" });
-      return;
     }
 
     const conds = [];
-    if (customerId) conds.push(eq(ordersTable.customerId, String(customerId)));
+    if (admin) {
+      if (customerId) conds.push(eq(ordersTable.customerId, String(customerId)));
+    } else {
+      conds.push(eq(ordersTable.customerId, req.firebaseUser!.uid));
+    }
     if (status) conds.push(eq(ordersTable.status, String(status)));
     const where = conds.length ? and(...conds) : undefined;
 
@@ -185,7 +207,7 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res: Response): P
       .limit(limitVal)
       .offset(offsetVal);
 
-    res.json(orders);
+    res.json(await attachItemsToOrders(orders));
   } catch (err) {
     logger.error({ err }, "GET /orders failed");
     res.status(500).json({ error: "Failed to fetch orders" });
@@ -272,7 +294,7 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
         const quantity = item.quantity;
         if (!itemId || !Number.isInteger(quantity) || (quantity as number) <= 0) throw new Error("INVALID_ITEM");
 
-        let product: { id: number; name: string; status: string; sellingPrice: string | null; stockStatus: string; stockQty: number; prescriptionRequired?: boolean; categoryId?: number | null } | undefined;
+        let product: { id: number; name: string; status: string; sellingPrice: string | null; stockStatus: string; stockQty: number; prescriptionRequired?: boolean; categoryId?: number | null; imageUrl?: string | null } | undefined;
         let kind: "medicine" | "general" | "vet" = "medicine";
         if (/^\d+$/.test(itemId)) {
           const [row] = await tx.select().from(medicinesTable).where(eq(medicinesTable.id, Number(itemId)));
@@ -301,7 +323,7 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
         requiresPrescription ||= product.prescriptionRequired === true;
         checkedItems.push({
           orderId: 0, medicineId: itemId, medicineName: product.name,
-          categoryName: null, brandName: null, quantity: quantity as number,
+          categoryName: null, brandName: null, imageUrl: product.imageUrl ?? null, quantity: quantity as number,
           unitPrice: unitPrice.toFixed(2), totalPrice: totalPrice.toFixed(2),
           prescriptionRequired: product.prescriptionRequired === true,
         });

@@ -82,6 +82,7 @@ export const orderItemsTable = pgTable("order_items", {
   medicineName: text("medicine_name").notNull(),
   categoryName: text("category_name"),
   brandName: text("brand_name"),
+  imageUrl: text("image_url"),
   quantity: integer("quantity").notNull(),
   unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),

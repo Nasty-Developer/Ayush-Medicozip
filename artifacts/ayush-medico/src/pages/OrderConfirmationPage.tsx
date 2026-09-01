@@ -6,6 +6,7 @@ import { useRoute, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock3, Package, Phone, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { subscribeToOrder, type Order } from "@/lib/orderService";
+import { InvoiceActions } from "@/components/customer/Invoice";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -152,6 +153,19 @@ export default function OrderConfirmationPage() {
           >
             <Package size={16} /> Track My Order <ArrowRight size={14} />
           </button>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex-1">
+              <InvoiceActions order={order} />
+            </div>
+            <button
+              onClick={() => navigate("/orders")}
+              className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-2xl border
+                         border-border text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors"
+            >
+              View My Orders <ArrowRight size={14} />
+            </button>
+          </div>
 
           <a
             href="tel:+919833273838"

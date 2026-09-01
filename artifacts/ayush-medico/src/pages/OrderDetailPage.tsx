@@ -9,7 +9,8 @@ import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Package, MapPin, CreditCard, Truck, AlertCircle, Loader2,
-  ChevronLeft, CheckCircle2, Clock, XCircle, PhoneCall,
+  ChevronLeft, CheckCircle2, Clock, XCircle, PhoneCall, UserRound,
+  FileText, BadgeCheck,
 } from "lucide-react";
 import { subscribeToOrder, updateOrderStatus, type Order } from "@/lib/orderService";
 import {
@@ -26,6 +27,7 @@ import {
   reportRazorpayFailure,
 } from "@/lib/paymentService";
 import { loadRazorpayScript, normalizePhone, type RazorpaySuccessResponse } from "@/lib/razorpayCheckout";
+import { InvoiceActions } from "@/components/customer/Invoice";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -200,7 +202,10 @@ export default function OrderDetailPage() {
               </p>
             )}
           </div>
-          <StatusBadge status={order.status} />
+          <div className="flex flex-wrap items-center gap-2">
+            <InvoiceActions order={order} />
+            <StatusBadge status={order.status} />
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -263,6 +268,20 @@ export default function OrderDetailPage() {
             </div>
           )}
 
+          {/* Customer */}
+          <div className="p-5 rounded-2xl border border-border bg-card">
+            <h2 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
+              <UserRound size={14} className="text-primary" /> Customer
+            </h2>
+            <div className="grid gap-1 text-sm sm:grid-cols-2">
+              <div>
+                <p className="font-semibold text-foreground">{order.customerName}</p>
+                <p className="text-xs text-muted-foreground">{order.customerEmail || "Email not provided"}</p>
+              </div>
+              <p className="text-xs text-muted-foreground sm:text-right">{order.customerPhone}</p>
+            </div>
+          </div>
+
           {/* Items */}
           <div className="p-5 rounded-2xl border border-border bg-card">
             <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
@@ -271,10 +290,19 @@ export default function OrderDetailPage() {
             <div className="space-y-2">
               {order.items.map((item, i) => (
                 <div key={i} className="flex justify-between items-center text-sm py-2 border-b border-border/60 last:border-0">
-                  <div>
-                    <p className="font-medium text-foreground">{item.medicineName}</p>
-                    {item.brandName && <p className="text-xs text-muted-foreground">{item.brandName}</p>}
-                    <p className="text-xs text-muted-foreground">Qty: {item.quantity} × ₹{item.unitPrice}</p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-primary/60">
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <Package size={17} />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">{item.medicineName}</p>
+                      {item.brandName && <p className="text-xs text-muted-foreground">{item.brandName}</p>}
+                      <p className="text-xs text-muted-foreground">Qty: {item.quantity} × ₹{item.unitPrice}</p>
+                    </div>
                   </div>
                   <p className="font-bold text-foreground">₹{item.totalPrice.toLocaleString("en-IN")}</p>
                 </div>
@@ -306,6 +334,46 @@ export default function OrderDetailPage() {
                 <p className="text-muted-foreground">{order.address.mobileNumber}</p>
               </div>
             )}
+          </div>
+
+          {/* Prescription */}
+          <div className="p-5 rounded-2xl border border-border bg-card">
+            <h2 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
+              <FileText size={14} className="text-primary" /> Prescription
+            </h2>
+            {!order.prescription.required ? (
+              <p className="text-sm text-muted-foreground">No prescription was required for this order.</p>
+            ) : (
+              <div className="flex items-start gap-2">
+                <BadgeCheck size={17} className={order.prescription.verified ? "text-emerald-600" : "text-amber-600"} />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {order.prescription.verified ? "Verified by pharmacist" : order.prescription.url ? "Pending pharmacist review" : "Prescription not uploaded"}
+                  </p>
+                  <p className="mt-0.5 text-xs capitalize text-muted-foreground">
+                    {order.prescription.status ?? (order.prescription.verified ? "approved" : "pending")}
+                    {order.prescription.rejectionReason ? ` · ${order.prescription.rejectionReason}` : ""}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Delivery status */}
+          <div className="p-5 rounded-2xl border border-border bg-card">
+            <h2 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
+              <Truck size={14} className="text-primary" /> Delivery status
+            </h2>
+            <div className="grid gap-1 text-sm sm:grid-cols-2">
+              <div>
+                <p className="font-semibold capitalize text-foreground">{order.delivery.status.replaceAll("-", " ")}</p>
+                {order.delivery.partnerName && <p className="text-xs text-muted-foreground">Partner: {order.delivery.partnerName}</p>}
+              </div>
+              <div className="sm:text-right">
+                {order.delivery.trackingId && <p className="font-mono text-xs text-foreground">Tracking {order.delivery.trackingId}</p>}
+                {order.delivery.partnerPhone && <p className="text-xs text-muted-foreground">{order.delivery.partnerPhone}</p>}
+              </div>
+            </div>
           </div>
 
           {/* Payment */}
