@@ -1,0 +1,268 @@
+IMPORTANT: Perform a complete end-to-end functionality audit and FIX the following Ayush Medico issues. Do not just change the UI or add fake fallback data. Trace each feature through the actual frontend → API → database → customer/admin UI flow and fix the real cause.
+
+CURRENT PROBLEMS:
+
+1. SPECIAL MEDICINES ARE NOT WORKING
+- Special Medicines added/managed from the Admin Panel are not appearing or functioning correctly on the customer website.
+- Verify the Admin Panel create/update/delete flow.
+- Verify the API routes and database persistence.
+- Verify the customer Special Medicines page actually fetches the current database records.
+- Verify images, names, descriptions, prices, prescription requirements, stock/status, and ordering actions.
+- Do NOT use hardcoded/sample medicines as a workaround.
+
+2. NEW ARRIVALS ARE NOT WORKING
+- New Arrivals added from the Admin Panel are not reliably appearing on the customer side.
+- Trace:
+  Admin creates/updates product
+  → API
+  → database
+  → customer New Arrivals query
+  → rendered product card.
+- Fix any incorrect category/filter/status/query logic.
+- Make sure newly created products actually appear without requiring a manual code change.
+- Verify product images and product details load correctly.
+
+3. ADMIN-ADDED PRODUCTS MUST WORK EVERYWHERE
+Audit the complete product pipeline for:
+- General medicines/products
+- Special Medicines
+- New Arrivals
+- Featured medicines/products
+- Any other customer-facing product sections
+
+When an admin adds or edits a product, the customer website must receive the real database record.
+
+Check for:
+- wrong API endpoints
+- wrong database queries
+- incorrect category names
+- stale caching
+- frontend filtering bugs
+- missing product IDs
+- image URL/storage problems
+- inactive/hidden status being applied incorrectly
+- mismatched field names between frontend/backend/database
+- API response parsing errors.
+
+4. INQUIRY BUTTONS ARE NOT WORKING
+Fix the customer Inquiry flow completely.
+
+When a customer submits an inquiry:
+- form must open correctly
+- form must not get permanently stuck in an aside/modal
+- back/close buttons must work
+- validation must work
+- submission must reach the backend
+- inquiry must be saved in the database
+- admin must be able to see it in the Admin Panel
+- customer should receive a clear success state after successful submission
+- errors must be displayed clearly.
+
+Do not silently swallow API errors.
+
+5. REQUEST MEDICINE IS NOT WORKING
+Fix the complete Request Medicine flow.
+
+The "Request Medicine" button must:
+- open the request interface correctly
+- allow the customer to enter the required information
+- allow prescription upload where required
+- submit successfully
+- save the request in the backend/database
+- make the request visible to the admin
+- allow the admin to review/process it
+- show a proper success/error state to the customer.
+
+IMPORTANT:
+The request interface must be closable.
+Do not leave the customer trapped in an aside/drawer.
+Fix the existing UI state management rather than adding another overlapping modal.
+
+6. DELIVERY / ORDER REQUEST FLOW
+Audit the delivery/order-request functionality too.
+
+At this stage there is NO automatic delivery API integration yet.
+
+Therefore:
+- DO NOT invent courier API calls.
+- DO NOT show fake delivery booking success.
+- DO NOT calculate or permanently charge a delivery fee on the customer checkout yet.
+
+The intended future flow is:
+
+Customer places an order/request
+→ order is saved
+→ Admin reviews the order
+→ Admin verifies prescription when required
+→ Admin determines the actual delivery charge manually
+→ Admin sends a payment request/amount to customer
+→ customer completes payment through the configured payment system
+→ order proceeds to delivery/fulfillment.
+
+Keep the architecture ready for future delivery API integration, but do not pretend it exists.
+
+7. PRESCRIPTION RULES
+Verify the existing prescription logic.
+
+Prescription-required medicines must require the appropriate prescription/request process.
+
+Generic medicines that require prescription verification must be handled by the admin before the order proceeds.
+
+Do not bypass prescription verification.
+
+8. CART / DRAWER BUGS
+Audit all customer drawers/side panels:
+- Cart
+- Request Medicine
+- Inquiry
+- any product/order drawer
+
+Every drawer must:
+- open
+- close using X
+- close using Back where applicable
+- not block the entire page
+- not leave an invisible overlay
+- restore page scrolling correctly
+- work on desktop and mobile.
+
+There has already been a bug where the Cart opens but cannot be closed. Fix the underlying state/overlay problem, not just one specific button.
+
+9. PRODUCT DETAILS
+When clicking a medicine/product:
+- product detail page/modal must open
+- correct product data must load
+- correct image must load
+- price and details must display
+- ordering/call/request action must match the product's actual configuration.
+
+Do not display a broken image or empty detail page when the product exists in the database.
+
+10. ORDER BUTTON LOGIC
+Audit product ordering buttons.
+
+For products that can be directly ordered:
+- show "Place Order"/appropriate order action.
+
+For products that specifically require calling/inquiry:
+- show the appropriate call/inquiry action.
+
+Do not force every medicine into the same ordering method.
+
+Remove/avoid duplicate or contradictory buttons.
+
+11. CUSTOMER AUTHENTICATION
+Do not break the authentication system while fixing these features.
+
+Existing:
+- Email/password sign-in
+- Email/password sign-up
+- Google sign-in
+- Sign-out
+
+must continue working.
+
+The deployed production environment must use the same intended Firebase project/configuration as the working Replit environment.
+
+Do not hard-code credentials.
+Do not create fake users.
+Do not bypass Firebase authentication.
+
+12. DATA ISOLATION / CUSTOMER ADDRESSES
+Customer address data must NOT accidentally become globally visible to other customers.
+
+A customer's saved address should be associated with that customer's account/session.
+
+Other customers must never see another customer's address.
+
+The Admin Panel may see the address when it is legitimately attached to that customer's order/request.
+
+Do not expose customer address data through public APIs.
+
+13. ERROR HANDLING
+This is critical.
+
+Do not silently catch errors and continue as if the operation succeeded.
+
+For every failing API call:
+- log the actual backend error
+- return an appropriate HTTP status
+- show a useful customer-facing error
+- show enough diagnostic information in development logs to identify the real cause.
+
+Check browser Console and Network requests while testing.
+
+14. DO NOT USE MOCK DATA AS A FIX
+Do not solve any of these issues by:
+- hardcoding products
+- hardcoding New Arrivals
+- hardcoding Special Medicines
+- storing data only in localStorage when it should be server/database data
+- fake successful API responses
+- fake order creation
+- fake inquiry submission.
+
+Everything must use the existing real backend/database architecture.
+
+15. END-TO-END TESTING
+After making the fixes, actually test these flows:
+
+A. Admin:
+Create a test product → save → verify database/API → customer sees it.
+
+B. Special Medicine:
+Create/update Special Medicine → customer Special Medicines section → open details → verify image/details → test appropriate action.
+
+C. New Arrival:
+Create/update New Arrival → customer New Arrivals section → verify it appears.
+
+D. Inquiry:
+Customer opens Inquiry → submits → verify backend/database → verify Admin Panel → verify success state.
+
+E. Request Medicine:
+Customer opens Request Medicine → fills form → submits → verify backend/database → verify Admin Panel → verify success state.
+
+F. Cart:
+Open cart → add item → open cart → close cart → reopen → close again.
+No stuck overlay.
+
+G. Product:
+Open product → details load → image loads → appropriate order/call/request action works.
+
+H. Authentication:
+Sign in → authenticated state updates → refresh → user remains authenticated.
+Sign out → Firebase signOut() → auth state clears → customer returns to signed-out state.
+
+16. PRODUCTION CHECK
+Do not assume that because something works in Replit it works on Render.
+
+Check:
+- production environment variables
+- API base URL
+- frontend API requests
+- CORS
+- Firebase configuration
+- database connection
+- image/storage URLs
+- production routing
+- authentication redirect/authorized domains.
+
+Compare the working Replit environment with the deployed production environment and identify any meaningful difference.
+
+IMPORTANT:
+Do not rewrite the entire application.
+Do not randomly replace working Firebase configuration.
+Do not delete existing working functionality.
+Do not create duplicate implementations.
+
+First inspect the existing code and architecture, identify the root causes, then make targeted fixes.
+
+At the end, give me a concise report containing:
+1. What was actually broken.
+2. Which files/components/routes were changed.
+3. What database/API issue was found.
+4. What was fixed.
+5. Which end-to-end flows were tested successfully.
+6. Any remaining issue that genuinely requires an external service/API credential.
+
+The goal is a REAL working application, not a UI that merely looks functional.

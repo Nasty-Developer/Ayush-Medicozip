@@ -1,0 +1,114 @@
+URGENT — FIX THE CART CLOSE BUG IMMEDIATELY.
+
+I have now tested the Replit preview itself and the cart has the SAME problem there.
+
+CURRENT PROBLEM:
+The "My Cart" drawer opens, but once it opens, it does not close properly.
+
+This is NOT a Render-only issue.
+The problem exists in the actual Replit application code.
+
+DO NOT focus on Render.
+DO NOT redesign anything.
+DO NOT modify authentication.
+DO NOT modify payments.
+DO NOT modify checkout.
+DO NOT modify product pages.
+
+ONLY FIX THE CART OPEN/CLOSE BEHAVIOR.
+
+EXPECTED:
+
+Cart icon
+→ Cart drawer opens
+
+X / Close button
+→ Cart drawer closes immediately
+
+Click outside/backdrop
+→ Cart drawer closes
+
+Press Escape
+→ Cart drawer closes
+
+IMPORTANT:
+Closing the cart must NOT:
+- clear cart contents
+- remove products
+- change quantities
+- reset totals
+- navigate to Home
+- navigate to another page
+- reopen the cart
+
+CHECK THE ROOT CAUSE.
+
+Inspect:
+- cart open state
+- cart drawer state
+- cart context/store
+- drawer component
+- close button handler
+- backdrop handler
+- event bubbling/propagation
+- parent click handlers
+- React useEffect hooks
+- state synchronization
+- route/navigation effects
+- anything that automatically sets the cart back to OPEN
+
+There must be ONE reliable source of truth for the cart drawer open/closed state.
+
+Make sure:
+
+isCartOpen = true
+→ drawer visible
+
+setIsCartOpen(false)
+→ drawer completely hidden
+
+and make sure the close event does not bubble to the cart trigger and reopen it.
+
+DO NOT create another cart system.
+
+DO NOT just change the button visually.
+
+Fix the actual state-management bug.
+
+TEST IT IN THE REPLIT PREVIEW BEFORE FINISHING:
+
+1. Open cart
+2. Click X
+3. Cart closes
+
+4. Open cart
+5. Click outside
+6. Cart closes
+
+7. Open cart
+8. Press Escape
+9. Cart closes
+
+10. Add a product
+11. Open cart
+12. Change quantity
+13. Close cart
+14. Reopen cart
+15. Verify the product and quantity are still there
+
+16. Close cart
+17. Verify the current page has not changed
+
+FINAL REQUIREMENT:
+
+The cart must be completely closable in the Replit preview.
+
+OPEN ✅
+X CLOSE ✅
+BACKDROP CLOSE ✅
+ESC CLOSE ✅
+CART DATA PRESERVED ✅
+NO REDIRECT ✅
+NO REOPEN ✅
+
+Do not make any unrelated changes.

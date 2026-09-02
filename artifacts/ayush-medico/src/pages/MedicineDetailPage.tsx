@@ -1,0 +1,303 @@
+/**
+ * MedicineDetailPage — Public route at /medicine/:id
+ *
+ * Shows full details for a single medicine fetched from the PostgreSQL API.
+ * `:id` is the numeric database ID returned by GET /api/medicines.
+ */
+
+import { useEffect, useState } from "react";
+import { useParams, Link, useLocation } from "wouter";
+import { motion } from "framer-motion";
+import {
+  ArrowLeft, ShoppingCart, Plus, Minus, Tag,
+  PackageCheck, PackageX, Clock, ShieldCheck, Package, PackageSearch,
+} from "lucide-react";
+import { useCart } from "@/context/CartContext";
+import { useRequestMedicine } from "@/context/RequestMedicineContext";
+import type { CategoryMedicine } from "@/hooks/useMedicinesByCategory";
+import { StockBadge, getStockStatus, MedicineSkeleton } from "@/components/medicines/MedicineCard";
+import { resolveMedicineImage } from "@/lib/medicineImage";
+
+/** Navigate back — uses browser history when available, falls back to /categories. */
+function GoBack({ children, className, primary, fallback = "/categories" }: { children: React.ReactNode; className?: string; primary?: boolean; fallback?: string }) {
+  const [, navigate] = useLocation();
+  const handleClick = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigate(fallback);
+    }
+  };
+  if (primary) {
+    return (
+      <button
+        onClick={handleClick}
+        className={className}
+      >
+        {children}
+      </button>
+    );
+  }
+  return (
+    <button onClick={handleClick} className={className}>
+      {children}
+    </button>
+  );
+}
+
+export default function MedicineDetailPage({ kind = "medicine" }: { kind?: "medicine" | "general" | "vet" }) {
+  const params = useParams<{ id: string }>();
+  const id = params.id ?? "";
+
+  const [medicine, setMedicine] = useState<CategoryMedicine | null>(null);
+  const [loading,  setLoading]  = useState(true);
+  const [imgErr,   setImgErr]   = useState(false);
+  const [notFound, setNotFound] = useState(false);
+
+  const { addItem, items, updateQuantity, removeItem } = useCart();
+  const { triggerRequest } = useRequestMedicine();
+
+  useEffect(() => {
+    setImgErr(false);
+    setMedicine(null);
+    if (!id) { setLoading(false); setNotFound(true); return; }
+    setLoading(true);
+    setNotFound(false);
+
+    const endpoint = kind === "general" ? "general-products" : kind === "vet" ? "vet-medicines" : "medicines";
+    fetch(`/api/${endpoint}/${id}`)
+      .then(async (r) => {
+        if (r.status === 404) { setNotFound(true); return; }
+        if (!r.ok) throw new Error(`API error ${r.status}`);
+        const data = await r.json() as CategoryMedicine;
+        setMedicine(data);
+      })
+      .catch(console.warn)
+      .finally(() => setLoading(false));
+  }, [id, kind]);
+
+  if (loading) {
+    return (
+      <main className="max-w-2xl mx-auto px-4 pt-28 pb-12">
+        <div className="h-64 rounded-2xl bg-muted animate-pulse mb-6" />
+        <MedicineSkeleton />
+      </main>
+    );
+  }
+
+  if (notFound || !medicine) {
+    return (
+      <main className="max-w-2xl mx-auto px-4 pt-32 pb-16 text-center">
+        <Package size={48} className="mx-auto text-muted-foreground mb-4" />
+        <h1 className="text-xl font-bold mb-2">Medicine not found</h1>
+        <p className="text-muted-foreground mb-6">
+          This medicine may have been removed or is no longer available.
+        </p>
+        <GoBack
+          primary
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
+                     bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+        >
+          <ArrowLeft size={15} /> Browse Medicines
+        </GoBack>
+      </main>
+    );
+  }
+
+  const status      = getStockStatus(medicine);
+  const maxStock    = medicine.stockQty ?? medicine.stockQuantity;
+  const cartId       = kind === "general" ? `general-${medicine.id}` : kind === "vet" ? `vet-${medicine.id}` : medicine.id;
+    const cartItem    = items.find((i) => i.medicineId === cartId);
+  const inCart      = !!cartItem;
+  const canAdd      = (status === "in_stock" || status === "low_stock") && !!medicine.sellingPrice;
+  const isUnavailable = status === "out_of_stock" || status === "coming_soon";
+
+  const handleAdd = () => {
+    if (!canAdd) return;
+    addItem({
+       medicineId: cartId,
+      medicineName: medicine.name,
+      categoryName: medicine.categoryName ?? undefined,
+      categoryImageUrl: medicine.categoryImageUrl ?? undefined,
+      brandName: medicine.brand ?? undefined,
+       unitPrice: Number(medicine.sellingPrice),
+       prescriptionRequired: kind === "vet" ? Boolean(medicine.prescriptionRequired) : false,
+      imageUrl: medicine.imageUrl ?? undefined,
+      maxStock,
+    });
+  };
+
+  const handleDecrement = () => {
+    if (!cartItem) return;
+    cartItem.quantity <= 1 ? removeItem(cartId) : updateQuantity(cartId, cartItem.quantity - 1);
+  };
+
+  const handleIncrement = () => {
+    if (!cartItem) return;
+    if (maxStock && cartItem.quantity >= maxStock) return;
+    updateQuantity(cartId, cartItem.quantity + 1);
+  };
+
+  return (
+    <main className="max-w-2xl mx-auto px-4 pt-28 pb-12">
+      {/* Back link */}
+      <GoBack
+        fallback={kind === "general" ? "/general-products" : kind === "vet" ? "/vet-medicines" : "/categories"}
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground
+                   hover:text-primary transition-colors mb-6"
+      >
+          <ArrowLeft size={14} /> Back to Browse
+      </GoBack>
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="bg-card border border-border rounded-2xl overflow-hidden shadow-md"
+      >
+        {/* Image */}
+        <div className="relative h-56 sm:h-72 bg-gradient-to-br from-primary/5 to-secondary/5 flex items-center justify-center">
+          <img
+            src={imgErr
+              ? resolveMedicineImage(null, null, medicine.categoryName)
+              : resolveMedicineImage(medicine.imageUrl, medicine.categoryImageUrl, medicine.categoryName)}
+            alt={medicine.name}
+            className="w-full h-full object-cover"
+            onError={() => setImgErr(true)}
+          />
+          <div className="absolute top-3 right-3">
+            <StockBadge status={status} />
+          </div>
+          {kind === "vet" && medicine.prescriptionRequired && (
+            <div className="absolute top-3 left-3">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                               text-[10px] font-bold bg-amber-500/90 text-white">
+                <ShieldCheck size={9} /> Prescription Required
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Details */}
+        <div className="p-5 sm:p-7 space-y-4">
+          {/* Brand + category */}
+          <div className="flex flex-wrap items-center gap-2">
+            {medicine.brand && (
+              <span className="text-xs font-bold text-primary uppercase tracking-wider">
+                {medicine.brand}
+              </span>
+            )}
+            {medicine.categoryName && (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground
+                               bg-muted px-2 py-0.5 rounded-full">
+                <Tag size={9} /> {medicine.categoryName}
+              </span>
+            )}
+          </div>
+
+          {/* Name */}
+          <h1
+            className="text-2xl font-bold text-foreground leading-tight"
+            style={{ fontFamily: "'Poppins', sans-serif" }}
+          >
+            {medicine.name}
+          </h1>
+
+          {/* Description */}
+          {medicine.description && (
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {medicine.description}
+            </p>
+          )}
+
+          {/* Pricing */}
+          {medicine.sellingPrice ? (
+            <div className="flex items-center gap-3 flex-wrap py-1">
+              <span className="text-2xl font-bold text-foreground">₹{medicine.sellingPrice}</span>
+              {medicine.mrp && Number(medicine.mrp) > Number(medicine.sellingPrice) && (
+                <span className="text-base text-muted-foreground line-through">₹{medicine.mrp}</span>
+              )}
+              {medicine.discount ? (
+                <span className="text-sm font-bold text-secondary bg-secondary/10 px-2 py-1 rounded-full">
+                  {medicine.discount}% OFF
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Stock info */}
+          {status === "low_stock" && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+              🟡 Limited availability — order soon
+            </p>
+          )}
+
+          {/* Pack info */}
+          {medicine.packInfo && (
+            <p className="text-xs text-muted-foreground">
+              📦 {medicine.packInfo}
+            </p>
+          )}
+
+          {/* Add to Cart */}
+          <div className="pt-2">
+            {inCart ? (
+              <div className="flex items-center gap-0 rounded-xl border border-primary/40
+                              bg-primary/5 overflow-hidden w-full sm:w-56">
+                <button
+                  onClick={handleDecrement}
+                  className="flex-1 flex items-center justify-center h-11
+                             hover:bg-primary/10 transition-colors text-primary"
+                  aria-label="Decrease quantity"
+                >
+                  <Minus size={16} />
+                </button>
+                <span className="text-base font-bold text-primary min-w-[48px] text-center">
+                  {cartItem.quantity}
+                </span>
+                <button
+                  onClick={handleIncrement}
+                  disabled={!!(maxStock && cartItem.quantity >= maxStock)}
+                  className="flex-1 flex items-center justify-center h-11
+                             hover:bg-primary/10 transition-colors text-primary
+                             disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Increase quantity"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            ) : canAdd ? (
+              <button
+                onClick={handleAdd}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2
+                           px-8 h-11 rounded-xl text-sm font-semibold bg-primary text-white
+                           hover:bg-primary/90 active:scale-[0.98] transition-all duration-200
+                           shadow-sm shadow-primary/20"
+              >
+                <ShoppingCart size={16} /> Add to Cart
+              </button>
+            ) : isUnavailable ? (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {status === "out_of_stock" ? "Currently unavailable" : "Coming soon"}
+                </p>
+                <button
+                   onClick={() => triggerRequest(medicine.name, medicine.brand ?? undefined, medicine.categoryName ?? (kind === "vet" ? "Veterinary Medicine" : "General Product"))}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2
+                             px-8 h-11 rounded-xl text-sm font-semibold border border-dashed
+                             border-muted-foreground/50 bg-muted/30 text-muted-foreground
+                             hover:bg-muted/60 hover:text-foreground transition-all duration-200"
+                >
+                  <PackageSearch size={15} /> Request this Medicine
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </motion.div>
+    </main>
+  );
+}
+
+// Lucide icons referenced but not used directly via JSX — kept for completeness
+void PackageCheck; void PackageX; void Clock;
