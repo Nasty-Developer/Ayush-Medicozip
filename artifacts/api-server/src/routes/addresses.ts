@@ -84,7 +84,7 @@ router.put("/:id", requireAuth, async (req: AuthenticatedRequest, res: Response)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
     const userId = await resolveUserId(req);
     const raw = req.body as Record<string, unknown>;
-    const allowed = ["label", "fullName", "mobileNumber", "houseNumber", "buildingName", "street", "area", "landmark", "city", "state", "pincode", "isDefault"] as const;
+    const allowed = ["label", "fullName", "mobileNumber", "alternateNumber", "houseNumber", "buildingName", "street", "area", "landmark", "city", "state", "pincode", "addressType", "isDefault", "lat", "lng"] as const;
     const body = Object.fromEntries(Object.entries(raw).filter(([key]) => (allowed as readonly string[]).includes(key))) as Partial<InsertAddress>;
     if (Object.keys(body).length === 0) { res.status(400).json({ error: "No valid address fields supplied" }); return; }
 
@@ -117,6 +117,9 @@ router.patch("/:id/default", requireAuth, async (req: AuthenticatedRequest, res:
     const userId = await resolveUserId(req);
 
     await db.transaction(async (tx: Tx) => {
+      const [owned] = await tx.select({ id: addressesTable.id }).from(addressesTable)
+        .where(and(eq(addressesTable.id, id), eq(addressesTable.userId, userId)));
+      if (!owned) throw new Error("ADDRESS_NOT_FOUND");
       await tx.update(addressesTable).set({ isDefault: false, updatedAt: new Date() }).where(eq(addressesTable.userId, userId));
       await tx
         .update(addressesTable)
@@ -126,6 +129,7 @@ router.patch("/:id/default", requireAuth, async (req: AuthenticatedRequest, res:
 
     res.json(await sortedAddresses(userId));
   } catch (err) {
+    if (err instanceof Error && err.message === "ADDRESS_NOT_FOUND") { res.status(404).json({ error: "Address not found" }); return; }
     logger.error({ err }, "PATCH /addresses/:id/default failed");
     res.status(500).json({ error: "Failed to set default address" });
   }
@@ -138,7 +142,7 @@ router.delete("/:id", requireAuth, async (req: AuthenticatedRequest, res: Respon
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
     const userId = await resolveUserId(req);
     await db.delete(addressesTable).where(and(eq(addressesTable.id, id), eq(addressesTable.userId, userId)));
-    res.json({ success: true });
+    res.json({ success: true, addresses: await sortedAddresses(userId) });
   } catch (err) {
     logger.error({ err }, "DELETE /addresses/:id failed");
     res.status(500).json({ error: "Failed to delete address" });

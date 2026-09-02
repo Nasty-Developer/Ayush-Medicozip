@@ -66,6 +66,7 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
   const [pincodeError, setPincodeError] = useState("");
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
+  const [saveError, setSaveError] = useState("");
 
   const set = (field: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -98,6 +99,7 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
     }
 
     setSaving(true);
+    setSaveError("");
     try {
       const input: CreateAddressInput = { ...form, isDefault };
       if (existing) {
@@ -109,6 +111,7 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
       }
     } catch (err) {
       console.error("AddressForm error:", err);
+      setSaveError(err instanceof Error ? err.message : "Could not save this address. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -220,6 +223,11 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
       </label>
 
       {/* Actions */}
+      {saveError && (
+        <p role="alert" className="text-sm text-destructive rounded-xl bg-destructive/10 border border-destructive/20 px-3 py-2">
+          {saveError}
+        </p>
+      )}
       <div className="flex gap-3 pt-1">
         <button
           type="button"

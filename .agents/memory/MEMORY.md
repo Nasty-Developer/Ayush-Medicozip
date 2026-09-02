@@ -1,2 +1,3 @@
 - [Firebase on Render](firebase-render-deployment.md) — browser config is build-time and the exact production hostname must be Firebase-authorized.
 - [Imported monorepo artifacts](imported-monorepo-artifacts.md) — register imported runnable folders separately from their source code, then refresh dependencies, declarations, and schema.
+- [Local Preview service-worker cache](service-worker-preview-cache.md) — stale PWA workers can serve mixed React/Vite modules and mimic an application dependency bug.

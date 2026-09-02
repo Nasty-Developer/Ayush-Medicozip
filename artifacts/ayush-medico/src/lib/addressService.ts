@@ -1,7 +1,8 @@
-// Client-only saved addresses.
-// Addresses are deliberately scoped to the authenticated Firebase UID and are
-// never sent to the API. Orders receive a plain snapshot of the selected data.
+// PostgreSQL-backed saved addresses.
+// The uid argument is retained at the call sites for auth-scoped semantics;
+// the API derives the actual owner from the Firebase ID token.
 
+import { authFetchJson } from "./apiAuth";
 import type { Timestamp } from "./orderService";
 
 export type AddressType = "home" | "work" | "other";
@@ -29,41 +30,47 @@ export type CustomerAddress = {
 
 export type CreateAddressInput = Omit<CustomerAddress, "id" | "createdAt" | "updatedAt">;
 
-const STORAGE_PREFIX = "ayush-medico-saved-addresses:";
 const listeners = new Map<string, Set<(addresses: CustomerAddress[]) => void>>();
 
-function storageKey(uid: string) {
-  return `${STORAGE_PREFIX}${encodeURIComponent(uid)}`;
+function toTimestamp(value: unknown): Timestamp | undefined {
+  if (typeof value !== "string" && !(value instanceof Date)) return undefined;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return { seconds: Math.floor(date.getTime() / 1000) };
 }
 
-function nowTimestamp(): Timestamp {
-  return { seconds: Math.floor(Date.now() / 1000) };
+function normalizeAddress(row: Record<string, unknown>): CustomerAddress {
+  const addressType = row.addressType;
+  return {
+    id: String(row.id),
+    fullName: String(row.fullName ?? ""),
+    mobileNumber: String(row.mobileNumber ?? ""),
+    alternateNumber: row.alternateNumber ? String(row.alternateNumber) : undefined,
+    houseNumber: String(row.houseNumber ?? ""),
+    buildingName: row.buildingName ? String(row.buildingName) : undefined,
+    street: String(row.street ?? ""),
+    area: row.area ? String(row.area) : undefined,
+    landmark: row.landmark ? String(row.landmark) : undefined,
+    city: String(row.city ?? "Mumbai"),
+    state: String(row.state ?? "Maharashtra"),
+    pincode: String(row.pincode ?? ""),
+    addressType: addressType === "work" || addressType === "other" ? addressType : "home",
+    isDefault: Boolean(row.isDefault),
+    lat: row.lat == null ? null : Number(row.lat),
+    lng: row.lng == null ? null : Number(row.lng),
+    createdAt: toTimestamp(row.createdAt),
+    updatedAt: toTimestamp(row.updatedAt),
+  };
 }
 
-function readAddresses(uid: string): CustomerAddress[] {
-  if (!uid) return [];
-  try {
-    const raw = localStorage.getItem(storageKey(uid));
-    const value = raw ? JSON.parse(raw) : [];
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
-  }
+function normalizeAddresses(rows: unknown): CustomerAddress[] {
+  return Array.isArray(rows)
+    ? rows.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === "object")).map(normalizeAddress)
+    : [];
 }
 
-function writeAddresses(uid: string, addresses: CustomerAddress[]) {
-  if (!uid) return;
-  try {
-    localStorage.setItem(storageKey(uid), JSON.stringify(addresses));
-  } catch {
-    // Private browsing and quota limits should not block order placement.
-  }
+function notify(uid: string, addresses: CustomerAddress[]) {
   listeners.get(uid)?.forEach((listener) => listener(addresses));
-}
-
-function idForAddress() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  return `address-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 function normalizeInput(input: CreateAddressInput): CreateAddressInput {
@@ -83,26 +90,43 @@ function normalizeInput(input: CreateAddressInput): CreateAddressInput {
   };
 }
 
-function withDefault(addresses: CustomerAddress[], preferredId?: string) {
-  const chosenId = preferredId ?? addresses.find((address) => address.isDefault)?.id ?? addresses[0]?.id;
-  return addresses.map((address) => ({ ...address, isDefault: address.id === chosenId }));
+function normalizePatch(input: Partial<CreateAddressInput>): Partial<CreateAddressInput> {
+  const stringFields = [
+    "fullName", "mobileNumber", "alternateNumber", "houseNumber", "buildingName",
+    "street", "area", "landmark", "city", "state", "pincode",
+  ] as const;
+  return Object.fromEntries(
+    Object.entries(input)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [
+        key,
+        stringFields.includes(key as (typeof stringFields)[number]) && typeof value === "string"
+          ? value.trim()
+          : value,
+      ]),
+  ) as Partial<CreateAddressInput>;
+}
+
+function addressPayload(input: CreateAddressInput | Partial<CreateAddressInput>) {
+  return Object.fromEntries(
+    Object.entries(input).filter(([, value]) => value !== undefined),
+  );
 }
 
 export async function getAddresses(uid: string): Promise<CustomerAddress[]> {
-  return readAddresses(uid);
+  if (!uid) return [];
+  const rows = await authFetchJson<unknown[]>("/api/addresses");
+  return normalizeAddresses(rows);
 }
 
 export async function addAddress(uid: string, input: CreateAddressInput): Promise<string> {
-  const timestamp = nowTimestamp();
-  const address: CustomerAddress = {
-    ...normalizeInput(input),
-    id: idForAddress(),
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
-  const current = readAddresses(uid);
-  writeAddresses(uid, withDefault([...current, address], input.isDefault ? address.id : undefined));
-  return address.id;
+  const normalized = normalizeInput(input);
+  const result = await authFetchJson<{ id: number; addresses: unknown[] }>("/api/addresses", {
+    method: "POST",
+    body: JSON.stringify(addressPayload(normalized)),
+  });
+  notify(uid, normalizeAddresses(result.addresses));
+  return String(result.id);
 }
 
 export async function updateAddress(
@@ -110,31 +134,27 @@ export async function updateAddress(
   addressId: string,
   data: Partial<CreateAddressInput>,
 ): Promise<void> {
-  const current = readAddresses(uid);
-  const existing = current.find((address) => address.id === addressId);
-  if (!existing) throw new Error("Address not found.");
-  const next = {
-    ...existing,
-    ...normalizeInput({ ...existing, ...data }),
-    id: existing.id,
-    updatedAt: nowTimestamp(),
-  };
-  const updated = current.map((address) => (address.id === addressId ? next : address));
-  writeAddresses(uid, data.isDefault ? withDefault(updated, addressId) : updated);
+  const result = await authFetchJson<unknown[]>(`/api/addresses/${encodeURIComponent(addressId)}`, {
+    method: "PUT",
+    body: JSON.stringify(addressPayload(normalizePatch(data))),
+  });
+  notify(uid, normalizeAddresses(result));
 }
 
 export async function deleteAddress(uid: string, addressId: string): Promise<void> {
-  const current = readAddresses(uid);
-  const removed = current.find((address) => address.id === addressId);
-  if (!removed) return;
-  const remaining = current.filter((address) => address.id !== addressId);
-  writeAddresses(uid, removed.isDefault ? withDefault(remaining) : remaining);
+  const result = await authFetchJson<{ success: boolean; addresses: unknown[] }>(
+    `/api/addresses/${encodeURIComponent(addressId)}`,
+    { method: "DELETE" },
+  );
+  notify(uid, normalizeAddresses(result.addresses));
 }
 
 export async function setDefaultAddress(uid: string, addressId: string): Promise<void> {
-  const current = readAddresses(uid);
-  if (!current.some((address) => address.id === addressId)) throw new Error("Address not found.");
-  writeAddresses(uid, withDefault(current, addressId));
+  const result = await authFetchJson<unknown[]>(
+    `/api/addresses/${encodeURIComponent(addressId)}/default`,
+    { method: "PATCH" },
+  );
+  notify(uid, normalizeAddresses(result));
 }
 
 export function subscribeToAddresses(
@@ -146,28 +166,23 @@ export function subscribeToAddresses(
     onData([]);
     return () => undefined;
   }
-  try {
-    onData(readAddresses(uid));
-    const uidListeners = listeners.get(uid) ?? new Set<(addresses: CustomerAddress[]) => void>();
-    uidListeners.add(onData);
-    listeners.set(uid, uidListeners);
 
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== storageKey(uid)) return;
-      try {
-        onData(readAddresses(uid));
-      } catch (error) {
-        onError?.(error instanceof Error ? error : new Error("Could not read saved addresses."));
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => {
-      uidListeners.delete(onData);
-      if (uidListeners.size === 0) listeners.delete(uid);
-      window.removeEventListener("storage", onStorage);
-    };
-  } catch (error) {
-    onError?.(error instanceof Error ? error : new Error("Could not read saved addresses."));
-    return () => undefined;
-  }
+  const uidListeners = listeners.get(uid) ?? new Set<(addresses: CustomerAddress[]) => void>();
+  uidListeners.add(onData);
+  listeners.set(uid, uidListeners);
+  let cancelled = false;
+
+  getAddresses(uid)
+    .then((addresses) => {
+      if (!cancelled) onData(addresses);
+    })
+    .catch((error) => {
+      if (!cancelled) onError?.(error instanceof Error ? error : new Error("Could not fetch saved addresses."));
+    });
+
+  return () => {
+    cancelled = true;
+    uidListeners.delete(onData);
+    if (uidListeners.size === 0) listeners.delete(uid);
+  };
 }
