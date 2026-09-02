@@ -66,6 +66,14 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   if (url.origin !== self.location.origin) return;
 
+  // Never cache development modules or Vite's HMR client/dependency graph.
+  if (
+    url.pathname.startsWith('/node_modules/') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/@vite/') ||
+    url.pathname.startsWith('/@react-refresh')
+  ) return;
+
   // /api/* → always go to the network (no caching of pharmacy data)
   if (url.pathname.startsWith('/api/')) return;
 

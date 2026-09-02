@@ -300,6 +300,30 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // A previous development session may have installed the production PWA
+      // worker. Clear it before Vite modules load to prevent mixed cached deps.
+      (function () {
+        var isLocalPreview = location.hostname === "127.0.0.1" || location.hostname === "localhost";
+        if (!isLocalPreview || !("serviceWorker" in navigator)) return;
+        var marker = "ayush-medico-preview-worker-cleaned";
+        if (sessionStorage.getItem(marker)) return;
+        Promise.all([
+          navigator.serviceWorker.getRegistrations().then(function (registrations) {
+            return Promise.all(registrations.map(function (registration) {
+              return registration.unregister();
+            })).then(function () { return registrations.length > 0; });
+          }),
+          caches.keys().then(function (keys) {
+            return Promise.all(keys.map(function (key) { return caches.delete(key); }))
+              .then(function () { return keys.length > 0; });
+          })
+        ]).then(function (results) {
+          sessionStorage.setItem(marker, "1");
+          if (results.some(Boolean)) location.reload();
+        }).catch(function () {});
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
