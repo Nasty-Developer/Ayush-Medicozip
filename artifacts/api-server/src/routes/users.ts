@@ -3,13 +3,16 @@ import { db } from "@workspace/db";
 import { usersTable, adminUsersTable, type InsertUser, type InsertAdminUser } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
-import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware.js";
+import { requireAuth, requireAdminEmail, isAdminEmail, type AuthenticatedRequest } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
 // Must be registered before /:id to prevent the dynamic segment from capturing it
-router.get("/by-firebase/:uid", requireAuth, async (req: Request, res: Response): Promise<void> => {
+router.get("/by-firebase/:uid", requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
+    if (String(req.params["uid"] ?? "") !== req.firebaseUser?.uid && !isAdminEmail(req.firebaseUser?.email)) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.firebaseUid, String(req.params["uid"] ?? "")));
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
     res.json(user);
@@ -20,10 +23,13 @@ router.get("/by-firebase/:uid", requireAuth, async (req: Request, res: Response)
 });
 
 // Auth-protected: only the authenticated user (or admin) can access
-router.get("/:id", requireAuth, async (req: Request, res: Response): Promise<void> => {
+router.get("/:id", requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, String(req.params["id"] ?? "")));
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    if (user.firebaseUid !== req.firebaseUser?.uid && !isAdminEmail(req.firebaseUser?.email)) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
     res.json(user);
   } catch (err) {
     logger.error({ err }, "Failed to fetch user");
@@ -32,13 +38,13 @@ router.get("/:id", requireAuth, async (req: Request, res: Response): Promise<voi
 });
 
 // Upsert after Firebase sign-in — requires auth + firebaseUid
-router.post("/", requireAuth, async (req: Request, res: Response): Promise<void> => {
+router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const data = req.body as InsertUser;
-    if (!data.email || !data.firebaseUid) {
-      res.status(400).json({ error: "email and firebaseUid are required" });
-      return;
-    }
+    const body = req.body as Partial<InsertUser>;
+    const firebaseUid = req.firebaseUser!.uid;
+    const email = req.firebaseUser!.email;
+    if (!email) { res.status(400).json({ error: "Verified token email is required" }); return; }
+    const data: InsertUser = { firebaseUid, email, displayName: typeof body.displayName === "string" ? body.displayName : null, phone: typeof body.phone === "string" ? body.phone : null };
 
     // Check for email conflict before upserting on firebaseUid
     const [existing] = await db
@@ -67,13 +73,13 @@ router.post("/", requireAuth, async (req: Request, res: Response): Promise<void>
 });
 
 // Admin: sync admin user record after login
-router.post("/admin/sync", requireAuth, requireAdminEmail, async (req: Request, res: Response): Promise<void> => {
+router.post("/admin/sync", requireAuth, requireAdminEmail, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const data = req.body as InsertAdminUser;
-    if (!data.firebaseUid || !data.email) {
-      res.status(400).json({ error: "firebaseUid and email are required" });
-      return;
-    }
+    const body = req.body as Partial<InsertAdminUser>;
+    const firebaseUid = req.firebaseUser!.uid;
+    const email = req.firebaseUser!.email;
+    if (!email) { res.status(400).json({ error: "Verified token email is required" }); return; }
+    const data: InsertAdminUser = { firebaseUid, email, displayName: typeof body.displayName === "string" ? body.displayName : null };
     const [upserted] = await db
       .insert(adminUsersTable)
       .values(data)

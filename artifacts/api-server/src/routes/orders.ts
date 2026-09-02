@@ -148,7 +148,7 @@ router.get("/next-id", requireAuth, async (_req: Request, res: Response): Promis
 // ── GET /api/orders/lookup ─────────────────────────────────────────────────────
 // Public tracking lookup for cart orders. The order ID and mobile number must
 // match the same record; return only the fields needed by the tracking screen.
-router.get("/lookup", async (req: Request, res: Response): Promise<void> => {
+router.get("/lookup", requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const orderId = String(req.query.orderId ?? "").trim().toUpperCase();
     const mobile = String(req.query.mobile ?? "").replace(/\D/g, "").replace(/^91/, "");
@@ -162,6 +162,9 @@ router.get("/lookup", async (req: Request, res: Response): Promise<void> => {
       .from(ordersTable)
       .where(eq(ordersTable.orderId, orderId));
     if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+    if (order.customerId !== req.firebaseUser?.uid && !isAdminEmail(req.firebaseUser?.email)) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
 
     const storedMobile = String(order.customerPhone ?? "").replace(/\D/g, "").replace(/^91/, "");
     if (storedMobile !== mobile) {
@@ -364,7 +367,11 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
           prescriptionRequired: product.prescriptionRequired === true,
         });
         const table = kind === "medicine" ? medicinesTable : kind === "general" ? generalProductsTable : vetMedicinesTable;
-        await tx.update(table).set({ stockQty: sql`${table.stockQty} - ${quantity}` }).where(eq(table.id, product.id));
+        const [decremented] = await tx.update(table)
+          .set({ stockQty: sql`${table.stockQty} - ${quantity}` })
+          .where(and(eq(table.id, product.id), gte(table.stockQty, quantity as number)))
+          .returning({ id: table.id });
+        if (!decremented) throw new Error("INSUFFICIENT_STOCK");
       }
       subtotal = Math.round(subtotal * 100) / 100;
       const gst = Math.round(subtotal * 0.05 * 100) / 100;

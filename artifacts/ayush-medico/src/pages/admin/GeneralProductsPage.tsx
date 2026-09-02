@@ -84,6 +84,7 @@ function GeneralProductDialog({
   onSave: (data: Partial<GeneralProduct>) => Promise<void>;
 }) {
   const { categories, loading: catsLoading } = useCategories();
+  const { toast } = useToast();
 
   const [name,         setName]         = useState(item?.name         ?? "");
   const [brand,        setBrand]        = useState(item?.brand        ?? "");
@@ -112,7 +113,9 @@ function GeneralProductDialog({
     try {
       const url = await uploadMedicineImage(file, item ? `gp_${item.id}` : `gp_${Date.now()}`, setUploadPct);
       setImageUrl(url);
-    } catch { } finally { setUploading(false); }
+     } catch (err) {
+       toast({ variant: "destructive", title: "Image upload failed", description: err instanceof Error ? err.message : "Please try again." });
+     } finally { setUploading(false); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

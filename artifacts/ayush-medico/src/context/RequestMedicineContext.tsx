@@ -5,9 +5,10 @@ type RequestMedicineContextValue = {
   prefillMedicine: string;
   prefillBrand: string;
   prefillCategory: string;
+  prescriptionRequired: boolean;
   requestToken: number;
   /** Opens the Request Medicine form (navigating home if needed) and prefills it. */
-  triggerRequest: (medicineName?: string, brand?: string, category?: string) => void;
+  triggerRequest: (medicineName?: string, brand?: string, category?: string, prescriptionRequired?: boolean) => void;
 };
 
 const RequestMedicineContext = createContext<RequestMedicineContextValue | undefined>(undefined);
@@ -17,37 +18,25 @@ export function RequestMedicineProvider({ children }: { children: React.ReactNod
   const [prefillMedicine, setPrefillMedicine] = useState("");
   const [prefillBrand, setPrefillBrand] = useState("");
   const [prefillCategory, setPrefillCategory] = useState("");
+  const [prescriptionRequired, setPrescriptionRequired] = useState(false);
   const [requestToken, setRequestToken] = useState(0);
 
   const triggerRequest = useCallback(
-    (medicineName = "", brand = "", category = "") => {
+    (medicineName = "", brand = "", category = "", requiresPrescription = false) => {
       setPrefillMedicine(medicineName);
       setPrefillBrand(brand);
       setPrefillCategory(category);
+      setPrescriptionRequired(requiresPrescription);
       setRequestToken((t) => t + 1);
-      navigate("/");
+      navigate("/request-medicine");
 
-      // The request form only exists on the homepage. If we're navigating
-      // there from another route, its section won't be in the DOM yet —
-      // retry the scroll for a short window until it mounts.
-      let attempts = 0;
-      const tryScroll = () => {
-        const el = document.querySelector("#request-medicine");
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else if (attempts < 20) {
-          attempts++;
-          setTimeout(tryScroll, 50);
-        }
-      };
-      requestAnimationFrame(tryScroll);
     },
     [navigate]
   );
 
   return (
     <RequestMedicineContext.Provider
-      value={{ prefillMedicine, prefillBrand, prefillCategory, requestToken, triggerRequest }}
+      value={{ prefillMedicine, prefillBrand, prefillCategory, prescriptionRequired, requestToken, triggerRequest }}
     >
       {children}
     </RequestMedicineContext.Provider>

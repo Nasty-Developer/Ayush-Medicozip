@@ -1,9 +1,17 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { useEffect } from "react";
 import { X, Mail, User as UserIcon, ShieldCheck } from "lucide-react";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 
 export default function MyProfileModal({ onClose }: { onClose: () => void }) {
   const { user } = useCustomerAuth();
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = previous; document.removeEventListener("keydown", onKey); };
+  }, [onClose]);
 
   return (
     <AnimatePresence>
@@ -12,15 +20,16 @@ export default function MyProfileModal({ onClose }: { onClose: () => void }) {
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          onClick={(e) => e.stopPropagation()}
+           role="dialog" aria-modal="true" aria-labelledby="profile-title"
+           onClick={(e) => e.stopPropagation()}
           className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm p-6"
           data-testid="my-profile-modal"
         >
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
+             <h3 id="profile-title" className="text-lg font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
               My Profile
             </h3>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
+             <button aria-label="Close profile" onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
               <X size={16} />
             </button>
           </div>

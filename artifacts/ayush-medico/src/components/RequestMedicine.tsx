@@ -74,7 +74,7 @@ export default function RequestMedicine() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "0px" });
   const { toast } = useToast();
-  const { prefillMedicine, prefillBrand, prefillCategory, requestToken } = useRequestMedicine();
+  const { prefillMedicine, prefillBrand, prefillCategory, prescriptionRequired, requestToken } = useRequestMedicine();
   const { user: customerUser, loading: customerLoading } = useCustomerAuth();
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
   const [medicinePhotoFile, setMedicinePhotoFile] = useState<File | null>(null);
@@ -86,6 +86,7 @@ export default function RequestMedicine() {
   const [prescriptionError, setPrescriptionError] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authDefaultMode, setAuthDefaultMode] = useState<"signin" | "signup">("signin");
+  const submissionTimerRef = useRef<number | null>(null);
   const prescriptionInputRef = useRef<HTMLInputElement>(null);
   const medicinePhotoInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,8 +114,12 @@ export default function RequestMedicine() {
   const whatsappSame = form.watch("whatsappSameAsMobile");
   const eligibility = checkDeliveryEligibility(pincode || "");
 
+  useEffect(() => () => {
+    if (submissionTimerRef.current !== null) window.clearTimeout(submissionTimerRef.current);
+  }, []);
+
   useEffect(() => {
-    if (requestToken > 0 && prefillMedicine) {
+    if (requestToken > 0) {
       form.setValue("medicineName", prefillMedicine, { shouldValidate: false });
       if (prefillBrand) form.setValue("medicineBrand", prefillBrand, { shouldValidate: false });
       if (prefillCategory) {
@@ -281,6 +286,10 @@ export default function RequestMedicine() {
 
   // ── Submit handlers ──────────────────────────────────────────────────────────
   const requirePrescription = (): boolean => {
+    if (!prescriptionRequired) {
+      setPrescriptionError(null);
+      return true;
+    }
     if (!prescriptionFile) {
       setPrescriptionError(
         "A prescription is required to submit a medicine delivery request.",
@@ -398,6 +407,7 @@ export default function RequestMedicine() {
   };
 
   const finishSubmission = () => {
+    setSubmitting(null);
     setSubmitted(true);
   };
 
@@ -562,7 +572,7 @@ export default function RequestMedicine() {
                 className="relative"
               >
                 <Form {...form}>
-                  <form className="space-y-5" noValidate onSubmit={(e) => e.preventDefault()}>
+                  <form className="space-y-5" noValidate onSubmit={form.handleSubmit(handleSendRequest, onInvalid)}>
                     <div className="grid sm:grid-cols-2 gap-5">
                       <FormField
                         control={form.control}
@@ -846,7 +856,9 @@ export default function RequestMedicine() {
                     <div>
                       <p className="block text-sm font-medium text-foreground mb-2">
                         Upload Prescription{" "}
-                        <span className="text-destructive font-normal">(Required)</span>
+                        <span className="text-muted-foreground font-normal">
+                          ({prescriptionRequired ? "Required" : "Optional"})
+                        </span>
                       </p>
                       {prescriptionFile ? (
                         <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-border bg-muted/50">
@@ -904,7 +916,7 @@ export default function RequestMedicine() {
                             <span className="text-sm text-foreground truncate">{medicinePhotoFile.name}</span>
                           </div>
                           <button
-                            type="button"
+                            type="submit"
                             onClick={() => setMedicinePhotoFile(null)}
                             aria-label="Remove medicine photo"
                             data-testid="button-remove-medicine-photo"
@@ -1000,9 +1012,8 @@ export default function RequestMedicine() {
                         <>
                           {/* Primary: Send Request */}
                           <button
-                            type="button"
+                            type="submit"
                             disabled={submitting !== null}
-                            onClick={form.handleSubmit(handleSendRequest, onInvalid)}
                             data-testid="button-send-request"
                             className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-200"
                           >

@@ -52,6 +52,20 @@ type MedicineRequest = {
   createdAt?: { seconds: number; nanoseconds?: number };
 };
 
+function normalizePhone(value: string | undefined): string {
+  const digits = (value ?? "").replace(/\D/g, "");
+  return digits.startsWith("91") && digits.length === 12 ? digits : `91${digits}`;
+}
+
+function normalizeAttachment(value: unknown): string | null {
+  if (typeof value === "string") return value.trim() || null;
+  if (value && typeof value === "object") {
+    const candidate = value as { secure_url?: unknown; url?: unknown; downloadURL?: unknown };
+    return [candidate.secure_url, candidate.url, candidate.downloadURL].find((v): v is string => typeof v === "string" && v.length > 0) ?? null;
+  }
+  return null;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function playChime() {
@@ -288,6 +302,12 @@ function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete, onSavePric
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, []);
+
   const secs = getTimestampSecs(req);
   const Cfg = STATUS_CFG[req.status] ?? STATUS_CFG.new;
   const SrcCfg = SOURCE_CFG[req.source] ?? SOURCE_CFG.website;
@@ -455,7 +475,7 @@ function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete, onSavePric
           {/* Footer */}
           <div className="px-5 pb-5 pt-3 border-t border-border flex-shrink-0 space-y-2">
             <a
-              href={`https://wa.me/91${(req.whatsappNumber || req.mobileNumber).replace(/\D/g, "")}?text=${encodeURIComponent(buildStatusUpdateMessage({
+                 href={`https://wa.me/${normalizePhone(req.whatsappNumber || req.mobileNumber)}?text=${encodeURIComponent(buildStatusUpdateMessage({
                 customerName: req.customerName,
                 requestId: req.requestId,
                 medicineName: req.medicineName,
@@ -471,12 +491,12 @@ function RequestDetailModal({ req, onClose, onUpdateStatus, onDelete, onSavePric
               <MessageCircle size={13} /> Send Status Update on WhatsApp
             </a>
             <div className="grid grid-cols-2 gap-2">
-              <a href={`tel:${req.mobileNumber}`}
+               <a href={`tel:${req.mobileNumber}`}
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-all">
                 <Phone size={13} /> Call Customer
               </a>
               <a
-                href={`https://wa.me/91${(req.whatsappNumber || req.mobileNumber).replace(/\D/g, "")}?text=${encodeURIComponent(buildWAReply())}`}
+                 href={`https://wa.me/${normalizePhone(req.whatsappNumber || req.mobileNumber)}?text=${encodeURIComponent(buildWAReply())}`}
                 target="_blank" rel="noopener noreferrer"
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#25D366]/10 text-[#25D366] text-xs font-semibold hover:bg-[#25D366]/20 transition-all">
                 <MessageCircle size={13} /> Reply on WhatsApp
@@ -539,7 +559,7 @@ export default function MedicineRequestsPage() {
   // Normalize PG row → UI MedicineRequest type
   const normalizeRow = (row: Record<string, unknown>): MedicineRequest => ({
     ...row,
-    id: String(row.id),
+    id: String(row.id ?? row.requestId ?? ""),
     medicineName: (row.medicineName as string) || "—",
     quantity: (row.quantity as string) || "1",
     source: (row.source as RequestSource) || "website",
@@ -547,6 +567,8 @@ export default function MedicineRequestsPage() {
     createdAt: row.createdAt
       ? { seconds: Math.floor(new Date(row.createdAt as string).getTime() / 1000) }
       : undefined,
+    prescriptionUrl: normalizeAttachment(row.prescriptionUrl),
+    medicinePhotoUrl: normalizeAttachment(row.medicinePhotoUrl),
   } as MedicineRequest);
 
   const loadRequests = useCallback(async () => {
@@ -922,7 +944,7 @@ export default function MedicineRequestsPage() {
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-secondary hover:bg-secondary/10 transition-all">
                           <Phone size={14} />
                         </a>
-                        <a href={`https://wa.me/91${(req.whatsappNumber || req.mobileNumber).replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${req.customerName}, this is Ayush Medico regarding your request for *${req.medicineName}*. `)}`}
+                         <a href={`https://wa.me/${normalizePhone(req.whatsappNumber || req.mobileNumber)}?text=${encodeURIComponent(`Hi ${req.customerName}, this is Ayush Medico regarding your request for *${req.medicineName}*. `)}`}
                           target="_blank" rel="noopener noreferrer" title="WhatsApp"
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-[#25D366] hover:bg-[#25D366]/10 transition-all">
                           <MessageCircle size={14} />

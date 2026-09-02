@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Mail, Lock, User as UserIcon, Loader2 } from "lucide-react";
 import {
@@ -33,6 +33,14 @@ export default function SignInModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const isBusy = !!loading;
+
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !isBusy) onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = previous; document.removeEventListener("keydown", onKey); };
+  }, [onClose, isBusy]);
 
   const handleGoogle = async () => {
     setLoading("google");
@@ -81,15 +89,16 @@ export default function SignInModal({
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          role="dialog" aria-modal="true" aria-labelledby="signin-title"
           onClick={(e) => e.stopPropagation()}
           className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm p-6"
           data-testid="signin-modal"
         >
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
+             <h3 id="signin-title" className="text-lg font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
               {mode === "signup" ? "Create Account" : "Sign In"}
             </h3>
-             <button onClick={onClose} disabled={isBusy} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors disabled:opacity-40">
+             <button aria-label="Close sign in" onClick={onClose} disabled={isBusy} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors disabled:opacity-40">
               <X size={16} />
             </button>
           </div>

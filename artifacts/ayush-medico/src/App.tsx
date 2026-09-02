@@ -292,6 +292,12 @@ function App() {
                           </Route>
 
                           {/* ── Product collection pages ── */}
+                           <Route path="/vet-medicines/:id">
+                             {() => <PublicLayout><MedicineDetailPage kind="vet" /></PublicLayout>}
+                           </Route>
+                           <Route path="/general-products/:id">
+                             {() => <PublicLayout><MedicineDetailPage kind="general" /></PublicLayout>}
+                           </Route>
                           <Route path="/vet-medicines">
                             {() => (
                               <PublicLayout>

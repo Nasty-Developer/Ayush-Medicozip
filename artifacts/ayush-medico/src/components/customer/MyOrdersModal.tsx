@@ -121,6 +121,14 @@ export default function MyOrdersModal({ onClose }: { onClose: () => void }) {
   const [selected, setSelected] = useState<Order | null>(null);
 
   useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = previous; document.removeEventListener("keydown", onKey); };
+  }, [onClose]);
+
+  useEffect(() => {
     if (!user) return;
     const unsub = subscribeToCustomerOrders(
       user.uid,
@@ -150,7 +158,8 @@ export default function MyOrdersModal({ onClose }: { onClose: () => void }) {
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          onClick={(e) => e.stopPropagation()}
+           role="dialog" aria-modal="true" aria-labelledby="orders-title"
+           onClick={(e) => e.stopPropagation()}
           className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col"
           data-testid="my-orders-modal"
         >
@@ -165,7 +174,7 @@ export default function MyOrdersModal({ onClose }: { onClose: () => void }) {
                   <ArrowLeft size={16} />
                 </button>
               )}
-              <h3 className="text-base font-bold text-foreground">
+               <h3 id="orders-title" className="text-base font-bold text-foreground">
                 {selected ? `Order ${selected.orderId}` : "My Orders"}
               </h3>
             </div>

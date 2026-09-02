@@ -15,13 +15,19 @@ export default function CartDrawer() {
 
   // Lock body scroll when open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
+    if (!isOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    window.history.pushState({ cart: true }, "");
+    const close = () => closeCart();
+    window.addEventListener("popstate", close);
+    return () => window.removeEventListener("popstate", close);
+  }, [isOpen, closeCart]);
 
   // Escape key to close
   useEffect(() => {
@@ -59,7 +65,7 @@ export default function CartDrawer() {
           {/* Keep the backdrop and drawer as plain sibling layers. Avoiding
               animated/full-screen compositor layers makes close controls
               reliable even in slower Chrome/PWA rendering paths. */}
-          <div
+             <div
             onClick={closeCart}
             data-testid="cart-backdrop"
             aria-hidden="true"
@@ -69,16 +75,17 @@ export default function CartDrawer() {
           <div
             role="dialog"
             aria-modal="true"
+             aria-labelledby="cart-drawer-title"
             aria-label="Shopping cart"
             data-testid="cart-drawer"
             className="fixed right-0 top-0 bottom-0 z-[101] w-full sm:w-[420px] flex flex-col
                        bg-background border-l border-border shadow-2xl"
-          >
+             >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
               <div className="flex items-center gap-2">
                 <ShoppingCart size={18} className="text-primary" />
-                <h2 className="text-base font-bold text-foreground">My Cart</h2>
+                 <h2 id="cart-drawer-title" className="text-base font-bold text-foreground">My Cart</h2>
                 {summary.itemCount > 0 && (
                   <span className="text-xs font-bold text-white bg-primary rounded-full px-2 py-0.5 min-w-[20px] text-center">
                     {summary.itemCount}

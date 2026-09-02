@@ -13,6 +13,7 @@ export const inquiriesTable = pgTable("inquiries", {
   type:              text("type", { enum: ["inquiry", "medicine-request"] }).notNull().default("inquiry"),
   customerName:      text("customer_name").notNull(),
   mobileNumber:      text("mobile_number").notNull(),
+  customerId:        text("customer_id"),
   whatsappNumber:    text("whatsapp_number"),
   email:             text("email"),
   // General inquiry fields

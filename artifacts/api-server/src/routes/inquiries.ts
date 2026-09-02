@@ -13,30 +13,43 @@ import { eq, desc, and, or, count, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { inquiriesTable, type InsertInquiry } from "@workspace/db";
 import { logger } from "../lib/logger.js";
-import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware.js";
+import { requireAuth, requireAdminEmail, isAdminEmail, type AuthenticatedRequest } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
+function optionalAuth(req: AuthenticatedRequest, res: Response, next: () => void): void {
+  if (!req.headers.authorization) { next(); return; }
+  void requireAuth(req, res, next);
+}
+
 // ── POST /api/inquiries ───────────────────────────────────────────────────────
 // Public — customer submits an inquiry or medicine request
-router.post("/", async (req: Request, res: Response): Promise<void> => {
+router.post("/", optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const body = req.body as Record<string, unknown>;
 
     const inquiryId = (body.inquiryId as string) || (body.requestId as string);
     if (!inquiryId) { res.status(400).json({ error: "inquiryId is required" }); return; }
 
-    const type = (body.type as string) === "medicine-request" ? "medicine-request" as const : "inquiry" as const;
-    const customerName = body.customerName as string;
-    const mobileNumber = body.mobileNumber as string;
+    if (body.type !== "inquiry" && body.type !== "medicine-request") { res.status(400).json({ error: "Invalid inquiry type" }); return; }
+    const type = body.type;
+    const customerName = typeof body.customerName === "string" ? body.customerName.trim() : "";
+    const mobileNumber = typeof body.mobileNumber === "string" ? body.mobileNumber.trim() : "";
     if (!customerName || !mobileNumber) {
       res.status(400).json({ error: "customerName and mobileNumber are required" });
       return;
+    }
+    if (body.source !== undefined && !["website", "whatsapp", "email"].includes(String(body.source))) {
+      res.status(400).json({ error: "Invalid inquiry source" }); return;
+    }
+    if (body.status !== undefined || body.paymentStatus !== undefined) {
+      res.status(400).json({ error: "Status fields are controlled by the server" }); return;
     }
 
     const [row] = await db.insert(inquiriesTable).values({
       inquiryId,
       type,
+      customerId: req.firebaseUser?.uid ?? null,
       customerName,
       mobileNumber,
       whatsappNumber:     (body.whatsappNumber     as string)  || null,
@@ -62,7 +75,6 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       deliveryCharge:     body.deliveryCharge != null ? String(body.deliveryCharge) : null,
       discount:           body.discount != null ? String(body.discount) : null,
       grandTotal:         body.grandTotal != null ? String(body.grandTotal) : null,
-      paymentStatus:      (body.paymentStatus as string) || null,
       source:             (body.source as "website" | "whatsapp" | "email") || "website",
       notes:              (body.notes              as string)  || null,
       status:             "new",
@@ -79,7 +91,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
 // ── PATCH /api/inquiries/:id/prescription ─────────────────────────────────────
 // Customer updates prescription URL after upload (non-auth, keyed by inquiryId)
-router.patch("/:inquiryId/prescription", async (req: Request<{ inquiryId: string }>, res: Response): Promise<void> => {
+router.patch("/:inquiryId/prescription", requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { inquiryId } = req.params;
     const { prescriptionUrl, hasPrescription, medicinePhotoUrl } = req.body as {
@@ -87,6 +99,16 @@ router.patch("/:inquiryId/prescription", async (req: Request<{ inquiryId: string
       hasPrescription?: boolean;
       medicinePhotoUrl?: string;
     };
+    if ((prescriptionUrl !== undefined && typeof prescriptionUrl !== "string") ||
+      (medicinePhotoUrl !== undefined && typeof medicinePhotoUrl !== "string") ||
+      (hasPrescription !== undefined && typeof hasPrescription !== "boolean")) {
+      res.status(400).json({ error: "Invalid prescription fields" }); return;
+    }
+    const [existing] = await db.select().from(inquiriesTable).where(eq(inquiriesTable.inquiryId, inquiryId));
+    if (!existing) { res.status(404).json({ error: "Inquiry not found" }); return; }
+    if (existing.customerId !== req.firebaseUser?.uid && !isAdminEmail(req.firebaseUser?.email)) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
 
     await db.update(inquiriesTable)
       .set({
@@ -126,7 +148,7 @@ router.get("/lookup", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    res.json(row);
+    res.json({ inquiryId: row.inquiryId, status: row.status, type: row.type, updatedAt: row.updatedAt });
   } catch (err) {
     logger.error({ err }, "GET /inquiries/lookup failed");
     res.status(500).json({ error: "Order not found" });

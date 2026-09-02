@@ -19,13 +19,13 @@ import { StockBadge, getStockStatus, MedicineSkeleton } from "@/components/medic
 import { resolveMedicineImage } from "@/lib/medicineImage";
 
 /** Navigate back — uses browser history when available, falls back to /categories. */
-function GoBack({ children, className, primary }: { children: React.ReactNode; className?: string; primary?: boolean }) {
+function GoBack({ children, className, primary, fallback = "/categories" }: { children: React.ReactNode; className?: string; primary?: boolean; fallback?: string }) {
   const [, navigate] = useLocation();
   const handleClick = () => {
     if (window.history.length > 1) {
       window.history.back();
     } else {
-      navigate("/categories");
+      navigate(fallback);
     }
   };
   if (primary) {
@@ -45,7 +45,7 @@ function GoBack({ children, className, primary }: { children: React.ReactNode; c
   );
 }
 
-export default function MedicineDetailPage() {
+export default function MedicineDetailPage({ kind = "medicine" }: { kind?: "medicine" | "general" | "vet" }) {
   const params = useParams<{ id: string }>();
   const id = params.id ?? "";
 
@@ -58,11 +58,14 @@ export default function MedicineDetailPage() {
   const { triggerRequest } = useRequestMedicine();
 
   useEffect(() => {
+    setImgErr(false);
+    setMedicine(null);
     if (!id) { setLoading(false); setNotFound(true); return; }
     setLoading(true);
     setNotFound(false);
 
-    fetch(`/api/medicines/${id}`)
+    const endpoint = kind === "general" ? "general-products" : kind === "vet" ? "vet-medicines" : "medicines";
+    fetch(`/api/${endpoint}/${id}`)
       .then(async (r) => {
         if (r.status === 404) { setNotFound(true); return; }
         if (!r.ok) throw new Error(`API error ${r.status}`);
@@ -71,7 +74,7 @@ export default function MedicineDetailPage() {
       })
       .catch(console.warn)
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, kind]);
 
   if (loading) {
     return (
@@ -103,7 +106,8 @@ export default function MedicineDetailPage() {
 
   const status      = getStockStatus(medicine);
   const maxStock    = medicine.stockQty ?? medicine.stockQuantity;
-  const cartItem    = items.find((i) => i.medicineId === medicine.id);
+  const cartId       = kind === "general" ? `general-${medicine.id}` : kind === "vet" ? `vet-${medicine.id}` : medicine.id;
+    const cartItem    = items.find((i) => i.medicineId === cartId);
   const inCart      = !!cartItem;
   const canAdd      = (status === "in_stock" || status === "low_stock") && !!medicine.sellingPrice;
   const isUnavailable = status === "out_of_stock" || status === "coming_soon";
@@ -111,13 +115,13 @@ export default function MedicineDetailPage() {
   const handleAdd = () => {
     if (!canAdd) return;
     addItem({
-      medicineId: medicine.id,
+       medicineId: cartId,
       medicineName: medicine.name,
       categoryName: medicine.categoryName ?? undefined,
       categoryImageUrl: medicine.categoryImageUrl ?? undefined,
       brandName: medicine.brand ?? undefined,
-      unitPrice: medicine.sellingPrice!,
-      prescriptionRequired: medicine.prescriptionRequired ?? false,
+       unitPrice: Number(medicine.sellingPrice),
+       prescriptionRequired: kind === "vet" ? Boolean(medicine.prescriptionRequired) : false,
       imageUrl: medicine.imageUrl ?? undefined,
       maxStock,
     });
@@ -125,23 +129,24 @@ export default function MedicineDetailPage() {
 
   const handleDecrement = () => {
     if (!cartItem) return;
-    cartItem.quantity <= 1 ? removeItem(medicine.id) : updateQuantity(medicine.id, cartItem.quantity - 1);
+    cartItem.quantity <= 1 ? removeItem(cartId) : updateQuantity(cartId, cartItem.quantity - 1);
   };
 
   const handleIncrement = () => {
     if (!cartItem) return;
     if (maxStock && cartItem.quantity >= maxStock) return;
-    updateQuantity(medicine.id, cartItem.quantity + 1);
+    updateQuantity(cartId, cartItem.quantity + 1);
   };
 
   return (
     <main className="max-w-2xl mx-auto px-4 pt-28 pb-12">
       {/* Back link */}
       <GoBack
+        fallback={kind === "general" ? "/general-products" : kind === "vet" ? "/vet-medicines" : "/categories"}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground
                    hover:text-primary transition-colors mb-6"
       >
-        <ArrowLeft size={14} /> Back to Browse
+          <ArrowLeft size={14} /> Back to Browse
       </GoBack>
 
       <motion.div
@@ -163,7 +168,7 @@ export default function MedicineDetailPage() {
           <div className="absolute top-3 right-3">
             <StockBadge status={status} />
           </div>
-          {medicine.prescriptionRequired && (
+          {kind === "vet" && medicine.prescriptionRequired && (
             <div className="absolute top-3 left-3">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                text-[10px] font-bold bg-amber-500/90 text-white">
@@ -277,7 +282,7 @@ export default function MedicineDetailPage() {
                   {status === "out_of_stock" ? "Currently unavailable" : "Coming soon"}
                 </p>
                 <button
-                  onClick={() => triggerRequest(medicine.name, medicine.brand ?? undefined, medicine.categoryName ?? undefined)}
+                   onClick={() => triggerRequest(medicine.name, medicine.brand ?? undefined, medicine.categoryName ?? (kind === "vet" ? "Veterinary Medicine" : "General Product"))}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2
                              px-8 h-11 rounded-xl text-sm font-semibold border border-dashed
                              border-muted-foreground/50 bg-muted/30 text-muted-foreground

@@ -70,6 +70,20 @@ function getMessageDisplay(inq: Inquiry): string {
   return "—";
 }
 
+function normalizePhone(value: string | undefined): string {
+  const digits = (value ?? "").replace(/\D/g, "");
+  return digits.startsWith("91") && digits.length === 12 ? digits : `91${digits}`;
+}
+
+function normalizeAttachment(value: unknown): string | null {
+  if (typeof value === "string") return value.trim() || null;
+  if (value && typeof value === "object") {
+    const candidate = value as { secure_url?: unknown; url?: unknown; downloadURL?: unknown };
+    return [candidate.secure_url, candidate.url, candidate.downloadURL].find((v): v is string => typeof v === "string" && v.length > 0) ?? null;
+  }
+  return null;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function playChime() {
@@ -221,6 +235,12 @@ function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, []);
+
   const secs = getTimestampSecs(inquiry);
   const currentStatus = normalizeStatus(inquiry.status);
   const Cfg = STATUS_CFG[currentStatus];
@@ -354,12 +374,12 @@ function InquiryDetailModal({ inquiry, onClose, onUpdateStatus, onDelete }: {
           {/* Footer */}
           <div className="px-5 pb-5 pt-3 border-t border-border flex-shrink-0 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <a href={`tel:${inquiry.mobileNumber}`}
+                 <a href={`tel:${inquiry.mobileNumber}`}
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-all">
                 <Phone size={13} /> Call Customer
               </a>
               <a
-                href={`https://wa.me/91${inquiry.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(buildWAReply())}`}
+                 href={`https://wa.me/${normalizePhone(inquiry.mobileNumber)}?text=${encodeURIComponent(buildWAReply())}`}
                 target="_blank" rel="noopener noreferrer"
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#25D366]/10 text-[#25D366] text-xs font-semibold hover:bg-[#25D366]/20 transition-all">
                 <MessageCircle size={13} /> Reply on WhatsApp
@@ -424,10 +444,11 @@ export default function InquiriesPage() {
   // Normalize PG row → UI Inquiry type
   const normalizeRow = (row: Record<string, unknown>): Inquiry => ({
     ...row,
-    id: String(row.id),
+    id: String(row.id ?? row.inquiryId ?? ""),
     createdAt: row.createdAt
       ? { seconds: Math.floor(new Date(row.createdAt as string).getTime() / 1000) }
       : undefined,
+    prescriptionUrl: normalizeAttachment(row.prescriptionUrl),
   } as Inquiry);
 
   const loadInquiries = useCallback(async () => {
@@ -775,7 +796,7 @@ export default function InquiriesPage() {
                           <Eye size={14} />
                         </button>
                         <a
-                          href={`https://wa.me/91${inq.mobileNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${inq.customerName}, this is Ayush Medico. `)}`}
+                           href={`https://wa.me/${normalizePhone(inq.mobileNumber)}?text=${encodeURIComponent(`Hi ${inq.customerName}, this is Ayush Medico. `)}`}
                           target="_blank" rel="noopener noreferrer" title="WhatsApp"
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-[#25D366] hover:bg-[#25D366]/10 transition-all">
                           <MessageCircle size={14} />

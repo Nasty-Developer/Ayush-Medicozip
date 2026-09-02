@@ -61,12 +61,16 @@ export default function NewArrivalsPage() {
 
   const handleRemove = async (item: AdminMedicine) => {
     try {
-      await adminFetch(`/api/admin/medicines/${item.id}`, {
+      const res = await adminFetch(`/api/admin/medicines/${item.id}`, {
         method: "PUT", body: JSON.stringify({ newArrival: false }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error || `Request failed (${res.status})`);
+      }
       toast({ title: `"${item.name}" removed from New Arrivals` });
       load();
-    } catch { toast({ variant: "destructive", title: "Failed to update" }); }
+    } catch (err) { toast({ variant: "destructive", title: "Failed to update", description: err instanceof Error ? err.message : "Please try again." }); }
   };
 
   return (

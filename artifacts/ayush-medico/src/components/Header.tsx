@@ -142,8 +142,18 @@ export default function Header() {
 
   /* ── Lock body scroll when sidebar is open ── */
   useEffect(() => {
-    document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    if (!mobileOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    window.history.pushState({ mobileMenu: true }, "");
+    const close = () => setMobileOpen(false);
+    window.addEventListener("popstate", close);
+    return () => window.removeEventListener("popstate", close);
   }, [mobileOpen]);
 
   const firstName = (user?.displayName || user?.email || "Account").split(/\s+/)[0];

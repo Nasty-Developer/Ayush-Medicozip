@@ -27,6 +27,7 @@ type GeneralProduct = {
   sellingPrice: string | null;
   discount: string | null;
   stockStatus: "in_stock" | "out_of_stock";
+  stockQty?: number;
   imageUrl: string | null;
   featured: boolean;
   categoryName: string | null;
@@ -71,7 +72,7 @@ function GeneralProductCard({ item, index }: { item: GeneralProduct; index: numb
       className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg hover:border-violet-300/40 dark:hover:border-violet-700/40 transition-all duration-200 flex flex-col"
     >
       {/* Image */}
-      <div className="relative aspect-square bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20 overflow-hidden">
+      <Link href={`/general-products/${item.id}`} className="block relative aspect-square bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20 overflow-hidden">
         {item.imageUrl && !imageFailed ? (
           <img src={item.imageUrl} alt={item.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -102,14 +103,14 @@ function GeneralProductCard({ item, index }: { item: GeneralProduct; index: numb
             {item.subCategory}
           </span>
         )}
-      </div>
+      </Link>
 
       {/* Details */}
       <div className="p-3 flex flex-col flex-1">
         <p className="text-[10px] text-muted-foreground mb-0.5 truncate">
           {item.brand ?? item.categoryName ?? "General"}
         </p>
-        <h3 className="text-sm font-semibold text-foreground leading-tight line-clamp-2 mb-auto">{item.name}</h3>
+         <Link href={`/general-products/${item.id}`} className="text-sm font-semibold text-foreground leading-tight line-clamp-2 mb-auto hover:text-violet-700">{item.name}</Link>
         {item.packing && <p className="text-[10px] text-muted-foreground mt-1">{item.packing}</p>}
 
         {/* Price row */}
@@ -137,7 +138,8 @@ function GeneralProductCard({ item, index }: { item: GeneralProduct; index: numb
               </button>
               <span className="text-xs font-bold text-violet-700 min-w-5 text-center">{cartItem.quantity}</span>
               <button
-                onClick={() => updateQuantity(cartId, cartItem.quantity + 1)}
+                 onClick={() => updateQuantity(cartId, cartItem.quantity + 1)}
+                 disabled={Boolean(item.stockQty && cartItem.quantity >= item.stockQty)}
                 className="w-7 h-7 flex items-center justify-center text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30"
                 aria-label={`Increase ${item.name} quantity`}
               >
@@ -154,6 +156,7 @@ function GeneralProductCard({ item, index }: { item: GeneralProduct; index: numb
                 unitPrice: sellingPrice,
                 prescriptionRequired: false,
                 imageUrl: item.imageUrl ?? undefined,
+                 maxStock: item.stockQty,
               })}
               className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all"
               style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)" }}

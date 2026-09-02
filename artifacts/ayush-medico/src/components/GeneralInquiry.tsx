@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,6 +50,11 @@ export default function GeneralInquiry() {
   const [submitting, setSubmitting] = useState<"send" | "whatsapp" | "email" | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [lastInquiryId, setLastInquiryId] = useState("");
+  const submissionTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (submissionTimerRef.current !== null) window.clearTimeout(submissionTimerRef.current);
+  }, []);
 
   const form = useForm<InquiryFormValues>({
     resolver: zodResolver(inquirySchema),
@@ -126,9 +131,10 @@ export default function GeneralInquiry() {
       .join("\n");
 
   const finishSubmission = (id: string) => {
+    if (submissionTimerRef.current !== null) window.clearTimeout(submissionTimerRef.current);
     setLastInquiryId(id);
     setSubmitted(true);
-    window.setTimeout(() => {
+    submissionTimerRef.current = window.setTimeout(() => {
       setSubmitted(false);
       setLastInquiryId("");
       form.reset();
@@ -166,10 +172,12 @@ export default function GeneralInquiry() {
       id = await saveToAPI(values, "whatsapp");
     } catch (err) {
       console.error("[GeneralInquiry] WhatsApp save failed:", err);
-      // Non-fatal: open WhatsApp even if API save fails
+      toast({ variant: "destructive", title: "Inquiry was not saved", description: err instanceof Error ? err.message : "Please try again before opening WhatsApp." });
+      setSubmitting(null);
+      return;
     }
     const msg = encodeURIComponent(buildWAMessage(values));
-    window.setTimeout(() => {
+    submissionTimerRef.current = window.setTimeout(() => {
       window.open(`https://wa.me/${WA_NUMBER}?text=${msg}`, "_blank");
       toast({ title: "WhatsApp opened!", description: "Your inquiry is pre-filled." });
       finishSubmission(id);
@@ -184,11 +192,13 @@ export default function GeneralInquiry() {
       id = await saveToAPI(values, "email");
     } catch (err) {
       console.error("[GeneralInquiry] Email save failed:", err);
-      // Non-fatal: open email even if API save fails
+      toast({ variant: "destructive", title: "Inquiry was not saved", description: err instanceof Error ? err.message : "Please try again before opening email." });
+      setSubmitting(null);
+      return;
     }
     const subject = encodeURIComponent(`Inquiry - ${values.subject} | Ayush Medico`);
     const body = encodeURIComponent(buildEmailBody(values));
-    window.setTimeout(() => {
+    submissionTimerRef.current = window.setTimeout(() => {
       window.location.href = `mailto:${INQUIRY_EMAIL}?subject=${subject}&body=${body}`;
       toast({ title: "Email app opened!", description: "Your inquiry is pre-filled." });
       finishSubmission(id);
@@ -273,7 +283,7 @@ export default function GeneralInquiry() {
             ) : (
               <motion.div key="form" initial={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative">
                 <Form {...form}>
-                  <form className="space-y-5" noValidate onSubmit={(e) => e.preventDefault()}>
+                  <form className="space-y-5" noValidate onSubmit={form.handleSubmit(handleSubmit, onInvalid)}>
                     {/* Name + Mobile */}
                     <div className="grid sm:grid-cols-2 gap-5">
                       <FormField
@@ -398,9 +408,8 @@ export default function GeneralInquiry() {
                     {/* Action Buttons */}
                     <div className="space-y-3 pt-2">
                       <button
-                        type="button"
+                        type="submit"
                         disabled={submitting !== null}
-                        onClick={form.handleSubmit(handleSubmit, onInvalid)}
                         className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-secondary to-primary text-white font-semibold rounded-xl shadow-lg shadow-secondary/30 hover:shadow-secondary/50 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-200"
                       >
                         {submitting === "send" ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}

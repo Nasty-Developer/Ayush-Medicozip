@@ -156,7 +156,7 @@ router.get("/:id", async (req: Request, res: Response): Promise<void> => {
       .select({ ...getTableColumns(generalProductsTable), categoryName: categoriesTable.name })
       .from(generalProductsTable)
       .leftJoin(categoriesTable, eq(generalProductsTable.categoryId, categoriesTable.id))
-      .where(eq(generalProductsTable.id, id));
+      .where(and(eq(generalProductsTable.id, id), eq(generalProductsTable.status, "active")));
     if (!row) { res.status(404).json({ error: "Not found" }); return; }
     res.json(row);
   } catch (err) {
@@ -168,8 +168,12 @@ router.get("/:id", async (req: Request, res: Response): Promise<void> => {
 // ── POST / (admin) ────────────────────────────────────────────────────────────
 router.post("/", requireAuth, requireAdminEmail, async (req: Request, res: Response): Promise<void> => {
   try {
-    const data = req.body as InsertGeneralProduct;
+    const body = req.body as Record<string, unknown>;
+    const fields = ["name", "brand", "description", "categoryId", "subCategory", "packing", "mrp", "sellingPrice", "discount", "stockStatus", "stockQty", "imageUrl", "featured", "newArrival", "status"] as const;
+    const data = Object.fromEntries(Object.entries(body).filter(([key]) => (fields as readonly string[]).includes(key))) as InsertGeneralProduct;
     if (!data.name?.trim()) { res.status(400).json({ error: "name is required" }); return; }
+    if (data.status && !["active", "deleted"].includes(data.status)) { res.status(400).json({ error: "Invalid status" }); return; }
+    if (data.stockStatus && !["in_stock", "out_of_stock"].includes(data.stockStatus)) { res.status(400).json({ error: "Invalid stock status" }); return; }
     const [created] = await db.insert(generalProductsTable).values(data).returning();
     res.status(201).json(created);
   } catch (err) {
@@ -183,9 +187,15 @@ router.put("/:id", requireAuth, requireAdminEmail, async (req: Request, res: Res
   try {
     const id = Number(req.params["id"]);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const body = req.body as Record<string, unknown>;
+    const fields = ["name", "brand", "description", "categoryId", "subCategory", "packing", "mrp", "sellingPrice", "discount", "stockStatus", "stockQty", "imageUrl", "featured", "newArrival", "status"] as const;
+    const patch = Object.fromEntries(Object.entries(body).filter(([key]) => (fields as readonly string[]).includes(key))) as Partial<InsertGeneralProduct>;
+    if (patch.name !== undefined && (typeof patch.name !== "string" || !patch.name.trim())) { res.status(400).json({ error: "name must be non-empty" }); return; }
+    if (patch.status !== undefined && !["active", "deleted"].includes(patch.status)) { res.status(400).json({ error: "Invalid status" }); return; }
+    if (patch.stockStatus !== undefined && !["in_stock", "out_of_stock"].includes(patch.stockStatus)) { res.status(400).json({ error: "Invalid stock status" }); return; }
     const [updated] = await db
       .update(generalProductsTable)
-      .set({ ...(req.body as Partial<InsertGeneralProduct>), updatedAt: new Date() })
+      .set({ ...patch, updatedAt: new Date() })
       .where(eq(generalProductsTable.id, id))
       .returning();
     if (!updated) { res.status(404).json({ error: "Not found" }); return; }

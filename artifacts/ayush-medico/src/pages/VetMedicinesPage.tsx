@@ -72,7 +72,7 @@ function VetMedicineCard({ item, index }: { item: VetMedicine; index: number }) 
       className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg hover:border-secondary/30 transition-all duration-200 flex flex-col"
     >
       {/* Image */}
-      <div className="relative aspect-square bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 overflow-hidden">
+      <Link href={`/vet-medicines/${item.id}`} className="block relative aspect-square bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 overflow-hidden">
         {item.imageUrl && !imageFailed ? (
           <img src={item.imageUrl} alt={item.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -105,7 +105,7 @@ function VetMedicineCard({ item, index }: { item: VetMedicine; index: number }) 
             Rx Required
           </span>
         )}
-      </div>
+      </Link>
 
       {/* Details */}
       <div className="p-3 flex flex-col flex-1">
@@ -113,7 +113,7 @@ function VetMedicineCard({ item, index }: { item: VetMedicine; index: number }) 
           {item.brand ?? item.categoryName ?? "Veterinary Medicine"}
         </p>
         <h3 className="text-sm font-semibold text-foreground leading-tight line-clamp-2 mb-auto">
-          {item.name}
+           <Link href={`/vet-medicines/${item.id}`} className="hover:text-secondary">{item.name}</Link>
         </h3>
         {item.packing && (
           <p className="text-[10px] text-muted-foreground mt-1">{item.packing}</p>

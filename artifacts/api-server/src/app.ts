@@ -62,7 +62,15 @@ app.use(
 );
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-app.use(cors());
+// Empty/missing Origin is same-origin, CLI, or server-to-server traffic and remains allowed.
+const corsOrigins = (process.env["CORS_ALLOWLIST"] ?? process.env["CORS_ORIGINS"] ?? "")
+  .split(",").map((origin) => origin.trim()).filter(Boolean);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || corsOrigins.includes(origin)) { callback(null, true); return; }
+    callback(new Error("Origin is not allowed by CORS"));
+  },
+}));
 
 // ── Body parsing ──────────────────────────────────────────────────────────────
 // Razorpay webhook needs raw body for HMAC verification — mount before json().
