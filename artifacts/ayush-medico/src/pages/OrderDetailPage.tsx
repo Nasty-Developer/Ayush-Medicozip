@@ -21,12 +21,6 @@ import {
 import { queueNotification } from "@/lib/notificationService";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import UpiPaymentPanel from "@/components/customer/UpiPaymentPanel";
-import {
-  createRazorpayOrder,
-  verifyRazorpayPayment,
-  reportRazorpayFailure,
-} from "@/lib/paymentService";
-import { loadRazorpayScript, normalizePhone, type RazorpaySuccessResponse } from "@/lib/razorpayCheckout";
 import { InvoiceActions } from "@/components/customer/Invoice";
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -41,8 +35,6 @@ export default function OrderDetailPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
-  const [payNowLoading, setPayNowLoading] = useState(false);
-  const [payNowError, setPayNowError] = useState<string | null>(null);
 
   const docId = params?.docId ?? "";
 
@@ -62,58 +54,6 @@ export default function OrderDetailPage() {
     );
     return unsub;
   }, [docId]);
-
-  const handlePayNow = async () => {
-    if (!order || !user) return;
-    setPayNowLoading(true);
-    setPayNowError(null);
-    try {
-      const rzpData = await createRazorpayOrder({ orderDbId: docId });
-      await loadRazorpayScript();
-      const rzp = new window.Razorpay({
-        key: rzpData.keyId,
-        amount: rzpData.amount,
-        currency: rzpData.currency,
-        order_id: rzpData.razorpayOrderId,
-        name: "Ayush Medico",
-        description: `Order ${order.orderId}`,
-        prefill: {
-          name: user.displayName ?? undefined,
-          email: user.email ?? undefined,
-          contact: normalizePhone(order.address?.mobileNumber),
-        },
-        theme: { color: "#2F8F6D" },
-        retry: { enabled: true, max_count: 4 },
-        send_sms_hash: true,
-        remember_customer: false,
-        handler: async (response: RazorpaySuccessResponse) => {
-          try {
-            await verifyRazorpayPayment({
-              orderDbId: docId,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            // subscribeToOrder will automatically refresh the UI
-            setPayNowLoading(false);
-          } catch {
-            setPayNowError("Payment received but verification failed. Please contact us at +91 98332 73838.");
-            setPayNowLoading(false);
-          }
-        },
-        modal: {
-          ondismiss: async () => {
-            try { await reportRazorpayFailure(docId); } catch { /* non-critical */ }
-            setPayNowLoading(false);
-          },
-        },
-      });
-      rzp.open();
-    } catch (err) {
-      setPayNowError("Could not open payment gateway. Please try again or call us.");
-      setPayNowLoading(false);
-    }
-  };
 
   const handleCancel = async () => {
     if (!order || !user) return;
@@ -209,6 +149,28 @@ export default function OrderDetailPage() {
         </div>
 
         <div className="space-y-4">
+          {!isNegative && (
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+              <p className="text-sm font-bold text-foreground">
+                {order.status === "pending"
+                  ? "Order received — under review"
+                  : order.status === "payment-pending"
+                  ? "Payment required"
+                  : order.status === "payment-verification-pending"
+                  ? "Payment verification pending"
+                  : ORDER_STATUS_LABELS[order.status]}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {order.status === "pending"
+                  ? "We will review your prescription when required, confirm the delivery charge, and then make UPI payment available."
+                  : order.status === "payment-pending"
+                  ? "Your order has been reviewed. Complete the UPI payment below to send it for verification."
+                  : order.status === "payment-verification-pending"
+                  ? "Your payment confirmation is with our pharmacy team. We will verify it before preparing your order."
+                  : "Your order is moving through our pharmacy and delivery workflow."}
+              </p>
+            </div>
+          )}
 
           {/* Status timeline */}
           {!isNegative && (
@@ -311,11 +273,11 @@ export default function OrderDetailPage() {
             {/* Pricing */}
             <div className="mt-4 pt-3 border-t border-border space-y-1.5 text-sm text-muted-foreground">
               <div className="flex justify-between"><span>Subtotal</span><span>₹{order.pricing.subtotal.toLocaleString("en-IN")}</span></div>
-              <div className="flex justify-between"><span>Delivery</span><span>{order.pricing.deliveryCharge === 0 ? "FREE" : `₹${order.pricing.deliveryCharge}`}</span></div>
+              <div className="flex justify-between"><span>Delivery</span><span>{order.pricing.deliveryCharge == null ? "Pending review" : order.pricing.deliveryCharge === 0 ? "Included" : `₹${order.pricing.deliveryCharge}`}</span></div>
               <div className="flex justify-between"><span>GST</span><span>₹{order.pricing.gst.toLocaleString("en-IN")}</span></div>
               {order.pricing.discount > 0 && <div className="flex justify-between text-green-600 dark:text-green-400"><span>Discount</span><span>−₹{order.pricing.discount}</span></div>}
               <div className="flex justify-between font-bold text-foreground text-base pt-2 border-t border-border">
-                <span>Total</span><span>₹{order.pricing.grandTotal.toLocaleString("en-IN")}</span>
+                <span>Total</span><span>{order.pricing.grandTotal == null ? "Pending review" : `₹${order.pricing.grandTotal.toLocaleString("en-IN")}`}</span>
               </div>
             </div>
           </div>
@@ -409,48 +371,18 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
-          {/* ── Razorpay Pay Now panel ── */}
+          {/* ── UPI payment panel (available only after pharmacy request) ── */}
           {order.status === "payment-pending" && order.payment.method === "upi" &&
+           order.pricing.grandTotal != null &&
            !["paid", "verified", "completed"].includes(order.payment.status) && (
             <UpiPaymentPanel
               orderDbId={order.id}
               orderId={order.orderId}
               amount={order.pricing.grandTotal}
               paymentStatus={order.payment.status}
-              upiTransactionId={order.payment.upiTransactionId}
             />
           )}
 
-          {order.status === "payment-pending" && order.payment.method === "razorpay" && (
-            <div className="p-5 rounded-2xl border border-primary/30 bg-primary/5">
-              <h2 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
-                <CreditCard size={14} className="text-primary" /> Complete Your Payment
-              </h2>
-              <p className="text-xs text-muted-foreground mb-4">
-                Your order is saved. Complete the payment of{" "}
-                <strong className="text-foreground">₹{order.pricing.grandTotal.toLocaleString("en-IN")}</strong>{" "}
-                via Razorpay to confirm your order.
-              </p>
-              {payNowError && <p className="text-xs text-destructive mb-3">{payNowError}</p>}
-              <button
-                onClick={handlePayNow}
-                disabled={payNowLoading}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl
-                           bg-primary text-white font-bold text-sm hover:bg-primary/90
-                           disabled:opacity-60 transition-colors shadow-md shadow-primary/20"
-              >
-                {payNowLoading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <CreditCard size={16} />
-                )}
-                {payNowLoading ? "Opening Razorpay…" : `Pay ₹${order.pricing.grandTotal.toLocaleString("en-IN")} Now`}
-              </button>
-              <p className="text-[10px] text-muted-foreground text-center mt-2">
-                Secure payment via Razorpay · 256-bit SSL
-              </p>
-            </div>
-          )}
 
           {/* Actions */}
           <div className="flex flex-col gap-3">

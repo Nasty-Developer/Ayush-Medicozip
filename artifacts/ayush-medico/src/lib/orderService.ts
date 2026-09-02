@@ -61,10 +61,10 @@ export type OrderItem = {
 
 export type OrderPricing = {
   subtotal: number;
-  deliveryCharge: number;
+  deliveryCharge: number | null;
   discount: number;
   gst: number;
-  grandTotal: number;
+  grandTotal: number | null;
   couponCode?: string | null;
 };
 
@@ -143,6 +143,14 @@ type OrderRow = {
 };
 
 function mapRow(row: OrderRow): Order {
+  const pricing = {
+    ...row.pricing,
+    subtotal: Number(row.pricing.subtotal),
+    discount: Number(row.pricing.discount),
+    gst: Number(row.pricing.gst),
+    deliveryCharge: row.pricing.deliveryCharge == null ? null : Number(row.pricing.deliveryCharge),
+    grandTotal: row.pricing.grandTotal == null ? null : Number(row.pricing.grandTotal),
+  };
   return {
     id: String(row.id),
     orderId: row.orderId,
@@ -162,7 +170,7 @@ function mapRow(row: OrderRow): Order {
       totalPrice: Number(i.totalPrice),
       prescriptionRequired: i.prescriptionRequired,
     })),
-    pricing: row.pricing,
+    pricing,
     payment: row.payment,
     prescription: row.prescription,
     delivery: row.delivery,
@@ -220,6 +228,26 @@ export async function updateOrderDelivery(
     method: "PATCH",
     body: JSON.stringify(delivery),
   });
+}
+
+/** Admin-only workflow action: set the delivery charge and recalculate total. */
+export async function updateOrderDeliveryCharge(
+  docId: string,
+  deliveryCharge: number,
+): Promise<Order> {
+  const row = await authFetchJson<OrderRow>(`/api/orders/${docId}/delivery-charge`, {
+    method: "PATCH",
+    body: JSON.stringify({ deliveryCharge }),
+  });
+  return mapRow(row);
+}
+
+/** Admin-only workflow action: notify the customer that UPI payment is ready. */
+export async function requestOrderPayment(docId: string): Promise<Order> {
+  const row = await authFetchJson<OrderRow>(`/api/orders/${docId}/payment-request`, {
+    method: "POST",
+  });
+  return mapRow(row);
 }
 
 export async function updateOrderPrescription(

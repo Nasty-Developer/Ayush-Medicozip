@@ -1,15 +1,13 @@
-// CheckoutPage — Multi-step checkout flow.
-// Steps: 1. Address  →  2. Payment  →  3. Review & Confirm
-//
-// Payment is completed by manual UPI transfer followed by pharmacist verification.
+// CheckoutPage — address, prescription, then order review.
+// Payment is requested only after the pharmacy reviews the order.
 
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MapPin, CreditCard, ClipboardCheck, Check, AlertCircle,
+  MapPin, ClipboardCheck, Check, AlertCircle,
   Loader2, ShoppingCart, ArrowLeft, FileText, Lock, Shield,
-  Smartphone, ChevronRight,
+  ChevronRight,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
@@ -27,11 +25,9 @@ type Step = "address" | "payment" | "review";
 
 const STEPS: { id: Step; label: string; icon: typeof MapPin }[] = [
   { id: "address", label: "Address", icon: MapPin },
-  { id: "payment", label: "Payment", icon: CreditCard },
+  { id: "payment", label: "Prescription", icon: FileText },
   { id: "review",  label: "Review",  icon: ClipboardCheck },
 ];
-
-const pendingOrderKey = (uid: string) => `ayush-medico-pending-order:${uid}`;
 
 function cartFingerprint(items: { medicineId: string; quantity: number; unitPrice: number }[]) {
   return [...items]
@@ -73,39 +69,6 @@ export default function CheckoutPage() {
       return addresses.find((address) => address.isDefault) ?? addresses[0] ?? null;
     });
   }, [user?.uid, addresses, loadingAddresses]);
-
-  // Only resume an existing payment order when it was created from this exact
-  // cart. This prevents an abandoned order from hijacking a new checkout.
-  useEffect(() => {
-    if (!user || items.length === 0) return;
-    let cancelled = false;
-    const key = pendingOrderKey(user.uid);
-    const saved = localStorage.getItem(key);
-    if (!saved) return;
-
-    try {
-      const parsed = JSON.parse(saved) as { docId?: string; cartFingerprint?: string };
-      if (!parsed.docId || parsed.cartFingerprint !== cartFingerprint(items)) {
-        localStorage.removeItem(key);
-        return;
-      }
-      void getOrderById(parsed.docId).then((order) => {
-        if (cancelled) return;
-        const resumable = order?.customerId === user.uid &&
-          ["payment-pending", "payment-verification-pending"].includes(order.status);
-        if (resumable) {
-          navigate(`/payment/${parsed.docId}`);
-        } else {
-          localStorage.removeItem(key);
-        }
-      }).catch(() => {
-        if (!cancelled) localStorage.removeItem(key);
-      });
-    } catch {
-      localStorage.removeItem(key);
-    }
-    return () => { cancelled = true; };
-  }, [user, items, navigate]);
 
   const [tempOrderId] = useState(
     () => `temp-${user?.uid?.slice(-6) ?? "guest"}-${Date.now()}`
@@ -223,8 +186,8 @@ export default function CheckoutPage() {
         lng: selectedAddress.lng,
       };
 
-      // Create order in DB first — payment-pending so the customer can resume
-      // payment after a refresh without creating a duplicate order.
+      // Create a pending order for pharmacy review. Delivery and final payable
+      // total are server-owned and intentionally unset at this stage.
       let orderInput = {
         orderId,
         customerId: user.uid,
@@ -244,10 +207,10 @@ export default function CheckoutPage() {
         })),
         pricing: {
           subtotal: summary.subtotal,
-          deliveryCharge: summary.deliveryCharge,
+          deliveryCharge: null,
           gst: summary.gst,
           discount: summary.discount,
-          grandTotal: summary.grandTotal,
+          grandTotal: null,
           couponCode: summary.couponCode,
         },
         payment: {
@@ -262,7 +225,7 @@ export default function CheckoutPage() {
           status: prescriptionRequired ? "pending" as const : "not-required" as const,
         },
         delivery: { status: "not-assigned" as const },
-        status: "payment-pending" as const,
+        status: "pending" as const,
         source: "website" as const,
       };
       let docId: string;
@@ -288,10 +251,6 @@ export default function CheckoutPage() {
       }
 
       localStorage.removeItem(draftKey);
-      localStorage.setItem(
-        pendingOrderKey(user.uid),
-        JSON.stringify({ docId, orderId, cartFingerprint: cartFingerprint(items) }),
-      );
       try {
         await queueNotification({
           orderId,
@@ -302,7 +261,7 @@ export default function CheckoutPage() {
           customerEmail: user.email,
           event: "order_placed",
           channels: ["whatsapp", "email"],
-          metadata: { orderId, grandTotal: summary.grandTotal },
+          metadata: { orderId, grandTotal: null },
         });
       } catch (notificationError) {
         // Notification delivery is secondary to placing the order. Never tell
@@ -310,7 +269,8 @@ export default function CheckoutPage() {
         // is temporarily unavailable.
         console.warn("Order notification could not be queued:", notificationError);
       }
-      navigate(`/payment/${docId}`);
+      clearCart();
+      navigate(`/order/${docId}`);
     } catch (err) {
       console.error("Place order error:", err);
       setError("Failed to place order. Please try again.");
@@ -408,70 +368,27 @@ export default function CheckoutPage() {
                 </motion.div>
               )}
 
-              {/* ── Step 2: Payment ── */}
+              {/* ── Step 2: Prescription ── */}
               {step === "payment" && (
                 <motion.div key="payment" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} className="space-y-5">
-
-                   {/* UPI info card */}
-                  <div className="rounded-2xl border border-border bg-card overflow-hidden">
-                    {/* Header */}
-                    <div className="px-5 pt-5 pb-4 border-b border-border">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                             <Smartphone size={15} className="text-primary" />
-                             Pay securely with UPI
-                          </h2>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                             Google Pay, PhonePe, Paytm, BHIM and all UPI apps accepted
-                          </p>
-                        </div>
-                        <div className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
-                          <Shield size={11} className="text-primary" />
-                          <span className="text-[11px] font-bold text-primary tracking-tight">100% secure</span>
-                        </div>
+                  <div className="p-5 rounded-2xl border border-border bg-card">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-xl bg-primary/10 p-2.5">
+                        <FileText size={18} className="text-primary" />
                       </div>
-                    </div>
-
-                    {/* Supported payment modes */}
-                    <div className="px-5 py-4">
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                         How payment works
-                      </p>
-                       <div className="grid sm:grid-cols-3 gap-2.5">
-                         {[
-                           ["1", "Scan the QR", "Use any UPI app"],
-                           ["2", "Pay exact amount", "₹" + summary.grandTotal.toFixed(2)],
-                           ["3", "Confirm payment", "We verify it securely"],
-                         ].map(([number, label, detail]) => (
-                           <div key={number} className="flex items-start gap-2.5 p-3 rounded-xl bg-muted/40 border border-border/60">
-                             <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary">{number}</div>
-                             <div>
-                               <p className="text-[12px] font-semibold text-foreground">{label}</p>
-                               <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{detail}</p>
-                             </div>
-                           </div>
-                         ))}
-                      </div>
-                    </div>
-
-                    {/* Security notice */}
-                    <div className="mx-5 mb-5 px-4 py-3 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800">
-                      <div className="flex items-start gap-2">
-                        <Shield size={13} className="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-green-700 dark:text-green-400 leading-relaxed">
-                           Your order is created before payment, so you can safely return to this page and continue if needed.
+                      <div>
+                        <h2 className="text-base font-bold text-foreground">Prescription review</h2>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Upload a prescription when required. Our pharmacist will review it after you submit the order.
                         </p>
                       </div>
                     </div>
                   </div>
-
-                  {/* Prescription upload (if required) */}
                   {prescriptionRequired && (
                     <div className="p-5 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
                       <h3 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
                         <FileText size={14} className="text-amber-600" />
-                        Prescription Required
+                         Prescription Required
                         <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200">
                           MANDATORY
                         </span>
@@ -490,6 +407,12 @@ export default function CheckoutPage() {
                   )}
 
                   {error && <p className="text-sm text-destructive">{error}</p>}
+
+                  {!prescriptionRequired && (
+                    <div className="rounded-xl border border-primary/15 bg-primary/5 px-4 py-3 text-xs text-muted-foreground">
+                      No prescription is needed for the items in this order.
+                    </div>
+                  )}
 
                   <div className="flex gap-3">
                     <button
@@ -535,11 +458,11 @@ export default function CheckoutPage() {
                   <div className="p-4 rounded-2xl border border-border bg-card">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Payment</p>
                     <div className="flex items-center gap-2">
-                      <Lock size={12} className="text-green-600 dark:text-green-400" />
-                       <p className="text-sm font-semibold text-foreground">UPI payment</p>
+                       <Lock size={12} className="text-primary" />
+                        <p className="text-sm font-semibold text-foreground">UPI payment after review</p>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                        Scan the QR on the next page, pay to the Ayush Medico UPI ID, and confirm when payment is complete.
+                         The pharmacy will review your order, approve any prescription, add delivery charges, and then send the UPI payment request.
                     </p>
                   </div>
 
@@ -613,7 +536,7 @@ export default function CheckoutPage() {
                     >
                          {placing
                          ? <><Loader2 size={15} className="animate-spin" /> Creating your order…</>
-                         : <><Lock size={14} /> Continue to UPI payment</>}
+                         : <><Lock size={14} /> Submit for pharmacy review</>}
                     </button>
                   </div>
 
@@ -622,7 +545,7 @@ export default function CheckoutPage() {
                     <div className="flex items-center justify-center gap-2 pt-1">
                       <Shield size={11} className="text-muted-foreground/60" />
                       <p className="text-[10px] text-muted-foreground/60">
-                         UPI payment · Your order is saved before payment
+                          Your order is saved securely before payment is requested
                       </p>
                     </div>
                   )}
@@ -659,9 +582,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Delivery</span>
-                  <span className={summary.deliveryCharge === 0 ? "text-green-600 dark:text-green-400" : ""}>
-                    {summary.deliveryCharge === 0 ? "FREE" : `₹${summary.deliveryCharge}`}
-                  </span>
+                  <span className="text-amber-600 dark:text-amber-400">Added after review</span>
                 </div>
                 <div className="flex justify-between">
                   <span>GST</span>
@@ -675,7 +596,7 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between font-bold text-foreground text-base mt-3 pt-3 border-t border-border">
                 <span>Total</span>
-                <span>₹{summary.grandTotal.toLocaleString("en-IN")}</span>
+                <span className="text-amber-600 dark:text-amber-400">Pending review</span>
               </div>
               {prescriptionRequired && (
                 <div className="mt-3 pt-3 border-t border-border">

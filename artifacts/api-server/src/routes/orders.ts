@@ -63,6 +63,36 @@ const ALLOWED_STATUS_TRANSITIONS: Record<string, readonly string[]> = {
   refunded: [],
 };
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function isPaymentVerified(payment: Record<string, unknown>): boolean {
+  return ["paid", "verified", "completed"].includes(String(payment.status));
+}
+
+function hasManualDeliveryCharge(pricing: Record<string, unknown>): boolean {
+  const charge = pricing.deliveryCharge;
+  return charge !== null && charge !== undefined && Number.isFinite(Number(charge)) && Number(charge) >= 0;
+}
+
+function prescriptionIsApproved(prescription: Record<string, unknown>): boolean {
+  return prescription.required !== true || prescription.verified === true || prescription.status === "approved";
+}
+
+function paymentRequestError(order: typeof ordersTable.$inferSelect): string | null {
+  const payment = asRecord(order.payment);
+  const pricing = asRecord(order.pricing);
+  const prescription = asRecord(order.prescription);
+  if (order.status !== "pending") return "Payment can only be requested while the order is under review";
+  if (payment.method !== "upi") return "This order does not use UPI payment";
+  if (!hasManualDeliveryCharge(pricing)) return "Enter a delivery charge before requesting payment";
+  if (!prescriptionIsApproved(prescription)) return "Prescription approval is required before requesting payment";
+  return null;
+}
+
 async function attachItems(order: typeof ordersTable.$inferSelect) {
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id));
   return { ...order, items };
@@ -280,6 +310,10 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
     }
     const rawPricing = body.pricing && typeof body.pricing === "object"
       ? body.pricing as Record<string, unknown> : {};
+    const rawPrescription = asRecord(body.prescription);
+    const prescriptionUrl = typeof rawPrescription.url === "string" && rawPrescription.url.trim()
+      ? rawPrescription.url.trim().slice(0, 4000)
+      : null;
     const couponCode = typeof rawPricing.couponCode === "string" ? rawPricing.couponCode.trim().toUpperCase() : "";
 
     const result = await db.transaction(async (tx: Tx) => {
@@ -331,7 +365,6 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
         await tx.update(table).set({ stockQty: sql`${table.stockQty} - ${quantity}` }).where(eq(table.id, product.id));
       }
       subtotal = Math.round(subtotal * 100) / 100;
-      const deliveryCharge = subtotal > 0 && subtotal < 500 ? 40 : 0;
       const gst = Math.round(subtotal * 0.05 * 100) / 100;
       let discount = 0;
       if (couponCode) {
@@ -346,15 +379,22 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
           discount = Math.max(0, Math.min(subtotal, Math.round(discount * 100) / 100));
         }
       }
-      const grandTotal = Math.max(0, Math.round((subtotal + deliveryCharge + gst - discount) * 100) / 100);
+      if (requiresPrescription && !prescriptionUrl) throw new Error("PRESCRIPTION_REQUIRED");
+      const grandTotal = Math.max(0, Math.round((subtotal + gst - discount) * 100) / 100);
       const data: InsertOrder = {
         orderId, customerId: req.firebaseUser!.uid, customerName,
         customerEmail: req.firebaseUser!.email ?? null, customerPhone,
-        address, pricing: { subtotal, deliveryCharge, gst, discount, grandTotal, couponCode: couponCode || null },
-        payment: { method: "upi", status: "pending", upiTransactionId: null },
-        prescription: { required: requiresPrescription, verified: false, status: requiresPrescription ? "pending" : "not-required", url: null },
+        address, pricing: {
+          subtotal, deliveryCharge: null, deliveryChargeStatus: "pending",
+          gst, discount, grandTotal, couponCode: couponCode || null,
+        },
+        payment: { method: "upi", status: "pending", upiTransactionId: null, requestedAt: null },
+        prescription: {
+          required: requiresPrescription, verified: false,
+          status: requiresPrescription ? "pending" : "not-required", url: prescriptionUrl,
+        },
         delivery: { status: "not-assigned", partnerId: null, trackingId: null },
-        status: "payment-pending", notes: typeof body.notes === "string" ? body.notes.trim().slice(0, 2000) : null,
+        status: "pending", notes: typeof body.notes === "string" ? body.notes.trim().slice(0, 2000) : null,
         source: body.source === "app" ? "app" : "website",
       };
       const [created] = await tx.insert(ordersTable).values(data).returning();
@@ -368,8 +408,91 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
     if (err.message === "INVALID_ITEM") { res.status(400).json({ error: "Invalid order item" }); return; }
     if (err.message === "ITEM_UNAVAILABLE") { res.status(409).json({ error: "One or more items are unavailable" }); return; }
     if (err.message === "INSUFFICIENT_STOCK") { res.status(409).json({ error: "Insufficient stock" }); return; }
+    if (err.message === "PRESCRIPTION_REQUIRED") { res.status(400).json({ error: "A prescription is required for one or more items" }); return; }
     logger.error({ err }, "Failed to create order");
     res.status(500).json({ error: "Failed to create order" });
+  }
+});
+
+// ── PATCH /api/orders/:id/delivery-charge ─────────────────────────────────────
+// Only admins can set the delivery charge. The server owns the resulting total.
+router.patch("/:id/delivery-charge", requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const id = Number(req.params["id"]);
+    const deliveryCharge = Number((req.body as Record<string, unknown>)?.deliveryCharge);
+    if (isNaN(id) || !Number.isFinite(deliveryCharge) || deliveryCharge < 0 || deliveryCharge > 100000) {
+      res.status(400).json({ error: "A valid non-negative delivery charge is required" });
+      return;
+    }
+    if (!isAdminEmail(req.firebaseUser?.email)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const [existing] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
+    if (!existing) { res.status(404).json({ error: "Order not found" }); return; }
+    if (!["pending", "payment-pending"].includes(existing.status)) {
+      res.status(409).json({ error: "Delivery charge can only be changed before payment confirmation" });
+      return;
+    }
+
+    const currentPricing = asRecord(existing.pricing);
+    const subtotal = Number(currentPricing.subtotal);
+    const gst = Number(currentPricing.gst);
+    const discount = Number(currentPricing.discount);
+    if (![subtotal, gst, discount].every(Number.isFinite)) {
+      res.status(409).json({ error: "Order pricing is incomplete" });
+      return;
+    }
+    const pricing = {
+      ...currentPricing,
+      deliveryCharge: Math.round(deliveryCharge * 100) / 100,
+      deliveryChargeStatus: "set",
+      grandTotal: Math.max(0, Math.round((subtotal + gst + deliveryCharge - discount) * 100) / 100),
+    };
+    const [updated] = await db
+      .update(ordersTable)
+      .set({ pricing, updatedAt: new Date() })
+      .where(eq(ordersTable.id, id))
+      .returning();
+    res.json(await attachItems(updated!));
+  } catch (err) {
+    logger.error({ err }, "Failed to update delivery charge");
+    res.status(500).json({ error: "Failed to update delivery charge" });
+  }
+});
+
+// ── POST /api/orders/:id/payment-request ──────────────────────────────────────
+// An admin must explicitly request payment after reviewing the order.
+router.post("/:id/payment-request", requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const id = Number(req.params["id"]);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    if (!isAdminEmail(req.firebaseUser?.email)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const [existing] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
+    if (!existing) { res.status(404).json({ error: "Order not found" }); return; }
+    const requestError = paymentRequestError(existing);
+    if (requestError) { res.status(409).json({ error: requestError }); return; }
+
+    const payment = asRecord(existing.payment);
+    const updatedPayment = {
+      ...payment,
+      status: "pending",
+      paymentRequestedAt: new Date().toISOString(),
+      paymentRequestedBy: req.firebaseUser?.email ?? req.firebaseUser?.uid,
+    };
+    const [updated] = await db
+      .update(ordersTable)
+      .set({ payment: updatedPayment, status: "payment-pending", updatedAt: new Date() })
+      .where(eq(ordersTable.id, id))
+      .returning();
+    res.json(await attachItems(updated!));
+  } catch (err) {
+    logger.error({ err }, "Failed to request order payment");
+    res.status(500).json({ error: "Failed to request order payment" });
   }
 });
 
@@ -405,6 +528,10 @@ router.patch("/:id/status", requireAuth, async (req: AuthenticatedRequest, res: 
       if (status !== existing.status && !(ALLOWED_STATUS_TRANSITIONS[existing.status] ?? []).includes(status)) {
         res.status(409).json({ error: `Invalid status transition from ${existing.status} to ${status}` });
         return;
+      }
+      if (status === "payment-pending") {
+        const requestError = paymentRequestError(existing);
+        if (requestError) { res.status(409).json({ error: requestError }); return; }
       }
       if (status === "payment-verified" && !paymentIsVerified) {
         res.status(409).json({ error: "Payment must be verified before this order can move forward" });

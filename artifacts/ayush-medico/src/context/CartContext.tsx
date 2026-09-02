@@ -31,10 +31,10 @@ export type CartSummary = {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
-  deliveryCharge: number;
+  deliveryCharge: number | null;
   gst: number;
   discount: number;
-  grandTotal: number;
+  grandTotal: number | null;
   couponCode: string | null;
   requiresPrescription: boolean;
 };
@@ -60,8 +60,6 @@ type CartContextValue = {
 const STORAGE_KEY = "ayush_medico_cart_v1";
 const COUPON_STORAGE_KEY = "ayush_medico_coupon_v1";
 const GST_RATE = 0.05; // 5% GST on medicines
-const FREE_DELIVERY_THRESHOLD = 500; // Free delivery above ₹500
-const BASE_DELIVERY_CHARGE = 40; // ₹40 flat delivery
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
@@ -128,15 +126,12 @@ function computeSummary(
   couponCode: string | null
 ): CartSummary {
   const subtotal = roundCurrency(items.reduce((s, i) => s + roundCurrency(i.unitPrice) * i.quantity, 0));
-  const deliveryCharge =
-    subtotal === 0
-      ? 0
-      : subtotal >= FREE_DELIVERY_THRESHOLD
-      ? 0
-      : BASE_DELIVERY_CHARGE;
+  // Delivery is entered by the pharmacy after order review. The storefront
+  // must never invent a fee or promise a final total before that review.
+  const deliveryCharge = subtotal === 0 ? null : null;
   const gst = roundCurrency(subtotal * GST_RATE);
   const discount = roundCurrency(Math.min(Math.max(0, couponDiscount), subtotal)); // can't discount more than subtotal
-  const grandTotal = roundCurrency(Math.max(0, subtotal + deliveryCharge + gst - discount));
+  const grandTotal = subtotal === 0 ? null : null;
   const requiresPrescription = items.some((i) => i.prescriptionRequired);
   const itemCount = items.reduce((s, i) => s + i.quantity, 0);
 

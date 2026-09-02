@@ -1,4 +1,4 @@
-// useAddresses — subscribes to the customer's saved addresses in real-time.
+// useAddresses — subscribes to UID-scoped client-only saved addresses.
 
 import { useState, useEffect } from "react";
 import { subscribeToAddresses, type CustomerAddress } from "@/lib/addressService";

@@ -9,7 +9,6 @@ type Props = {
   orderId: string;
   amount: number;
   paymentStatus: string;
-  upiTransactionId?: string | null;
   onSubmitted?: () => void;
 };
 
@@ -22,7 +21,6 @@ export default function UpiPaymentPanel({
   orderId,
   amount,
   paymentStatus,
-  upiTransactionId,
   onSubmitted,
 }: Props) {
   const { toast } = useToast();
@@ -151,9 +149,6 @@ export default function UpiPaymentPanel({
                  {submitting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
                  {submitting ? "Saving confirmation…" : "I Have Completed the Payment"}
                </button>
-               {upiTransactionId && (
-                 <p className="text-[11px] text-muted-foreground">A previous transaction reference is already attached to this order.</p>
-               )}
              </form>
           </div>
         </div>

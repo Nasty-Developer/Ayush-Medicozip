@@ -6,15 +6,16 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingCart, Search, RefreshCw, Loader2, AlertCircle,
-  ChevronDown, ChevronUp, CheckCircle2, XCircle, Clock, Package,
+  ChevronDown, ChevronUp, CheckCircle2, XCircle, Package,
   Truck, CreditCard, Phone, MessageCircle, FileText, Eye,
-  Send, BadgeCheck, AlertOctagon, ImageOff,
+  Send, BadgeCheck, ImageOff,
 } from "lucide-react";
 import {
   subscribeToAllOrders,
   updateOrderStatus,
-  updateOrderPayment,
   updateOrderDelivery,
+  updateOrderDeliveryCharge,
+  requestOrderPayment,
   reviewOrderPrescription,
   type Order,
 } from "@/lib/orderService";
@@ -26,7 +27,7 @@ import {
   type OrderStatus,
 } from "@/lib/orderStatus";
 import { queueNotification } from "@/lib/notificationService";
-import { verifyUpiPayment, createRazorpayPaymentLink } from "@/lib/paymentService";
+import { verifyUpiPayment } from "@/lib/paymentService";
 import { assignDeliveryPartner, bookPorterDelivery, initiateRefund } from "@/lib/deliveryService";
 import type { Timestamp } from "@/lib/orderService";
 import { useEffect } from "react";
@@ -80,38 +81,40 @@ function openWa(phone: string, message: string) {
 function buildWaMessages(order: Order) {
   const n = order.customerName || "there";
   const id = order.orderId;
-  const total = `₹${order.pricing.grandTotal.toLocaleString("en-IN")}`;
+  const total = order.pricing.grandTotal == null
+    ? "Final total pending review"
+    : `₹${order.pricing.grandTotal.toLocaleString("en-IN")}`;
   const partner = order.delivery?.partnerName;
   const partnerPhone = order.delivery?.partnerPhone;
   const method = order.payment.method === "cod" ? "Cash on Delivery" : order.payment.method.toUpperCase();
 
   return {
     confirmation:
-      `🏥 *Ayush Medico*\n\nHi ${n}! Your order *#${id}* has been received ✅\n\n*Total: ${total}*\nPayment: ${method}\n\nOur pharmacist will review and confirm shortly. We'll keep you updated!\n\n_For help: +91 98332 73838_`,
+      `Ayush Medico\n\nHi ${n}! Your order #${id} has been received.\n\nTotal: ${total}\nPayment: ${method}\n\nOur pharmacist will review and confirm shortly. We'll keep you updated.\n\nFor help: +91 98332 73838`,
 
     paymentRequest:
-      `💳 *Payment Required — Ayush Medico*\n\nHi ${n}, please complete payment for order *#${id}*.\n\n*Amount: ${total}*\n\nUPI ID: govind.chitara@okhdfcbank\n\nAfter payment, please share the UTR/transaction ID with us.\n\n_Queries: +91 98332 73838_`,
+      `Payment Required — Ayush Medico\n\nHi ${n}, please complete payment for order #${id}.\n\nAmount: ${total}\n\nUPI ID: govind.chitara@okhdfcbank\n\nAfter payment, confirm in your order page.\n\nQueries: +91 98332 73838`,
 
     preparing:
-      `🔄 *Order Being Prepared — Ayush Medico*\n\nHi ${n}! Your order *#${id}* is being carefully prepared at our pharmacy.\n\nWe'll notify you once it's packed and ready! 💊`,
+      `Order Being Prepared — Ayush Medico\n\nHi ${n}! Your order #${id} is being carefully prepared at our pharmacy.\n\nWe'll notify you once it's packed and ready.`,
 
     readyPickup:
-      `📦 *Ready for Dispatch — Ayush Medico*\n\nHi ${n}! Your order *#${id}* is packed and ready.\n\nOur delivery partner will pick it up shortly and head your way! 🚴`,
+      `Ready for Dispatch — Ayush Medico\n\nHi ${n}! Your order #${id} is packed and ready.\n\nOur delivery partner will pick it up shortly.`,
 
     outForDelivery:
-      `🚴 *Out for Delivery — Ayush Medico*\n\nHi ${n}! Your order *#${id}* is on its way!\n\n${partner ? `Delivery partner: ${partner}${partnerPhone ? ` (${partnerPhone})` : ""}` : "Our delivery partner is heading to your address."}\n\nPlease keep your phone handy. 📱`,
+      `Out for Delivery — Ayush Medico\n\nHi ${n}! Your order #${id} is on its way.\n\n${partner ? `Delivery partner: ${partner}${partnerPhone ? ` (${partnerPhone})` : ""}` : "Our delivery partner is heading to your address."}\n\nPlease keep your phone handy.`,
 
     delivered:
-      `🎉 *Order Delivered — Ayush Medico*\n\nHi ${n}! Your order *#${id}* has been successfully delivered!\n\nThank you for trusting Ayush Medico. 🙏\n\n_Get well soon! 💚_`,
+      `Order Delivered — Ayush Medico\n\nHi ${n}! Your order #${id} has been successfully delivered.\n\nThank you for trusting Ayush Medico.\n\nGet well soon.`,
 
     cancellation:
-      `❌ *Order Cancelled — Ayush Medico*\n\nHi ${n}, your order *#${id}* has been cancelled.\n\nFor assistance or to place a new order, call us at +91 98332 73838.`,
+      `Order Cancelled — Ayush Medico\n\nHi ${n}, your order #${id} has been cancelled.\n\nFor assistance or to place a new order, call us at +91 98332 73838.`,
 
     prescriptionVerified:
-      `✅ *Prescription Verified — Ayush Medico*\n\nHi ${n}! Your prescription for order *#${id}* has been verified by our pharmacist.\n\nYour order is now being processed. 💊`,
+      `Prescription Verified — Ayush Medico\n\nHi ${n}! Your prescription for order #${id} has been verified by our pharmacist.\n\nYour order is now being processed.`,
 
     prescriptionIssue:
-      `📋 *Prescription Issue — Ayush Medico*\n\nHi ${n}, we need a clearer prescription for order *#${id}*.\n\nPlease reply with a better photo of your prescription, or call us at +91 98332 73838.`,
+      `Prescription Issue — Ayush Medico\n\nHi ${n}, we need a clearer prescription for order #${id}.\n\nPlease reply with a better photo of your prescription, or call us at +91 98332 73838.`,
   };
 }
 
@@ -151,7 +154,7 @@ export default function OrdersPage() {
       let diff = 0;
       if (sortKey === "createdAt") diff = (a.createdAt?.seconds ?? 0) - (b.createdAt?.seconds ?? 0);
       if (sortKey === "status") diff = a.status.localeCompare(b.status);
-      if (sortKey === "total") diff = a.pricing.grandTotal - b.pricing.grandTotal;
+      if (sortKey === "total") diff = (a.pricing.grandTotal ?? -1) - (b.pricing.grandTotal ?? -1);
       return sortAsc ? diff : -diff;
     });
     return list;
@@ -199,7 +202,7 @@ export default function OrdersPage() {
           { label: "Active",        value: activeCount,   color: "text-primary" },
           { label: "Delivered",     value: orders.filter((o) => o.status === "delivered").length, color: "text-green-600 dark:text-green-400" },
           { label: "Revenue",
-            value: `₹${orders.filter((o) => o.status === "delivered").reduce((s, o) => s + o.pricing.grandTotal, 0).toLocaleString("en-IN")}`,
+            value: `₹${orders.filter((o) => o.status === "delivered").reduce((s, o) => s + (o.pricing.grandTotal ?? 0), 0).toLocaleString("en-IN")}`,
             color: "text-green-600 dark:text-green-400" },
         ].map((s) => (
           <div key={s.label} className="p-3 rounded-xl border border-border bg-card">
@@ -266,6 +269,7 @@ export default function OrdersPage() {
                 order={order}
                 expanded={expandedId === order.id}
                 onToggle={() => setExpandedId((v) => (v === order.id ? null : order.id))}
+                onOrderUpdated={(updated) => setOrders((current) => current.map((item) => item.id === updated.id ? updated : item))}
               />
             ))}
           </AnimatePresence>
@@ -277,19 +281,22 @@ export default function OrdersPage() {
 
 // ─── OrderCard ────────────────────────────────────────────────────────────────
 
-function OrderCard({ order, expanded, onToggle }: {
+function OrderCard({ order, expanded, onToggle, onOrderUpdated }: {
   order: Order;
   expanded: boolean;
   onToggle: () => void;
+  onOrderUpdated: (order: Order) => void;
 }) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [upiInput, setUpiInput] = useState(order.payment.upiTransactionId ?? "");
+  const [upiInput, setUpiInput] = useState("");
   const [partnerName, setPartnerName] = useState("");
   const [partnerPhone, setPartnerPhone] = useState("");
+  const [deliveryChargeInput, setDeliveryChargeInput] = useState(
+    order.pricing.deliveryCharge == null ? "" : String(order.pricing.deliveryCharge),
+  );
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [paymentLink, setPaymentLink] = useState<string | null>(null);
 
   const wa = buildWaMessages(order);
   const customerPhone = order.address?.mobileNumber ?? order.customerPhone;
@@ -329,17 +336,23 @@ function OrderCard({ order, expanded, onToggle }: {
     });
   };
 
+  const handleSetDeliveryCharge = async () => {
+    const charge = Number(deliveryChargeInput);
+    if (!Number.isFinite(charge) || charge < 0) {
+      setActionError("Enter a delivery charge of ₹0 or more.");
+      return;
+    }
+    await action("delivery-charge", async () => {
+      const updated = await updateOrderDeliveryCharge(order.id, Math.round(charge * 100) / 100);
+      onOrderUpdated(updated);
+    });
+  };
+
   const handleSendPaymentRequest = async () => {
     await action("payment-request", async () => {
-      const { url } = await createRazorpayPaymentLink(order.id);
-      setPaymentLink(url);
-      // Pre-fill WhatsApp with the payment link
-      const msg =
-        `💳 *Payment Request — Ayush Medico*\n\nHi ${order.customerName || "there"}! Please complete payment for order *#${order.orderId}*.\n\n` +
-        `*Amount: ₹${order.pricing.grandTotal.toLocaleString("en-IN")}*\n\n` +
-        `🔗 *Pay securely here:* ${url}\n\n` +
-        `_This link is valid for 24 hours. Queries: +91 98332 73838_`;
-      openWa(customerPhone, msg);
+      const updated = await requestOrderPayment(order.id);
+      onOrderUpdated(updated);
+      openWa(customerPhone, wa.paymentRequest);
     });
   };
 
@@ -400,7 +413,7 @@ function OrderCard({ order, expanded, onToggle }: {
     });
   };
 
-  const nextStatusAction = getNextAction(order.status, order.payment.method);
+  const nextStatusAction = getNextAction(order.status);
 
   const hasPrescription = order.prescription?.required;
   const rxVerified = order.prescription?.verified;
@@ -437,7 +450,7 @@ function OrderCard({ order, expanded, onToggle }: {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {order.customerName} · {customerPhone} · ₹{order.pricing.grandTotal.toLocaleString("en-IN")}
+             {order.customerName} · {customerPhone} · {order.pricing.grandTotal == null ? "Total pending review" : `₹${order.pricing.grandTotal.toLocaleString("en-IN")}`}
             {order.createdAt && ` · ${ts(order.createdAt)}`}
           </p>
         </div>
@@ -474,7 +487,7 @@ function OrderCard({ order, expanded, onToggle }: {
                 </div>
                 <div className="mt-2 pt-2 border-t border-border flex justify-between text-sm font-bold text-foreground">
                   <span>Grand Total</span>
-                  <span>₹{order.pricing.grandTotal.toLocaleString("en-IN")}</span>
+                   <span>{order.pricing.grandTotal == null ? "Pending review" : `₹${order.pricing.grandTotal.toLocaleString("en-IN")}`}</span>
                 </div>
               </div>
 
@@ -539,7 +552,7 @@ function OrderCard({ order, expanded, onToggle }: {
                         <div className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-400">
                           <BadgeCheck size={16} /> Prescription approved
                         </div>
-                      ) : (
+                      ) : order.status === "pending" ? (
                         <div className="space-y-2">
                           {showRejectInput ? (
                             <div className="space-y-2">
@@ -579,6 +592,10 @@ function OrderCard({ order, expanded, onToggle }: {
                             </div>
                           )}
                         </div>
+                      ) : (
+                        <p className="text-sm text-amber-700 dark:text-amber-400">
+                          Prescription review is required before payment can be requested.
+                        </p>
                       )}
                     </div>
                   ) : (
@@ -598,34 +615,57 @@ function OrderCard({ order, expanded, onToggle }: {
 
               <div className="flex flex-wrap gap-2">
 
-                {/* Razorpay — Send Payment Request */}
-                {order.payment.method === "razorpay" &&
-                 (order.payment.status === "pending" || order.payment.status === "failed") &&
-                 order.status === "payment-pending" && (
-                  <div className="w-full space-y-2">
-                    <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-400">
-                      <CreditCard size={13} />
-                      <span>Razorpay payment pending — send a secure payment link to the customer.</span>
+                {/* Delivery charge and pharmacy-owned final total */}
+                {order.status === "pending" && (
+                  <div className="w-full rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Delivery charge</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Enter the charge for this address. The server will recalculate the payable total.
+                      </p>
                     </div>
-                    {paymentLink && (
-                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-muted border border-border text-xs">
-                        <span className="text-muted-foreground flex-1 truncate">🔗 {paymentLink}</span>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(paymentLink)}
-                          className="text-primary hover:underline font-semibold flex-shrink-0"
-                        >
-                          Copy
-                        </button>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={deliveryChargeInput}
+                          onChange={(event) => setDeliveryChargeInput(event.target.value)}
+                          placeholder="Not set"
+                          className="w-full rounded-xl border border-border bg-background py-2 pl-7 pr-3 text-xs text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
                       </div>
-                    )}
-                    <ActionBtn
-                      label={paymentLink ? "Send Link Again (WhatsApp)" : "Send Payment Request"}
-                      icon={<Send size={12} />}
-                      loading={actionLoading === "payment-request"}
-                      onClick={handleSendPaymentRequest}
-                      color="blue"
-                    />
+                      <ActionBtn
+                        label="Save charge"
+                        icon={<CheckCircle2 size={12} />}
+                        loading={actionLoading === "delivery-charge"}
+                        onClick={handleSetDeliveryCharge}
+                        color="blue"
+                      />
+                    </div>
+                    <p className="text-xs font-semibold text-foreground">
+                      {order.pricing.grandTotal == null
+                        ? "Final payable total: pending charge"
+                        : `Final payable total: ₹${order.pricing.grandTotal.toLocaleString("en-IN")}`}
+                    </p>
                   </div>
+                )}
+
+                {/* UPI request is available only after review is complete. */}
+                {order.payment.method === "upi" &&
+                 order.status === "pending" &&
+                 order.pricing.deliveryCharge != null &&
+                 order.pricing.grandTotal != null &&
+                 (!hasPrescription || (Boolean(rxUrl) && Boolean(rxVerified))) && (
+                  <ActionBtn
+                    label="Request Payment"
+                    icon={<Send size={12} />}
+                    loading={actionLoading === "payment-request"}
+                    onClick={handleSendPaymentRequest}
+                    color="green"
+                  />
                 )}
 
                 {/* UPI payment verification */}
@@ -649,7 +689,7 @@ function OrderCard({ order, expanded, onToggle }: {
                 )}
                  {order.payment.method === "upi" && order.payment.status === "pending" && (
                    <p className="w-full rounded-xl bg-muted/50 border border-border px-3 py-2 text-xs text-muted-foreground">
-                     Waiting for the customer to confirm that the UPI payment was completed.
+                     Payment has not been requested yet. Set the delivery charge and request payment after review.
                    </p>
                  )}
 
@@ -736,7 +776,7 @@ function OrderCard({ order, expanded, onToggle }: {
                 {/* Refund */}
                 {(order.status === "cancelled" || order.status === "returned") && order.payment.method !== "cod" && order.payment.status !== "refunded" && (
                   <ActionBtn
-                    label={(order.payment as Record<string, unknown>)["razorpayPaymentId"] ? "Initiate Razorpay Refund" : "Mark Refunded"}
+                    label="Mark Refunded"
                     icon={<RefreshCw size={12} />}
                     loading={actionLoading === "refund"}
                     onClick={async () => {
@@ -773,12 +813,13 @@ function OrderCard({ order, expanded, onToggle }: {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <WaBtn label="Send Confirmation"    onClick={() => openWa(customerPhone, wa.confirmation)} />
-                     {order.payment.method === "upi" && ["pending", "verification-pending", "failed"].includes(order.payment.status) && (
-                      <WaBtn label="Send Payment Request" onClick={() => openWa(customerPhone, wa.paymentRequest)} color="orange" />
-                    )}
-                    {order.payment.method === "razorpay" && order.status === "payment-pending" && (
-                      <WaBtn label="Send Payment Request" onClick={handleSendPaymentRequest} color="orange" />
-                    )}
+                     {order.payment.method === "upi" &&
+                      order.status === "pending" &&
+                      order.pricing.deliveryCharge != null &&
+                      order.pricing.grandTotal != null &&
+                      (!hasPrescription || (Boolean(rxUrl) && Boolean(rxVerified))) && (
+                       <WaBtn label="Send Payment Request" onClick={handleSendPaymentRequest} color="orange" />
+                     )}
                     {["payment-verified", "preparing"].includes(order.status) && (
                       <WaBtn label="Order Being Prepared"  onClick={() => openWa(customerPhone, wa.preparing)} />
                     )}
@@ -882,16 +923,10 @@ type NextAction = {
   color: "green" | "blue" | "purple" | "red" | "gray" | "orange";
 };
 
-function getNextAction(
-  status: OrderStatus,
-  paymentMethod?: import("@/lib/orderService").PaymentMethod
-): NextAction | null {
-  const isCod = paymentMethod === "cod";
-
+function getNextAction(status: OrderStatus): NextAction | null {
   const map: Partial<Record<OrderStatus, NextAction>> = {
-    pending: isCod
-      ? { label: "Accept & Prepare", icon: <CheckCircle2 size={12} />, next: "confirmed", color: "green" }
-      : { label: "Accept Order",     icon: <CheckCircle2 size={12} />, next: "payment-pending",  color: "green" },
+    // Pending orders must go through the explicit delivery-charge and payment
+    // request workflow above; there is no shortcut that bypasses review.
     confirmed: {
       label: "Start Preparing", icon: <Package size={12} />, next: "preparing", color: "blue",
     },

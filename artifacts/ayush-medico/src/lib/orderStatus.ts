@@ -118,8 +118,8 @@ export const ORDER_NEGATIVE_STATUSES: OrderStatus[] = [
 ];
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  pending:              "Order Placed",
-  "payment-pending":    "Payment Pending",
+  pending:              "Order Received · Under Review",
+  "payment-pending":    "Payment Required",
   "payment-verification-pending": "Payment Verification Pending",
   "payment-verified":   "Payment Verified",
   confirmed:            "Order Confirmed",

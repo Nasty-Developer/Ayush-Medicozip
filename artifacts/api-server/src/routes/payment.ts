@@ -79,6 +79,20 @@ router.post(
         res.status(409).json({ error: "This order can no longer receive payment" });
         return;
       }
+      if (order.status !== "payment-pending") {
+        res.status(409).json({ error: "Payment is available only after admin review and payment request" });
+        return;
+      }
+      const pricing = (order.pricing as Record<string, unknown>) ?? {};
+      if (pricing.deliveryCharge === null || pricing.deliveryCharge === undefined || !Number.isFinite(Number(pricing.deliveryCharge))) {
+        res.status(409).json({ error: "Delivery charge is not set yet" });
+        return;
+      }
+      const prescription = (order.prescription as Record<string, unknown>) ?? {};
+      if (prescription.required === true && prescription.verified !== true && prescription.status !== "approved") {
+        res.status(409).json({ error: "Prescription approval is required before payment" });
+        return;
+      }
       const existingPayment = order.payment as Record<string, unknown>;
       if (["paid", "verified", "completed"].includes(String(existingPayment.status))) {
         res.status(409).json({ error: "This order is already marked as paid" });
@@ -156,7 +170,11 @@ router.post(
 
       const prescription = (order.prescription as Record<string, unknown>) ?? {};
       const prescriptionApproved = prescription.required !== true || prescription.verified === true || prescription.status === "approved";
-      const nextOrderStatus = prescriptionApproved ? "confirmed" : "payment-verified";
+      if (!prescriptionApproved) {
+        res.status(409).json({ error: "Prescription approval is required before verifying payment" });
+        return;
+      }
+      const nextOrderStatus = "confirmed";
       const updatedPayment = {
         ...payment,
         status: "paid",

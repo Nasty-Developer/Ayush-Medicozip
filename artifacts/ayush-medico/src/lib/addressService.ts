@@ -1,12 +1,8 @@
-// Address Service — SQL-backed CRUD for customer saved addresses.
-// Talks to /api/addresses (PostgreSQL `addresses` table, scoped to the
-// authenticated Firebase user server-side) instead of Firestore's
-// userAddresses/{uid}/addresses subcollection.
+// Client-only saved addresses.
+// Addresses are deliberately scoped to the authenticated Firebase UID and are
+// never sent to the API. Orders receive a plain snapshot of the selected data.
 
-import { authFetchJson } from "./apiAuth";
 import type { Timestamp } from "./orderService";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type AddressType = "home" | "work" | "other";
 
@@ -33,119 +29,145 @@ export type CustomerAddress = {
 
 export type CreateAddressInput = Omit<CustomerAddress, "id" | "createdAt" | "updatedAt">;
 
-type AddressRow = {
-  id: number;
-  fullName: string;
-  mobileNumber: string;
-  alternateNumber: string | null;
-  houseNumber: string;
-  buildingName: string | null;
-  street: string;
-  area: string | null;
-  landmark: string | null;
-  city: string;
-  state: string;
-  pincode: string;
-  addressType: AddressType;
-  isDefault: boolean;
-  lat: string | null;
-  lng: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
+const STORAGE_PREFIX = "ayush-medico-saved-addresses:";
+const listeners = new Map<string, Set<(addresses: CustomerAddress[]) => void>>();
 
-function toTimestamp(iso: string): Timestamp {
-  return { seconds: Math.floor(new Date(iso).getTime() / 1000) };
+function storageKey(uid: string) {
+  return `${STORAGE_PREFIX}${encodeURIComponent(uid)}`;
 }
 
-function mapRow(row: AddressRow): CustomerAddress {
+function nowTimestamp(): Timestamp {
+  return { seconds: Math.floor(Date.now() / 1000) };
+}
+
+function readAddresses(uid: string): CustomerAddress[] {
+  if (!uid) return [];
+  try {
+    const raw = localStorage.getItem(storageKey(uid));
+    const value = raw ? JSON.parse(raw) : [];
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAddresses(uid: string, addresses: CustomerAddress[]) {
+  if (!uid) return;
+  try {
+    localStorage.setItem(storageKey(uid), JSON.stringify(addresses));
+  } catch {
+    // Private browsing and quota limits should not block order placement.
+  }
+  listeners.get(uid)?.forEach((listener) => listener(addresses));
+}
+
+function idForAddress() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `address-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function normalizeInput(input: CreateAddressInput): CreateAddressInput {
   return {
-    id: String(row.id),
-    fullName: row.fullName,
-    mobileNumber: row.mobileNumber,
-    alternateNumber: row.alternateNumber ?? undefined,
-    houseNumber: row.houseNumber,
-    buildingName: row.buildingName ?? undefined,
-    street: row.street,
-    area: row.area ?? undefined,
-    landmark: row.landmark ?? undefined,
-    city: row.city,
-    state: row.state,
-    pincode: row.pincode,
-    addressType: row.addressType,
-    isDefault: row.isDefault,
-    lat: row.lat != null ? Number(row.lat) : null,
-    lng: row.lng != null ? Number(row.lng) : null,
-    createdAt: toTimestamp(row.createdAt),
-    updatedAt: toTimestamp(row.updatedAt),
+    ...input,
+    fullName: input.fullName.trim(),
+    mobileNumber: input.mobileNumber.trim(),
+    alternateNumber: input.alternateNumber?.trim() || undefined,
+    houseNumber: input.houseNumber.trim(),
+    buildingName: input.buildingName?.trim() || undefined,
+    street: input.street.trim(),
+    area: input.area?.trim() || undefined,
+    landmark: input.landmark?.trim() || undefined,
+    city: input.city.trim(),
+    state: input.state.trim(),
+    pincode: input.pincode.trim(),
   };
 }
 
-// ─── CRUD ──────────────────────────────────────────────────────────────────────
-// `uid` is kept in every signature for call-site compatibility (the previous
-// Firestore paths were keyed by it) even though the API now derives the
-// caller's identity from the Firebase ID token server-side.
-
-export async function getAddresses(_uid: string): Promise<CustomerAddress[]> {
-  const rows = await authFetchJson<AddressRow[]>("/api/addresses");
-  return rows.map(mapRow);
+function withDefault(addresses: CustomerAddress[], preferredId?: string) {
+  const chosenId = preferredId ?? addresses.find((address) => address.isDefault)?.id ?? addresses[0]?.id;
+  return addresses.map((address) => ({ ...address, isDefault: address.id === chosenId }));
 }
 
-export async function addAddress(
-  _uid: string,
-  input: CreateAddressInput
-): Promise<string> {
-  const { id } = await authFetchJson<{ id: number; addresses: AddressRow[] }>("/api/addresses", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-  return String(id);
+export async function getAddresses(uid: string): Promise<CustomerAddress[]> {
+  return readAddresses(uid);
+}
+
+export async function addAddress(uid: string, input: CreateAddressInput): Promise<string> {
+  const timestamp = nowTimestamp();
+  const address: CustomerAddress = {
+    ...normalizeInput(input),
+    id: idForAddress(),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  const current = readAddresses(uid);
+  writeAddresses(uid, withDefault([...current, address], input.isDefault ? address.id : undefined));
+  return address.id;
 }
 
 export async function updateAddress(
-  _uid: string,
+  uid: string,
   addressId: string,
-  data: Partial<CreateAddressInput>
+  data: Partial<CreateAddressInput>,
 ): Promise<void> {
-  await authFetchJson(`/api/addresses/${addressId}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
+  const current = readAddresses(uid);
+  const existing = current.find((address) => address.id === addressId);
+  if (!existing) throw new Error("Address not found.");
+  const next = {
+    ...existing,
+    ...normalizeInput({ ...existing, ...data }),
+    id: existing.id,
+    updatedAt: nowTimestamp(),
+  };
+  const updated = current.map((address) => (address.id === addressId ? next : address));
+  writeAddresses(uid, data.isDefault ? withDefault(updated, addressId) : updated);
 }
 
-export async function deleteAddress(_uid: string, addressId: string): Promise<void> {
-  await authFetchJson(`/api/addresses/${addressId}`, { method: "DELETE" });
+export async function deleteAddress(uid: string, addressId: string): Promise<void> {
+  const current = readAddresses(uid);
+  const removed = current.find((address) => address.id === addressId);
+  if (!removed) return;
+  const remaining = current.filter((address) => address.id !== addressId);
+  writeAddresses(uid, removed.isDefault ? withDefault(remaining) : remaining);
 }
 
-export async function setDefaultAddress(_uid: string, addressId: string): Promise<void> {
-  await authFetchJson(`/api/addresses/${addressId}/default`, { method: "PATCH" });
+export async function setDefaultAddress(uid: string, addressId: string): Promise<void> {
+  const current = readAddresses(uid);
+  if (!current.some((address) => address.id === addressId)) throw new Error("Address not found.");
+  writeAddresses(uid, withDefault(current, addressId));
 }
-
-// ─── Polling-based "subscription" ─────────────────────────────────────────────
-// Firestore's onSnapshot gave live updates; the SQL API is request/response,
-// so this polls on an interval while preserving the same callback signature
-// and cleanup function so `useAddresses.ts` keeps working unchanged.
-
-const POLL_INTERVAL_MS = 10000;
 
 export function subscribeToAddresses(
   uid: string,
   onData: (addresses: CustomerAddress[]) => void,
-  onError?: (err: Error) => void
+  onError?: (err: Error) => void,
 ): () => void {
-  let cancelled = false;
-  const tick = async () => {
-    try {
-      const addresses = await getAddresses(uid);
-      if (!cancelled) onData(addresses);
-    } catch (err) {
-      if (!cancelled) onError?.(err as Error);
-    }
-  };
-  tick();
-  const interval = setInterval(tick, POLL_INTERVAL_MS);
-  return () => {
-    cancelled = true;
-    clearInterval(interval);
-  };
+  if (!uid) {
+    onData([]);
+    return () => undefined;
+  }
+  try {
+    onData(readAddresses(uid));
+    const uidListeners = listeners.get(uid) ?? new Set<(addresses: CustomerAddress[]) => void>();
+    uidListeners.add(onData);
+    listeners.set(uid, uidListeners);
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== storageKey(uid)) return;
+      try {
+        onData(readAddresses(uid));
+      } catch (error) {
+        onError?.(error instanceof Error ? error : new Error("Could not read saved addresses."));
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      uidListeners.delete(onData);
+      if (uidListeners.size === 0) listeners.delete(uid);
+      window.removeEventListener("storage", onStorage);
+    };
+  } catch (error) {
+    onError?.(error instanceof Error ? error : new Error("Could not read saved addresses."));
+    return () => undefined;
+  }
 }

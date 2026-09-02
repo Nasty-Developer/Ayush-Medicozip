@@ -4,15 +4,11 @@ import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { subscribeToOrder, type Order } from "@/lib/orderService";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import UpiPaymentPanel from "@/components/customer/UpiPaymentPanel";
-import { useCart } from "@/context/CartContext";
-
-const pendingOrderKey = (uid: string) => `ayush-medico-pending-order:${uid}`;
 
 export default function UpiPaymentPage() {
   const [matched, params] = useRoute("/payment/:docId");
   const [, navigate] = useLocation();
   const { user } = useCustomerAuth();
-  const { clearCart } = useCart();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +47,10 @@ export default function UpiPaymentPage() {
   }
 
   const paid = ["paid", "verified", "completed"].includes(order.payment.status);
-  const canPay = order.payment.method === "upi" && !paid && !["cancelled", "delivered", "returned", "refunded"].includes(order.status);
+  const canPay = order.payment.method === "upi" &&
+    !paid &&
+    order.status === "payment-pending" &&
+    order.pricing.grandTotal != null;
 
   return (
     <div className="min-h-screen pt-28 pb-20 bg-background">
@@ -70,17 +69,26 @@ export default function UpiPaymentPage() {
             orderId={order.orderId}
             amount={order.pricing.grandTotal}
             paymentStatus={order.payment.status}
-            upiTransactionId={order.payment.upiTransactionId}
             onSubmitted={() => {
-              clearCart();
-              localStorage.removeItem(pendingOrderKey(user.uid));
               navigate(`/order-confirmation/${order.id}`);
             }}
           />
         ) : (
           <div className="rounded-2xl border border-border bg-card p-6 text-center">
-            <p className="text-lg font-bold text-foreground">{paid ? "Payment verified" : "Payment is no longer available"}</p>
-            <p className="text-sm text-muted-foreground mt-2">You can view the latest status on your order page.</p>
+            <p className="text-lg font-bold text-foreground">
+              {paid
+                ? "Payment verified"
+                : order.status === "pending"
+                ? "Order received — under review"
+                : order.status === "payment-verification-pending"
+                ? "Payment verification pending"
+                : "Payment is not available yet"}
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {order.status === "pending"
+                ? "Payment will appear here after prescription review and delivery-charge entry."
+                : "You can view the latest status on your order page."}
+            </p>
             <button onClick={() => navigate(`/order/${docId}`)} className="mt-5 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold">View Order</button>
           </div>
         )}
