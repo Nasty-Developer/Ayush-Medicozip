@@ -22,6 +22,18 @@ const createPinoHttp = pinoHttp as unknown as (
   options: Record<string, unknown>,
 ) => ReturnType<typeof express>;
 
+// ── Production frontend assets ────────────────────────────────────────────────
+// Static files must be resolved before API CORS. Browser module requests include
+// an Origin header, but frontend assets are same-origin resources and should not
+// be rejected by the API's allowlist.
+const frontendDir = path.resolve(
+  import.meta.dirname,
+  "../../ayush-medico/dist/public",
+);
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(frontendDir));
+}
+
 // ── Trust proxy ───────────────────────────────────────────────────────────────
 // Replit (and most PaaS providers) sit behind a reverse-proxy that sets
 // X-Forwarded-For. Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
@@ -152,12 +164,6 @@ app.use("/api", router);
 // Render runs one web service for this project. In production, the API process
 // also serves the already-built Vite output from the primary frontend package.
 if (process.env.NODE_ENV === "production") {
-  const frontendDir = path.resolve(
-    import.meta.dirname,
-    "../../ayush-medico/dist/public",
-  );
-
-  app.use(express.static(frontendDir));
   app.use((req: any, res: any, next: any) => {
     if (req.method !== "GET" || req.path.startsWith("/api")) {
       next();
