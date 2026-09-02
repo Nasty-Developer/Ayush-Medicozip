@@ -94,6 +94,7 @@ function MedicineDialog({
 }) {
   const { categories, loading: catsLoading } = useCategories();
   const { brands,     loading: brandsLoading } = useBrands();
+  const { toast } = useToast();
 
   const [name,           setName]           = useState(medicine?.name          ?? "");
   const [genericName,    setGenericName]    = useState(medicine?.genericName   ?? "");
