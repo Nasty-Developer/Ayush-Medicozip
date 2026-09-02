@@ -11,6 +11,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import { authFetch } from "@/lib/apiAuth";
+import SignInModal from "@/components/customer/SignInModal";
 
 const inquirySchema = z.object({
   customerName: z.string().min(2, "Please enter your name"),
@@ -47,9 +50,11 @@ export default function GeneralInquiry() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "0px" });
   const { toast } = useToast();
+  const { user: customerUser, loading: customerLoading } = useCustomerAuth();
   const [submitting, setSubmitting] = useState<"send" | "whatsapp" | "email" | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [lastInquiryId, setLastInquiryId] = useState("");
+  const [showSignIn, setShowSignIn] = useState(false);
   const submissionTimerRef = useRef<number | null>(null);
 
   useEffect(() => () => {
@@ -71,9 +76,8 @@ export default function GeneralInquiry() {
   // Save to PostgreSQL via REST API (replaces Firestore "inquiries" collection)
   const saveToAPI = async (values: InquiryFormValues, source: SubmitSource): Promise<string> => {
     const inquiryId = generateInquiryId();
-    const res = await fetch("/api/inquiries", {
+    const res = await authFetch("/api/inquiries", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "inquiry",
         inquiryId,
@@ -84,7 +88,6 @@ export default function GeneralInquiry() {
         message: values.message,
         preferredContact: values.preferredContact,
         source,
-        status: "pending",
       }),
     });
     if (!res.ok) {
@@ -142,6 +145,10 @@ export default function GeneralInquiry() {
   };
 
   const handleSubmit = async (values: InquiryFormValues) => {
+    if (!customerUser) {
+      setShowSignIn(true);
+      return;
+    }
     setSubmitting("send");
     try {
       const id = await saveToAPI(values, "website");
@@ -166,6 +173,10 @@ export default function GeneralInquiry() {
   };
 
   const handleWhatsApp = async (values: InquiryFormValues) => {
+    if (!customerUser) {
+      setShowSignIn(true);
+      return;
+    }
     setSubmitting("whatsapp");
     let id = "";
     try {
@@ -186,6 +197,10 @@ export default function GeneralInquiry() {
   };
 
   const handleEmail = async (values: InquiryFormValues) => {
+    if (!customerUser) {
+      setShowSignIn(true);
+      return;
+    }
     setSubmitting("email");
     let id = "";
     try {
@@ -407,35 +422,70 @@ export default function GeneralInquiry() {
 
                     {/* Action Buttons */}
                     <div className="space-y-3 pt-2">
-                      <button
-                        type="submit"
-                        disabled={submitting !== null}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-secondary to-primary text-white font-semibold rounded-xl shadow-lg shadow-secondary/30 hover:shadow-secondary/50 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-200"
-                      >
-                        {submitting === "send" ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                        Submit Inquiry
-                      </button>
+                      {customerLoading ? (
+                        <div className="flex justify-center py-5">
+                          <Loader2 size={22} className="animate-spin text-muted-foreground" />
+                        </div>
+                      ) : !customerUser ? (
+                        <div className="rounded-2xl border border-border bg-muted/40 p-5 text-center space-y-4">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              Please sign in or create an account to send your inquiry
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Your form details will be preserved while you sign in.
+                            </p>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setShowSignIn(true)}
+                              className="flex-1 px-6 py-3 bg-gradient-to-r from-secondary to-primary text-white font-semibold rounded-xl shadow-lg shadow-secondary/30 hover:opacity-90 transition-all"
+                            >
+                              Sign In
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowSignIn(true)}
+                              className="flex-1 px-6 py-3 border border-primary/30 text-primary font-semibold rounded-xl hover:bg-primary/10 transition-all"
+                            >
+                              Create Account
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="submit"
+                            disabled={submitting !== null}
+                            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-secondary to-primary text-white font-semibold rounded-xl shadow-lg shadow-secondary/30 hover:shadow-secondary/50 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-200"
+                          >
+                            {submitting === "send" ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                            Submit Inquiry
+                          </button>
 
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <button
-                          type="button"
-                          disabled={submitting !== null}
-                          onClick={form.handleSubmit(handleWhatsApp, onInvalid)}
-                          className="flex items-center justify-center gap-2 flex-1 px-6 py-3 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/30 font-semibold rounded-xl hover:bg-[#25D366] hover:text-white active:scale-[0.98] disabled:opacity-70 transition-all duration-200"
-                        >
-                          {submitting === "whatsapp" ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
-                          Send via WhatsApp
-                        </button>
-                        <button
-                          type="button"
-                          disabled={submitting !== null}
-                          onClick={form.handleSubmit(handleEmail, onInvalid)}
-                          className="flex items-center justify-center gap-2 flex-1 px-6 py-3 bg-primary/10 text-primary border border-primary/30 font-semibold rounded-xl hover:bg-primary hover:text-white active:scale-[0.98] disabled:opacity-70 transition-all duration-200"
-                        >
-                          {submitting === "email" ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
-                          Send via Email
-                        </button>
-                      </div>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                              type="button"
+                              disabled={submitting !== null}
+                              onClick={form.handleSubmit(handleWhatsApp, onInvalid)}
+                              className="flex items-center justify-center gap-2 flex-1 px-6 py-3 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/30 font-semibold rounded-xl hover:bg-[#25D366] hover:text-white active:scale-[0.98] disabled:opacity-70 transition-all duration-200"
+                            >
+                              {submitting === "whatsapp" ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
+                              Send via WhatsApp
+                            </button>
+                            <button
+                              type="button"
+                              disabled={submitting !== null}
+                              onClick={form.handleSubmit(handleEmail, onInvalid)}
+                              className="flex items-center justify-center gap-2 flex-1 px-6 py-3 bg-primary/10 text-primary border border-primary/30 font-semibold rounded-xl hover:bg-primary hover:text-white active:scale-[0.98] disabled:opacity-70 transition-all duration-200"
+                            >
+                              {submitting === "email" ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+                              Send via Email
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </form>
                 </Form>
@@ -444,6 +494,7 @@ export default function GeneralInquiry() {
           </AnimatePresence>
         </motion.div>
       </div>
+      {showSignIn && <SignInModal onClose={() => setShowSignIn(false)} />}
     </section>
   );
 }

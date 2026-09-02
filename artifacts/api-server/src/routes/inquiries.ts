@@ -17,14 +17,10 @@ import { requireAuth, requireAdminEmail, isAdminEmail, type AuthenticatedRequest
 
 const router = Router();
 
-function optionalAuth(req: AuthenticatedRequest, res: Response, next: () => void): void {
-  if (!req.headers.authorization) { next(); return; }
-  void requireAuth(req, res, next);
-}
-
 // ── POST /api/inquiries ───────────────────────────────────────────────────────
-// Public — customer submits an inquiry or medicine request
-router.post("/", optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// Authenticated customers submit an inquiry or medicine request. Tracking lookup
+// remains separately protected by a matching inquiry ID and mobile number.
+router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const body = req.body as Record<string, unknown>;
 

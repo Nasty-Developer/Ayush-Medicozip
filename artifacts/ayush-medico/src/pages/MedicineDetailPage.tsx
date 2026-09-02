@@ -69,8 +69,8 @@ export default function MedicineDetailPage({ kind = "medicine" }: { kind?: "medi
       .then(async (r) => {
         if (r.status === 404) { setNotFound(true); return; }
         if (!r.ok) throw new Error(`API error ${r.status}`);
-        const data = await r.json() as CategoryMedicine;
-        setMedicine(data);
+        const data = await r.json() as CategoryMedicine & { packing?: string | null };
+        setMedicine({ ...data, packInfo: data.packInfo ?? data.packing ?? null });
       })
       .catch(console.warn)
       .finally(() => setLoading(false));
@@ -111,6 +111,7 @@ export default function MedicineDetailPage({ kind = "medicine" }: { kind?: "medi
   const inCart      = !!cartItem;
   const canAdd      = (status === "in_stock" || status === "low_stock") && !!medicine.sellingPrice;
   const isUnavailable = status === "out_of_stock" || status === "coming_soon";
+  const prescriptionRequired = kind !== "general" && Boolean(medicine.prescriptionRequired);
 
   const handleAdd = () => {
     if (!canAdd) return;
@@ -121,7 +122,7 @@ export default function MedicineDetailPage({ kind = "medicine" }: { kind?: "medi
       categoryImageUrl: medicine.categoryImageUrl ?? undefined,
       brandName: medicine.brand ?? undefined,
        unitPrice: Number(medicine.sellingPrice),
-       prescriptionRequired: kind === "vet" ? Boolean(medicine.prescriptionRequired) : false,
+        prescriptionRequired,
       imageUrl: medicine.imageUrl ?? undefined,
       maxStock,
     });
@@ -168,7 +169,7 @@ export default function MedicineDetailPage({ kind = "medicine" }: { kind?: "medi
           <div className="absolute top-3 right-3">
             <StockBadge status={status} />
           </div>
-          {kind === "vet" && medicine.prescriptionRequired && (
+          {prescriptionRequired && (
             <div className="absolute top-3 left-3">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                text-[10px] font-bold bg-amber-500/90 text-white">
@@ -276,10 +277,12 @@ export default function MedicineDetailPage({ kind = "medicine" }: { kind?: "medi
               >
                 <ShoppingCart size={16} /> Add to Cart
               </button>
-            ) : isUnavailable ? (
+            ) : isUnavailable || !medicine.sellingPrice ? (
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  {status === "out_of_stock" ? "Currently unavailable" : "Coming soon"}
+                  {isUnavailable
+                    ? status === "out_of_stock" ? "Currently unavailable" : "Coming soon"
+                    : "Contact us for availability and pricing"}
                 </p>
                 <button
                    onClick={() => triggerRequest(medicine.name, medicine.brand ?? undefined, medicine.categoryName ?? (kind === "vet" ? "Veterinary Medicine" : "General Product"))}

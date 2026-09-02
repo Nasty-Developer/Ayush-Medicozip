@@ -123,7 +123,13 @@ function MedicineDialog({
     try {
       const url = await uploadMedicineImage(file, medicine ? String(medicine.id) : `med_${Date.now()}`, setUploadPct);
       setImageUrl(url);
-    } catch { } finally { setUploading(false); }
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Image upload failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally { setUploading(false); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -426,11 +432,23 @@ export default function MedicinesPage() {
   };
 
   const handleToggleFlag = async (med: AdminMedicine, flag: "featured" | "newArrival" | "special") => {
-    const res = await adminFetch(`/api/admin/medicines/${med.id}`, {
-      method: "PUT",
-      body: JSON.stringify({ [flag]: !med[flag] }),
-    });
-    if (res.ok) load(search, page);
+    try {
+      const res = await adminFetch(`/api/admin/medicines/${med.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ [flag]: !med[flag] }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error || `Request failed (${res.status})`);
+      }
+      await load(search, page);
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Failed to update medicine flag",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    }
   };
 
   const handleStockStatus = async (med: AdminMedicine, stockStatus: StockStatus) => {

@@ -139,28 +139,6 @@ export default function CartDrawer() {
                   </div>
                 )}
 
-                {/* Free delivery progress */}
-                {summary.subtotal < 500 && (
-                  <div className="mx-4 mt-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
-                    <p className="text-[11px] text-primary font-medium mb-1.5">
-                      Add ₹{(500 - summary.subtotal).toLocaleString("en-IN")} more for free delivery!
-                    </p>
-                    <div className="h-1.5 rounded-full bg-primary/15 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${Math.min((summary.subtotal / 500) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {summary.subtotal >= 500 && (
-                  <div className="mx-4 mt-3 p-2.5 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                    <p className="text-[11px] text-green-700 dark:text-green-400 font-medium text-center">
-                      🎉 You've unlocked free delivery!
-                    </p>
-                  </div>
-                )}
-
                 {/* Item list */}
                 <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
                   {items.map((item) => (
@@ -236,9 +214,7 @@ export default function CartDrawer() {
                     </div>
                     <div className="flex justify-between text-muted-foreground">
                       <span>Delivery</span>
-                      <span className={summary.deliveryCharge === 0 ? "text-green-600 dark:text-green-400 font-medium" : ""}>
-                        {summary.deliveryCharge == null ? "Pending review" : summary.deliveryCharge === 0 ? "FREE" : `₹${summary.deliveryCharge}`}
-                      </span>
+                      <span>Added after review</span>
                     </div>
                     <div className="flex justify-between text-muted-foreground">
                       <span>GST (5%)</span>

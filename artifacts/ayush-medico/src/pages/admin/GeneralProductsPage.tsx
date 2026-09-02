@@ -374,10 +374,22 @@ export default function GeneralProductsPage() {
   };
 
   const handleToggle = async (item: GeneralProduct, flag: "featured" | "newArrival") => {
-    const res = await adminFetch(`/api/general-products/${item.id}`, {
-      method: "PUT", body: JSON.stringify({ [flag]: !item[flag] }),
-    });
-    if (res.ok) load(search, page, subCatFilter);
+    try {
+      const res = await adminFetch(`/api/general-products/${item.id}`, {
+        method: "PUT", body: JSON.stringify({ [flag]: !item[flag] }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error || `Request failed (${res.status})`);
+      }
+      await load(search, page, subCatFilter);
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Failed to update product flag",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    }
   };
 
   const totalPages = pageData ? Math.ceil(pageData.total / PAGE_SIZE) : 1;

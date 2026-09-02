@@ -37,6 +37,7 @@ import { useRequestMedicine } from "@/context/RequestMedicineContext";
 import { uploadPrescription, uploadRequestMedicinePhoto } from "@/lib/storageHelpers";
 import { checkDeliveryEligibility, STORE_LOCATION_LABEL } from "@/lib/deliveryZone";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import { authFetch } from "@/lib/apiAuth";
 import SignInModal from "@/components/customer/SignInModal";
 
 const requestSchema = z.object({
@@ -177,9 +178,8 @@ export default function RequestMedicine() {
       .join(", ");
     const eligibleAtSubmit = checkDeliveryEligibility(values.pincode).status === "eligible";
 
-    const res = await fetch("/api/inquiries", {
+    const res = await authFetch("/api/inquiries", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "medicine-request",
         inquiryId: requestId,
@@ -202,7 +202,6 @@ export default function RequestMedicine() {
         notes: values.notes || "",
         hasPrescription: !!fileToUpload,
         source,
-        status: "new",
       }),
     });
     if (!res.ok) {
@@ -221,9 +220,8 @@ export default function RequestMedicine() {
       uploadedFields.medicinePhotoUrl = await uploadRequestMedicinePhoto(photoToUpload, requestId);
     }
     if (Object.keys(uploadedFields).length > 0) {
-      const patchRes = await fetch(`/api/inquiries/${requestId}/prescription`, {
+      const patchRes = await authFetch(`/api/inquiries/${requestId}/prescription`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...uploadedFields, hasPrescription: Boolean(fileToUpload) }),
       });
       if (!patchRes.ok) {

@@ -157,7 +157,7 @@ router.get("/:id", async (req: Request, res: Response): Promise<void> => {
       .select({ ...getTableColumns(vetMedicinesTable), categoryName: categoriesTable.name })
       .from(vetMedicinesTable)
       .leftJoin(categoriesTable, eq(vetMedicinesTable.categoryId, categoriesTable.id))
-      .where(eq(vetMedicinesTable.id, id));
+      .where(and(eq(vetMedicinesTable.id, id), eq(vetMedicinesTable.status, "active")));
     if (!row) { res.status(404).json({ error: "Not found" }); return; }
     res.json(row);
   } catch (err) {
