@@ -223,10 +223,17 @@ router.post(
         res.status(403).json({ error: "Forbidden" });
         return;
       }
+      const pricing = (order.pricing as Record<string, unknown>) ?? {};
+      if (order.status !== "payment-pending" ||
+        pricing.deliveryCharge == null ||
+        !Number.isFinite(Number(pricing.grandTotal))) {
+        res.status(409).json({ error: "Payment is available only after admin review and payment request" });
+        return;
+      }
 
       const rzp = getRzp();
       const amountPaise = Math.round(
-        (order.pricing as Record<string, number>).grandTotal * 100
+        Number(pricing.grandTotal) * 100
       );
 
       const rzpOrder = await rzp.orders.create({
@@ -318,6 +325,13 @@ router.post(
         res.status(409).json({ error: "This order does not use Razorpay payment" });
         return;
       }
+      const pricing = (order.pricing as Record<string, unknown>) ?? {};
+      if (order.status !== "payment-pending" ||
+        pricing.deliveryCharge == null ||
+        !Number.isFinite(Number(pricing.grandTotal))) {
+        res.status(409).json({ error: "Payment is available only after admin review and payment request" });
+        return;
+      }
       if (existingPayment.razorpayOrderId !== razorpay_order_id) {
         logger.warn({ orderDbId, razorpay_order_id }, "Razorpay order ID mismatch");
         res.status(400).json({ error: "Payment does not match this order" });
@@ -333,6 +347,10 @@ router.post(
         prescription.required !== true ||
         prescription.verified === true ||
         prescription.status === "approved";
+      if (!prescriptionApproved) {
+        res.status(409).json({ error: "Prescription approval is required before verifying payment" });
+        return;
+      }
       const payment = {
         ...existingPayment,
         status: "paid",

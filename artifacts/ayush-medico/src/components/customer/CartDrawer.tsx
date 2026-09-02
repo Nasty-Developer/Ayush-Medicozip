@@ -230,7 +230,7 @@ export default function CartDrawer() {
                     <div className="flex justify-between text-muted-foreground">
                       <span>Delivery</span>
                       <span className={summary.deliveryCharge === 0 ? "text-green-600 dark:text-green-400 font-medium" : ""}>
-                        {summary.deliveryCharge === 0 ? "FREE" : `₹${summary.deliveryCharge}`}
+                        {summary.deliveryCharge == null ? "Pending review" : summary.deliveryCharge === 0 ? "FREE" : `₹${summary.deliveryCharge}`}
                       </span>
                     </div>
                     <div className="flex justify-between text-muted-foreground">
@@ -244,8 +244,8 @@ export default function CartDrawer() {
                       </div>
                     )}
                     <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
-                      <span>Total</span>
-                      <span>₹{summary.grandTotal.toLocaleString("en-IN")}</span>
+                      <span>Total after review</span>
+                      <span>{summary.grandTotal == null ? "Pending" : `₹${summary.grandTotal.toLocaleString("en-IN")}`}</span>
                     </div>
                   </div>
 

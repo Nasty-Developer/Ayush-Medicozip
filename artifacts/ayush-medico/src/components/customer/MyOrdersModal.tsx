@@ -219,7 +219,9 @@ export default function MyOrdersModal({ onClose }: { onClose: () => void }) {
                         </p>
                         <div className="flex items-center justify-between mt-1.5">
                           <span className="text-[11px] text-muted-foreground">{formatDate(o.createdAt)}</span>
-                          <span className="text-[11px] font-bold text-foreground">₹{o.pricing.grandTotal.toLocaleString("en-IN")}</span>
+                          <span className="text-[11px] font-bold text-foreground">
+                            {o.pricing.grandTotal == null ? "Pending total" : `₹${o.pricing.grandTotal.toLocaleString("en-IN")}`}
+                          </span>
                         </div>
                         <ChevronRight size={14} className="text-muted-foreground absolute right-5" style={{ marginTop: "-2rem" }} />
                       </button>
@@ -255,8 +257,12 @@ export default function MyOrdersModal({ onClose }: { onClose: () => void }) {
                       : "border-destructive/20 bg-destructive/5"
                   }`}>
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Prescription</p>
-                    {selected.prescription.verified ? (
+                     {selected.prescription.verified ? (
                       <p className="text-sm font-semibold text-green-700 dark:text-green-400">Verified by pharmacist</p>
+                    ) : selected.prescription.status === "rejected" ? (
+                      <p className="text-sm font-semibold text-destructive">
+                        Prescription rejected{selected.prescription.rejectionReason ? `: ${selected.prescription.rejectionReason}` : ""}
+                      </p>
                     ) : selected.prescription.url ? (
                       <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Pending pharmacist review</p>
                     ) : (
@@ -293,7 +299,7 @@ export default function MyOrdersModal({ onClose }: { onClose: () => void }) {
                   <div className="flex justify-between text-muted-foreground">
                     <span>Delivery</span>
                     <span className={selected.pricing.deliveryCharge === 0 ? "text-green-600" : ""}>
-                      {selected.pricing.deliveryCharge === 0 ? "FREE" : `₹${selected.pricing.deliveryCharge}`}
+                      {selected.pricing.deliveryCharge == null ? "Pending review" : selected.pricing.deliveryCharge === 0 ? "FREE" : `₹${selected.pricing.deliveryCharge}`}
                     </span>
                   </div>
                   {selected.pricing.gst > 0 && (
@@ -311,7 +317,9 @@ export default function MyOrdersModal({ onClose }: { onClose: () => void }) {
                   <div className="flex justify-between font-bold text-foreground pt-1.5 border-t border-border">
                     <span>Grand Total</span>
                     <span className="flex items-center gap-0.5">
-                      <IndianRupee size={13} />{selected.pricing.grandTotal.toLocaleString("en-IN")}
+                       {selected.pricing.grandTotal == null
+                         ? "Pending review"
+                         : <><IndianRupee size={13} />{selected.pricing.grandTotal.toLocaleString("en-IN")}</>}
                     </span>
                   </div>
                 </div>

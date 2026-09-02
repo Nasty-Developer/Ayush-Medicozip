@@ -47,10 +47,11 @@ export default function UpiPaymentPage() {
   }
 
   const paid = ["paid", "verified", "completed"].includes(order.payment.status);
+  const payableAmount = order.pricing.grandTotal;
   const canPay = order.payment.method === "upi" &&
     !paid &&
     order.status === "payment-pending" &&
-    order.pricing.grandTotal != null;
+    payableAmount != null;
 
   return (
     <div className="min-h-screen pt-28 pb-20 bg-background">
@@ -63,11 +64,11 @@ export default function UpiPaymentPage() {
           <h1 className="text-xl font-bold font-mono text-foreground">{order.orderId}</h1>
           <p className="text-sm text-muted-foreground mt-1">Complete payment securely using UPI</p>
         </div>
-        {canPay ? (
+         {canPay && payableAmount != null ? (
           <UpiPaymentPanel
             orderDbId={order.id}
             orderId={order.orderId}
-            amount={order.pricing.grandTotal}
+             amount={payableAmount}
             paymentStatus={order.payment.status}
             onSubmitted={() => {
               navigate(`/order-confirmation/${order.id}`);

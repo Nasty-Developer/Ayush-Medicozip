@@ -1,7 +1,7 @@
 kind = "web"
 previewPath = "/"
 title = "Ayush Medico"
-description = "A pharmacy storefront for Ayush Medico & General Stores, helping customers browse medicines and health products, request prescriptions, place orders, and contact the local pharmacy."
+description = "A pharmacy storefront for Ayush Medico & General Stores, helping customers browse medicines, request prescriptions, place orders, and contact the local pharmacy."
 version = "1.0.0"
 id = "artifacts/ayush-medico"
 router = "path"

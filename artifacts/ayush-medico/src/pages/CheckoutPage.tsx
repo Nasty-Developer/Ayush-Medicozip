@@ -237,7 +237,7 @@ export default function CheckoutPage() {
         // failed request. Reuse the same order ID and recover the existing
         // order instead of consuming stock a second time.
         const existing = await getOrderById(orderId);
-        if (existing?.customerId === user.uid) {
+        if (existing && existing.customerId === user.uid) {
           docId = existing.id;
         } else {
           orderId = await generateNewOrderId();

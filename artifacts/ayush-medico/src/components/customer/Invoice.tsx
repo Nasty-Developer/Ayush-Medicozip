@@ -12,7 +12,8 @@ function formatDate(timestamp?: Timestamp | null): string {
   });
 }
 
-function money(value: number): string {
+function money(value: number | null | undefined): string {
+  if (value == null) return "Pending review";
   return `₹${Number(value || 0).toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -139,7 +140,7 @@ export function getInvoiceMarkup(order: Order): string {
       </section>
       <section class="summary">
         <div class="summary-row"><span>Subtotal</span><strong>${money(order.pricing.subtotal)}</strong></div>
-        <div class="summary-row"><span>Delivery</span><strong>${order.pricing.deliveryCharge === 0 ? "Free" : money(order.pricing.deliveryCharge)}</strong></div>
+        <div class="summary-row"><span>Delivery</span><strong>${order.pricing.deliveryCharge == null ? "Pending review" : order.pricing.deliveryCharge === 0 ? "Free" : money(order.pricing.deliveryCharge)}</strong></div>
         <div class="summary-row"><span>GST</span><strong>${money(order.pricing.gst)}</strong></div>
         ${discount}
         <div class="total"><span>Grand total</span><strong>${money(order.pricing.grandTotal)}</strong></div>
@@ -314,7 +315,7 @@ export function InvoicePreview({ order }: { order: Order }) {
         </div>
         <div className="ml-auto mt-5 max-w-xs space-y-1.5 text-sm">
           <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{money(order.pricing.subtotal)}</span></div>
-          <div className="flex justify-between text-muted-foreground"><span>Delivery</span><span>{order.pricing.deliveryCharge === 0 ? "Free" : money(order.pricing.deliveryCharge)}</span></div>
+          <div className="flex justify-between text-muted-foreground"><span>Delivery</span><span>{order.pricing.deliveryCharge == null ? "Pending review" : order.pricing.deliveryCharge === 0 ? "Free" : money(order.pricing.deliveryCharge)}</span></div>
           <div className="flex justify-between text-muted-foreground"><span>GST</span><span>{money(order.pricing.gst)}</span></div>
           {order.pricing.discount > 0 && <div className="flex justify-between text-emerald-600"><span>Discount</span><span>−{money(order.pricing.discount)}</span></div>}
           <div className="flex justify-between border-t border-primary/40 pt-2 text-base font-bold text-primary"><span>Grand total</span><span>{money(order.pricing.grandTotal)}</span></div>

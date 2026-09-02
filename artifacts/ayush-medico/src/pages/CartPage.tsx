@@ -277,7 +277,7 @@ export default function CartPage() {
                   <div className="flex justify-between text-muted-foreground">
                     <span>Delivery Charges</span>
                     <span className={summary.deliveryCharge === 0 ? "text-green-600 dark:text-green-400 font-medium" : ""}>
-                      {summary.deliveryCharge === 0 ? "FREE" : `₹${summary.deliveryCharge}`}
+                      {summary.deliveryCharge == null ? "Pending review" : summary.deliveryCharge === 0 ? "FREE" : `₹${summary.deliveryCharge}`}
                     </span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
@@ -292,16 +292,9 @@ export default function CartPage() {
                   )}
                 </div>
                 <div className="flex justify-between font-bold text-foreground text-base mt-3 pt-3 border-t border-border">
-                  <span>Grand Total</span>
-                  <span>₹{summary.grandTotal.toLocaleString("en-IN")}</span>
+                  <span>Total after review</span>
+                  <span>{summary.grandTotal == null ? "Pending" : `₹${summary.grandTotal.toLocaleString("en-IN")}`}</span>
                 </div>
-
-                {/* Free delivery nudge */}
-                {summary.subtotal < 500 && summary.deliveryCharge > 0 && (
-                  <p className="text-xs text-primary mt-2">
-                    Add ₹{(500 - summary.subtotal).toLocaleString("en-IN")} more for free delivery
-                  </p>
-                )}
 
                 <button
                   onClick={() => navigate("/checkout")}

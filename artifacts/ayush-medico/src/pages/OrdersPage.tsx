@@ -30,7 +30,8 @@ function formatDate(order: Order): string {
   });
 }
 
-function money(value: number): string {
+function money(value: number | null | undefined): string {
+  if (value == null) return "Pending review";
   return `₹${Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
 

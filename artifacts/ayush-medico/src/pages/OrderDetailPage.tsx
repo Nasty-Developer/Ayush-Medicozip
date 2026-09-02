@@ -152,7 +152,9 @@ export default function OrderDetailPage() {
           {!isNegative && (
             <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
               <p className="text-sm font-bold text-foreground">
-                {order.status === "pending"
+                {order.status === "pending" && order.prescription.status === "rejected"
+                  ? "Prescription rejected — action required"
+                  : order.status === "pending"
                   ? "Order received — under review"
                   : order.status === "payment-pending"
                   ? "Payment required"
@@ -161,7 +163,9 @@ export default function OrderDetailPage() {
                   : ORDER_STATUS_LABELS[order.status]}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                {order.status === "pending"
+                {order.status === "pending" && order.prescription.status === "rejected"
+                  ? `The uploaded prescription was rejected${order.prescription.rejectionReason ? `: ${order.prescription.rejectionReason}` : "."} Payment is not available for this order. Please contact the pharmacy.`
+                  : order.status === "pending"
                   ? "We will review your prescription when required, confirm the delivery charge, and then make UPI payment available."
                   : order.status === "payment-pending"
                   ? "Your order has been reviewed. Complete the UPI payment below to send it for verification."
@@ -310,7 +314,11 @@ export default function OrderDetailPage() {
                 <BadgeCheck size={17} className={order.prescription.verified ? "text-emerald-600" : "text-amber-600"} />
                 <div>
                   <p className="text-sm font-semibold text-foreground">
-                    {order.prescription.verified ? "Verified by pharmacist" : order.prescription.url ? "Pending pharmacist review" : "Prescription not uploaded"}
+                    {order.prescription.verified
+                      ? "Verified by pharmacist"
+                      : order.prescription.status === "rejected"
+                      ? "Prescription rejected"
+                      : order.prescription.url ? "Pending pharmacist review" : "Prescription not uploaded"}
                   </p>
                   <p className="mt-0.5 text-xs capitalize text-muted-foreground">
                     {order.prescription.status ?? (order.prescription.verified ? "approved" : "pending")}

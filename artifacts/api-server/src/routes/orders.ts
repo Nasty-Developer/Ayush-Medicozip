@@ -194,7 +194,9 @@ router.get("/lookup", async (req: Request, res: Response): Promise<void> => {
       quantity: items.map((item) => `${item.medicineName} × ${item.quantity}`).join(", "),
       fullAddress,
       status: order.status,
-      grandTotal: Number((order.pricing as Record<string, unknown>)?.grandTotal ?? 0),
+      grandTotal: (order.pricing as Record<string, unknown>)?.grandTotal == null
+        ? null
+        : Number((order.pricing as Record<string, unknown>).grandTotal),
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       flow: "order",
@@ -380,13 +382,12 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
         }
       }
       if (requiresPrescription && !prescriptionUrl) throw new Error("PRESCRIPTION_REQUIRED");
-      const grandTotal = Math.max(0, Math.round((subtotal + gst - discount) * 100) / 100);
       const data: InsertOrder = {
         orderId, customerId: req.firebaseUser!.uid, customerName,
         customerEmail: req.firebaseUser!.email ?? null, customerPhone,
         address, pricing: {
           subtotal, deliveryCharge: null, deliveryChargeStatus: "pending",
-          gst, discount, grandTotal, couponCode: couponCode || null,
+          gst, discount, grandTotal: null, couponCode: couponCode || null,
         },
         payment: { method: "upi", status: "pending", upiTransactionId: null, requestedAt: null },
         prescription: {
@@ -582,6 +583,30 @@ async function mergeJsonbColumn(req: AuthenticatedRequest, res: Response, column
     return;
   }
 
+  const protectedFields: Record<JsonbColumn, readonly string[]> = {
+    address: ["*"],
+    pricing: ["*"],
+    payment: [
+      "method", "status", "upiTransactionId", "customerConfirmedAt",
+      "submittedAt", "paidAt", "verifiedAt", "verifiedBy",
+      "paymentRequestedAt", "paymentRequestedBy",
+    ],
+    prescription: [
+      "required", "verified", "status", "rejectionReason",
+      "reviewedAt", "reviewedBy", "verifiedAt",
+    ],
+    delivery: [],
+  };
+  const blocked = Object.keys(patch).filter((key) =>
+    protectedFields[column].includes("*") || protectedFields[column].includes(key),
+  );
+  if (blocked.length > 0) {
+    res.status(409).json({
+      error: `${column} workflow fields must be changed through their dedicated workflow endpoint`,
+    });
+    return;
+  }
+
   const merged = { ...(existing[column] as Record<string, unknown>), ...patch };
   const [updated] = await db
     .update(ordersTable)
@@ -686,29 +711,36 @@ router.patch("/:id/fields", requireAuth, async (req: AuthenticatedRequest, res: 
     }
 
     const fields = req.body as Record<string, unknown>;
-    const jsonbPatches: Partial<Record<JsonbColumn, Record<string, unknown>>> = {};
     const topLevel: Record<string, unknown> = {};
+    const deliveryPatch: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(fields)) {
       const dotIdx = key.indexOf(".");
       if (dotIdx > 0) {
-        const prefix = key.slice(0, dotIdx) as JsonbColumn;
         const rest = key.slice(dotIdx + 1);
-        if (JSONB_COLUMNS.includes(prefix)) {
-          jsonbPatches[prefix] = { ...(jsonbPatches[prefix] ?? {}), [rest]: value };
+        if (key.startsWith("delivery.") && rest) {
+          deliveryPatch[rest] = value;
           continue;
         }
       }
-      if (key === "notes" || key === "status") {
+      if (key === "notes") {
         topLevel[key] = value;
       }
     }
 
+    const unsupported = Object.keys(fields).filter((key) =>
+      key !== "notes" && !key.startsWith("delivery."),
+    );
+    if (unsupported.length > 0) {
+      res.status(409).json({
+        error: "Use the dedicated order workflow endpoints for status, payment, pricing, prescription, and address changes",
+      });
+      return;
+    }
+
     const updates: Record<string, unknown> = { ...topLevel, updatedAt: new Date() };
-    for (const col of JSONB_COLUMNS) {
-      if (jsonbPatches[col]) {
-        updates[col] = { ...(existing[col] as Record<string, unknown>), ...jsonbPatches[col] };
-      }
+    if (Object.keys(deliveryPatch).length > 0) {
+      updates.delivery = { ...(existing.delivery as Record<string, unknown>), ...deliveryPatch };
     }
 
     const [updated] = await db
