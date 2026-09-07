@@ -8,8 +8,11 @@ import "./index.css";
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     if (import.meta.env.PROD) {
+        const basePath = import.meta.env.BASE_URL.endsWith("/")
+          ? import.meta.env.BASE_URL
+          : `${import.meta.env.BASE_URL}/`;
       navigator.serviceWorker
-        .register("/sw.js")
+        .register(`${basePath}sw.js`, { scope: basePath })
         .then((registration) => {
           console.log("[PWA] Service Worker registered:", registration.scope);
           registration.update().catch(() => {});

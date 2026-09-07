@@ -32,7 +32,7 @@ const router = Router();
 
 // ── GET /api/admin/stats ──────────────────────────────────────────────────────
 
-router.get("/stats", async (_req: Request, res: Response): Promise<void> => {
+router.get("/stats", requireAuth, requireAdminEmail, async (_req: Request, res: Response): Promise<void> => {
   try {
     const [[medRow], [catRow], [coRow], [dgRow], [inqRow], [newInqRow], [faqRow], [testRow]] = await Promise.all([
       db.select({ count: count() }).from(medicinesTable).where(eq(medicinesTable.status, "active")),
@@ -62,7 +62,7 @@ router.get("/stats", async (_req: Request, res: Response): Promise<void> => {
 
 // ── Companies ─────────────────────────────────────────────────────────────────
 
-router.get("/companies", async (req: Request, res: Response): Promise<void> => {
+router.get("/companies", requireAuth, requireAdminEmail, async (req: Request, res: Response): Promise<void> => {
   try {
     const search = req.query["search"] ? String(req.query["search"]) : undefined;
     const page   = Math.max(1, parseInt(String(req.query["page"]  ?? "1"),   10));
@@ -129,7 +129,7 @@ router.delete("/companies/:id", requireAuth, requireAdminEmail, async (req: Requ
 
 // ── Drug Groups ───────────────────────────────────────────────────────────────
 
-router.get("/drug-groups", async (req: Request, res: Response): Promise<void> => {
+router.get("/drug-groups", requireAuth, requireAdminEmail, async (req: Request, res: Response): Promise<void> => {
   try {
     const search = req.query["search"] ? String(req.query["search"]) : undefined;
     const page   = Math.max(1, parseInt(String(req.query["page"]  ?? "1"),   10));

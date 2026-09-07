@@ -46,6 +46,18 @@ function scrollTo(href: string) {
 export default function Footer() {
   const { settings } = useStoreSettings();
 
+  const goToAnchor = (href: string) => {
+    const el = document.querySelector(href);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+
+    const target = new URL(import.meta.env.BASE_URL, window.location.origin);
+    target.hash = href.slice(1);
+    window.location.assign(target.toString());
+  };
+
   return (
     <footer className="bg-foreground text-background/80">
       {/* Top CTA strip */}
@@ -148,7 +160,7 @@ export default function Footer() {
                       </Link>
                     ) : (
                       <button
-                        onClick={() => scrollTo(link.href)}
+                         onClick={() => goToAnchor(link.href)}
                         className="text-sm text-background/55 hover:text-background flex items-center gap-1.5 group transition-colors duration-200"
                       >
                         <ArrowRight size={11} className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -251,7 +263,7 @@ export default function Footer() {
                     </Link>
                   ) : (
                     <button
-                      onClick={() => scrollTo(link.href)}
+                       onClick={() => goToAnchor(link.href)}
                       className="text-xs text-background/40 hover:text-background/70 transition-colors"
                     >
                       {link.label}

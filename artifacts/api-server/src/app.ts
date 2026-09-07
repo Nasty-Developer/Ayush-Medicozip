@@ -101,7 +101,9 @@ const generalLimiter = rateLimit({
   message: { error: "Too many requests. Please try again later." },
   skip: (req: any) => {
     // Skip rate limiting for health checks
-    return req.path === "/api/health";
+    // The limiter is mounted at /api, so Express exposes the remaining path
+    // as /healthz inside this callback.
+    return req.path === "/healthz" || req.path === "/health";
   },
 });
 
