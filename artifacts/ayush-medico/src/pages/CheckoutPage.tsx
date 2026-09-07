@@ -203,6 +203,7 @@ export default function CheckoutPage() {
       // total are server-owned and intentionally unset at this stage.
       let orderInput = {
         orderId,
+        addressId: selectedAddress.id,
         customerId: user.uid,
         customerName: user.displayName ?? user.email ?? "Customer",
         customerEmail: user.email,

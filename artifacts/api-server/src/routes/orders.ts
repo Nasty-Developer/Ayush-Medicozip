@@ -16,7 +16,7 @@ import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import {
   ordersTable, orderItemsTable, medicinesTable, generalProductsTable, vetMedicinesTable,
-  couponsTable, type InsertOrder, type InsertOrderItem,
+  couponsTable, addressesTable, usersTable, type InsertOrder, type InsertOrderItem,
 } from "@workspace/db";
 import { eq, desc, and, gte, lte, sql, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
@@ -295,22 +295,13 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
     const body = req.body as Record<string, unknown>;
     const items = body.items;
     const orderId = typeof body.orderId === "string" ? body.orderId.trim().toUpperCase() : "";
-    const customerName = typeof body.customerName === "string" ? body.customerName.trim() : "";
-    const customerPhone = typeof body.customerPhone === "string" ? body.customerPhone.trim() : "";
-    const address = body.address;
-    if (!/^AYM-\d{4}-\d{6}$/.test(orderId) || !customerName || !/^[0-9+\-()\s]{7,20}$/.test(customerPhone)) {
-      res.status(400).json({ error: "Valid orderId, customerName, and customerPhone are required" });
+    const addressId = typeof body.addressId === "string" ? body.addressId.trim() : "";
+    if (!/^AYM-\d{4}-\d{6}$/.test(orderId) || !/^\d+$/.test(addressId)) {
+      res.status(400).json({ error: "Valid orderId and addressId are required" });
       return;
     }
     if (!Array.isArray(items) || items.length === 0) {
       res.status(400).json({ error: "A non-empty items array is required" });
-      return;
-    }
-    if (!address || typeof address !== "object" ||
-      !["fullName", "mobileNumber", "houseNumber", "street", "pincode"].every((k) =>
-        typeof (address as Record<string, unknown>)[k] === "string" &&
-        String((address as Record<string, unknown>)[k]).trim().length > 0)) {
-      res.status(400).json({ error: "A complete delivery address is required" });
       return;
     }
     const rawPricing = body.pricing && typeof body.pricing === "object"
@@ -322,6 +313,43 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
     const couponCode = typeof rawPricing.couponCode === "string" ? rawPricing.couponCode.trim().toUpperCase() : "";
 
     const result = await db.transaction(async (tx: Tx) => {
+      const [user] = await tx
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.firebaseUid, req.firebaseUser!.uid));
+      if (!user) throw new Error("ADDRESS_NOT_FOUND");
+
+      const [savedAddress] = await tx
+        .select()
+        .from(addressesTable)
+        .where(and(
+          eq(addressesTable.id, Number(addressId)),
+          eq(addressesTable.userId, user.id),
+        ));
+      if (!savedAddress) throw new Error("ADDRESS_NOT_FOUND");
+
+      const address = {
+        fullName: savedAddress.fullName,
+        mobileNumber: savedAddress.mobileNumber,
+        alternateNumber: savedAddress.alternateNumber,
+        houseNumber: savedAddress.houseNumber,
+        buildingName: savedAddress.buildingName,
+        street: savedAddress.street,
+        area: savedAddress.area,
+        landmark: savedAddress.landmark,
+        city: savedAddress.city,
+        state: savedAddress.state,
+        pincode: savedAddress.pincode,
+        addressType: savedAddress.addressType,
+        lat: savedAddress.lat == null ? null : Number(savedAddress.lat),
+        lng: savedAddress.lng == null ? null : Number(savedAddress.lng),
+      };
+      const customerName =
+        (typeof body.customerName === "string" ? body.customerName.trim() : "") ||
+        req.firebaseUser!.name?.trim() ||
+        address.fullName;
+      const customerPhone = address.mobileNumber;
+
       const checkedItems: InsertOrderItem[] = [];
       let subtotal = 0;
       let requiresPrescription = false;
@@ -417,6 +445,7 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
     if (err.message === "ITEM_UNAVAILABLE") { res.status(409).json({ error: "One or more items are unavailable" }); return; }
     if (err.message === "INSUFFICIENT_STOCK") { res.status(409).json({ error: "Insufficient stock" }); return; }
     if (err.message === "PRESCRIPTION_REQUIRED") { res.status(400).json({ error: "A prescription is required for one or more items" }); return; }
+    if (err.message === "ADDRESS_NOT_FOUND") { res.status(404).json({ error: "Delivery address not found" }); return; }
     logger.error({ err }, "Failed to create order");
     res.status(500).json({ error: "Failed to create order" });
   }

@@ -1,0 +1,826 @@
+AYUSH MEDICO — COMPLETE SYSTEM BUG FIX + FULL SYSTEM TEST
+
+We are now doing a COMPLETE production-quality audit and stabilization of the entire Ayush Medico website.
+
+IMPORTANT:
+Do NOT only fix the bugs I already know about.
+You must inspect the ENTIRE application, frontend, backend/API, Firebase/database flows, admin panel, customer flows, routing, forms, buttons, modals/drawers, loading states, error handling, and production build.
+
+The goal is simple:
+
+EVERY FEATURE MUST WORK RELIABLY.
+NO DEAD BUTTONS.
+NO STUCK MODALS.
+NO DOUBLE SUBMISSIONS.
+NO RANDOM TIMEOUTS.
+NO BROKEN ROUTES.
+NO FAKE/MOCK DATA WHERE REAL DATA SHOULD BE USED.
+NO CUSTOMER DATA LEAKAGE.
+NO SILENT API FAILURES.
+NO CONSOLE ERRORS THAT BREAK USER FLOWS.
+
+==================================================
+1. COMPLETE CODEBASE AUDIT
+==================================================
+
+First inspect the complete repository and understand:
+
+- frontend architecture
+- backend/API architecture
+- Firebase configuration
+- authentication
+- database/data models
+- API routes
+- admin routes
+- customer routes
+- product system
+- cart
+- checkout
+- orders
+- payments
+- prescriptions
+- invoices
+- addresses
+- delivery status
+- notifications
+- routing
+- production build/start configuration
+
+Do not make random rewrites.
+
+Preserve existing working functionality.
+
+Fix root causes instead of adding temporary workarounds.
+
+==================================================
+2. FIX ALL BUTTONS
+==================================================
+
+Audit EVERY button across the entire application.
+
+For every button verify:
+
+- click handler exists
+- handler actually performs the intended action
+- API request is sent when required
+- API failure is handled
+- success state is shown
+- loading state is shown
+- button cannot accidentally submit twice
+- button does not trigger multiple handlers
+- disabled state works
+- navigation works
+- modal/drawer opens correctly
+- modal/drawer closes correctly
+- no invisible overlay blocks clicks
+- no pointer-events/z-index issue
+- no stale React state causes wrong behavior
+
+Pay special attention to:
+
+- Add to Cart
+- Buy Now
+- Place Order
+- Request Medicine
+- Inquiry
+- View Product
+- View Details
+- View Order
+- My Orders
+- Recent Orders
+- View Invoice
+- Download Invoice
+- Print Invoice
+- Login
+- Logout
+- Google Sign In
+- Admin actions
+- Verify Prescription
+- Approve Order
+- Reject Order
+- Set Delivery Charge
+- Send Payment Request
+- Verify Payment
+- Update Order Status
+- Delivery actions
+- Feature Medicine
+- Special Medicines
+- New Arrivals
+- Product management buttons
+- Save/Edit/Delete buttons
+- Cart quantity controls
+- Checkout buttons
+
+NO BUTTON SHOULD APPEAR CLICKABLE IF IT DOES NOTHING.
+
+==================================================
+3. FIX DOUBLE CLICK / DOUBLE SUBMISSION BUGS
+==================================================
+
+This is VERY IMPORTANT.
+
+Users should not be able to accidentally create:
+
+- duplicate orders
+- duplicate medicine requests
+- duplicate inquiries
+- duplicate API calls
+- duplicate payment requests
+- duplicate admin actions
+- duplicate database records
+
+For every async action:
+
+- immediately enter loading/submitting state
+- disable the relevant button while request is running
+- prevent duplicate submissions
+- restore the button after success/failure
+- make backend operations safely idempotent where appropriate
+- prevent accidental double-clicks from creating duplicate records
+
+Do NOT rely only on frontend disabling.
+
+Backend must also protect important mutations against duplicate requests.
+
+==================================================
+4. FIX TIMEOUTS / HANGING REQUESTS
+==================================================
+
+Audit every frontend → API request.
+
+Problems to eliminate:
+
+- infinite loading
+- request hanging forever
+- modal stuck on "Loading..."
+- button stuck disabled
+- API request with no timeout/error handling
+- fetch promise never resolving properly
+- failed request leaving UI in broken state
+- network errors with no user-visible feedback
+
+Add sensible timeout/error handling where appropriate.
+
+Every async operation must have:
+
+LOADING → SUCCESS or ERROR
+
+Never:
+
+LOADING → NOTHING
+
+Show useful error messages without exposing secrets or internal stack traces to customers.
+
+==================================================
+5. FIX ALL MODALS / DRAWERS / OVERLAYS
+==================================================
+
+Test every modal, drawer, popup, dropdown and overlay.
+
+They must:
+
+- open
+- close with X
+- close through Cancel where applicable
+- close after successful submission where appropriate
+- not become stuck
+- not leave body scroll locked
+- not leave an invisible overlay covering the page
+- not prevent buttons underneath from working
+- not cause duplicate event propagation
+- work repeatedly after opening/closing multiple times
+
+Especially verify:
+
+- Cart Drawer
+- Request Medicine drawer/form
+- Inquiry drawer/form
+- Login modal
+- Checkout/address UI
+- Order details
+- Invoice
+- Admin dialogs
+
+==================================================
+6. CUSTOMER AUTHENTICATION
+==================================================
+
+Fully test:
+
+- email/password login
+- logout
+- Google sign-in if enabled
+- auth persistence
+- refresh while logged in
+- protected routes
+- admin access
+- unauthorized customer access
+- production Firebase authorized domain behavior
+
+Make sure:
+
+- customer cannot access admin pages
+- admin pages require proper authentication/authorization
+- logout actually clears the session/UI state
+- logged-out users cannot see previous customer's private information
+
+Do NOT hard-code credentials.
+
+Do NOT expose Firebase secrets/service-account credentials in frontend code.
+
+==================================================
+7. CUSTOMER DATA PRIVACY
+==================================================
+
+Audit all customer-specific data.
+
+CRITICAL:
+
+Customer A must NEVER see Customer B's:
+
+- saved addresses
+- orders
+- invoices
+- profile information
+- prescription information
+- payment information
+- private request/inquiry data
+
+Saved addresses should remain customer-scoped.
+
+The selected address attached to an order must be stored with that specific order so admin can see the delivery address for that order.
+
+Verify all backend queries are properly scoped to authenticated user identity.
+
+Do NOT trust client-provided user IDs.
+
+==================================================
+8. PRODUCTS / CATALOG
+==================================================
+
+Test complete product lifecycle:
+
+ADMIN:
+- create product
+- edit product
+- delete product
+- feature product
+- mark special medicine
+- mark new arrival
+- update availability
+- update pricing
+- upload/update images
+
+CUSTOMER:
+- products appear correctly
+- Special Medicines appear
+- New Arrivals appear
+- featured products appear
+- product details open
+- images load
+- Add to Cart works
+- correct price appears
+- quantity works
+
+Admin-created products MUST propagate correctly to the customer website through the real API/database.
+
+Do not use hardcoded product arrays as the source of truth.
+
+==================================================
+9. CART + CHECKOUT
+==================================================
+
+Test:
+
+- add item
+- add multiple items
+- increase quantity
+- decrease quantity
+- remove item
+- clear cart if supported
+- cart totals
+- checkout
+- address selection
+- address creation
+- order submission
+
+Verify cart drawer can open AND close repeatedly.
+
+Prevent duplicate order creation.
+
+Verify prices come from trusted backend data where required.
+
+==================================================
+10. MEDICINE REQUEST / INQUIRY
+==================================================
+
+Test complete flow:
+
+Customer:
+- opens Request Medicine
+- enters information
+- submits
+- sees success/error
+- form resets correctly
+- drawer closes correctly
+
+Admin:
+- receives request
+- can view it
+- can process/update it
+- status updates correctly
+
+Same for Inquiry.
+
+No form should navigate to a route where the actual form is not mounted.
+
+==================================================
+11. PRESCRIPTION WORKFLOW
+==================================================
+
+For prescription-required products:
+
+Customer submits order/request.
+
+Admin must be able to:
+
+- view prescription information
+- verify/review it
+- approve or reject appropriately
+
+Payment request must NOT be sent before required review.
+
+Keep this as a compliant workflow.
+
+Do not bypass prescription verification.
+
+==================================================
+12. ORDER SYSTEM
+==================================================
+
+Test the complete order lifecycle.
+
+Expected flow:
+
+CUSTOMER ORDER
+↓
+ADMIN RECEIVES ORDER
+↓
+PRESCRIPTION REVIEW IF REQUIRED
+↓
+ADMIN ENTERS DELIVERY CHARGE
+↓
+FINAL AMOUNT CALCULATED
+↓
+PAYMENT REQUEST SENT
+↓
+CUSTOMER PAYS USING CURRENT UPI FLOW
+↓
+CUSTOMER CLICKS "I HAVE COMPLETED THE PAYMENT"
+↓
+PAYMENT VERIFICATION PENDING
+↓
+ADMIN VERIFIES PAYMENT
+↓
+ORDER CONFIRMED
+↓
+PREPARING
+↓
+OUT FOR DELIVERY
+↓
+DELIVERED
+
+Do NOT break the current UPI flow while future Cashfree integration is pending.
+
+Do NOT ask the customer for a transaction ID if that is not part of the current flow.
+
+Delivery charge should NOT be fabricated or automatically shown before admin enters it.
+
+==================================================
+13. MY ORDERS + RECENT ORDERS
+==================================================
+
+Complete and verify:
+
+- Recent Placed Orders
+- My Orders in top navigation
+- order list
+- order details
+- correct customer ownership
+- status display
+- timestamps
+- products
+- quantities
+- prices
+- subtotal
+- delivery charge
+- tax if applicable
+- total
+- payment status
+- order status
+- prescription status
+- delivery status
+
+After an order is placed, it must appear using REAL backend/database data.
+
+Do not use mock/local-only order data as the permanent source of truth.
+
+==================================================
+14. INVOICE / BILL SYSTEM
+==================================================
+
+Complete the invoice system.
+
+Invoice must use the REAL order record.
+
+Include:
+
+- Ayush Medico information
+- invoice/order ID
+- date/time
+- customer information
+- delivery address
+- products
+- quantities
+- unit prices
+- subtotal
+- delivery charge
+- taxes if applicable
+- final total
+- payment status
+- order status
+
+Verify:
+
+- View Invoice
+- Download Invoice
+- Print Invoice
+
+Invoice must remain correct after page refresh.
+
+Invoice must be accessible from:
+
+- Recent Orders
+- My Orders
+- Order Details
+
+Do not hard-code invoice values.
+
+Do not duplicate delivery charge or tax.
+
+==================================================
+15. ADMIN PANEL
+==================================================
+
+Audit every admin page and every admin action.
+
+Admin must be able to reliably:
+
+- view customers/orders
+- manage products
+- manage special medicines
+- manage new arrivals
+- manage requests
+- manage inquiries
+- review prescriptions
+- enter delivery charge
+- send payment request
+- verify payment
+- update order status
+- view order details
+- view invoice/order billing data
+
+Every failed API request must be detected.
+
+Do NOT ignore failed HTTP responses.
+
+For fetch/API calls, verify response.ok/status before treating an operation as successful.
+
+Show clear admin error messages when something fails.
+
+==================================================
+16. API / BACKEND AUDIT
+==================================================
+
+Inspect all API routes.
+
+Verify:
+
+- correct HTTP methods
+- validation
+- authentication
+- authorization
+- customer ownership
+- admin authorization
+- error handling
+- response status codes
+- database writes
+- duplicate protection
+- malformed input handling
+
+Remove or fix:
+
+- silent failures
+- routes returning success when operation failed
+- unsafe public lookup endpoints
+- data leakage
+- unrestricted customer data access
+- debug-only behavior accidentally used in production
+
+Do not expose secrets.
+
+==================================================
+17. FRONTEND ERROR AUDIT
+==================================================
+
+Run the application and inspect browser console.
+
+Fix:
+
+- React errors
+- unhandled promise rejections
+- failed imports
+- missing routes
+- missing components
+- undefined variables
+- invalid state updates
+- broken image URLs
+- failed API calls
+- hydration/runtime errors if applicable
+
+The final customer experience should have NO critical console errors.
+
+==================================================
+18. ROUTING AUDIT
+==================================================
+
+Test every important route directly AND through navigation.
+
+Especially:
+
+- home
+- product listing
+- product detail
+- cart
+- checkout
+- request medicine
+- inquiry
+- login
+- account
+- my orders
+- order details
+- invoice
+- admin login
+- admin dashboard
+- admin products
+- admin orders
+- admin requests
+
+Refresh each important route and make sure it does not produce a blank page or 404 unexpectedly.
+
+Verify SPA fallback works in production.
+
+==================================================
+19. RESPONSIVE / UI FUNCTIONAL TEST
+==================================================
+
+Check desktop and mobile layouts.
+
+Verify:
+
+- buttons remain clickable
+- drawers fit screen
+- checkout works
+- forms work
+- order details are readable
+- invoice works
+- navigation works
+- no overlay blocks interaction
+
+Do not redesign the website unnecessarily.
+
+Fix functionality first.
+
+==================================================
+20. PRODUCTION BUILD
+==================================================
+
+Run the real production build.
+
+Fix all build errors.
+
+Then run the production server locally if possible.
+
+Verify:
+
+- frontend loads
+- JS assets load
+- CSS assets load
+- images load
+- API works
+- API health endpoint works
+- SPA routes work
+- Firebase config works
+- no CORS regression
+
+IMPORTANT FOR RENDER:
+
+We previously identified a production issue where global API CORS was rejecting frontend static asset requests such as:
+
+/assets/index-*.js
+
+with:
+
+Error: Origin is not allowed by CORS
+
+Make sure the production architecture serves static frontend assets BEFORE global API CORS middleware, while keeping API CORS properly restricted.
+
+Do NOT solve this by setting API CORS to "*".
+
+==================================================
+21. AUTOMATED TESTING
+==================================================
+
+Where the project already has tests, run them.
+
+Add lightweight tests where useful for critical flows.
+
+At minimum verify:
+
+- authentication
+- product API
+- cart
+- order creation
+- duplicate order prevention
+- customer ownership
+- admin authorization
+- delivery charge
+- payment state
+- invoice data
+- product propagation
+- request/inquiry submission
+
+==================================================
+22. MANUAL END-TO-END SYSTEM TEST
+==================================================
+
+After fixing everything, perform a full end-to-end test as BOTH:
+
+CUSTOMER
+and
+ADMIN
+
+CUSTOMER TEST:
+
+1. Open website
+2. Sign in
+3. Browse products
+4. Open product details
+5. Add product to cart
+6. Open/close cart repeatedly
+7. Change quantity
+8. Checkout
+9. Select/add address
+10. Place order
+11. Confirm order appears in Recent Orders
+12. Confirm order appears in My Orders
+13. Open order details
+14. Open invoice
+15. Verify invoice values
+16. Refresh page
+17. Verify order still exists
+18. Test payment-request state
+19. Test "I Have Completed the Payment"
+20. Verify payment verification pending state
+21. Logout
+22. Confirm private data is inaccessible
+23. Login as another customer if test account is available
+24. Confirm previous customer's data is NOT visible
+
+ADMIN TEST:
+
+1. Login
+2. Open dashboard
+3. View customer order
+4. Review prescription if applicable
+5. Enter delivery charge
+6. Verify final total
+7. Send payment request
+8. Verify payment status flow
+9. Update order status
+10. Verify customer sees updated status
+11. Open invoice
+12. Manage products
+13. Create a test product if safe to do so
+14. Verify it appears correctly on customer side
+15. Test Special Medicines
+16. Test New Arrivals
+17. Test Request Medicine
+18. Test Inquiry
+19. Verify all admin actions persist after refresh
+
+==================================================
+23. DOUBLE-CLICK STRESS TEST
+==================================================
+
+For important actions, deliberately test rapid repeated clicking:
+
+- Place Order
+- Request Medicine
+- Inquiry Submit
+- Add Product
+- Save Product
+- Send Payment Request
+- Verify Payment
+- Update Order
+- Add to Cart
+
+There must be no duplicate records.
+
+==================================================
+24. FINAL QUALITY CHECK
+==================================================
+
+Before declaring completion:
+
+Run:
+
+- production build
+- lint/typecheck if configured
+- existing tests
+- API tests if available
+- browser console check
+- critical route check
+- customer workflow
+- admin workflow
+
+Search the codebase for suspicious patterns such as:
+
+- TODO
+- FIXME
+- alert("...")
+- console.error without proper handling
+- ignored fetch responses
+- disabled buttons without loading reset
+- setLoading(true) without guaranteed false/reset
+- duplicate API submissions
+- mock order/product data
+- hardcoded invoice data
+- hardcoded customer IDs
+- unsafe public customer lookups
+- broken route references
+- empty click handlers
+- placeholder buttons
+
+Fix genuine issues found.
+
+==================================================
+25. IMPORTANT DEVELOPMENT RULES
+==================================================
+
+Do NOT:
+
+- rewrite the whole application unnecessarily
+- replace working features with mock implementations
+- remove existing UPI functionality
+- add fake delivery pricing
+- expose secrets
+- weaken authentication
+- set API CORS to *
+- bypass prescription verification
+- use localStorage as the source of truth for orders
+- hard-code invoice/order/customer data
+- silently ignore API errors
+- leave TODOs for critical functionality
+
+Preserve existing design unless a UI change is necessary to fix functionality.
+
+==================================================
+26. FINAL REPORT
+==================================================
+
+When finished, provide a concise report containing:
+
+1. Bugs found
+2. Bugs fixed
+3. Files/components changed
+4. APIs/routes changed
+5. Tests performed
+6. Build result
+7. Customer E2E result
+8. Admin E2E result
+9. Any remaining genuine blockers
+
+Do NOT claim something is working unless you actually tested it.
+
+If something cannot be tested because an external service/credential is unavailable, clearly identify that exact limitation instead of pretending it passed.
+
+MOST IMPORTANT:
+
+This is a COMPLETE SYSTEM STABILIZATION task.
+
+Do not stop after fixing one or two obvious bugs.
+
+Continue through the entire application until all major customer and admin workflows have been checked and fixed.
+
+The final goal is a stable Ayush Medico website where every major feature works from frontend → backend → Firebase/database → back to frontend, with proper loading, error, authentication, privacy, duplicate-submission, and production handling.
