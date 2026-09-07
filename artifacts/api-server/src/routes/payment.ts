@@ -17,7 +17,7 @@
 import { Router, type Request, type Response } from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { ordersTable } from "@workspace/db";
 import { logger } from "../lib/logger.js";
@@ -461,30 +461,8 @@ router.post(
       if (!order) { res.status(404).json({ error: "Order not found" }); return; }
 
       const rzp = getRzp();
-      const existingPayment = (order.payment as Record<string, unknown>) ?? {};
-      const pricing = (order.pricing as Record<string, unknown>) ?? {};
-      if (
-        order.status !== "payment-pending" ||
-        pricing.deliveryCharge == null ||
-        !Number.isFinite(Number(pricing.grandTotal))
-      ) {
-        res.status(409).json({ error: "Payment request is available only after review and a final amount is set" });
-        return;
-      }
-      const prescription = (order.prescription as Record<string, unknown>) ?? {};
-      if (
-        prescription.required === true &&
-        prescription.verified !== true &&
-        prescription.status !== "approved"
-      ) {
-        res.status(409).json({ error: "Prescription approval is required before payment" });
-        return;
-      }
-      if (["paid", "verified", "completed", "refunded"].includes(String(existingPayment.status))) {
-        res.status(409).json({ error: "This order already has a completed payment state" });
-        return;
-      }
-      const amountPaise = Math.round(Number(pricing.grandTotal) * 100);
+      const pricing = order.pricing as Record<string, number>;
+      const amountPaise = Math.round(pricing.grandTotal * 100);
 
       const link = await rzp.paymentLink.create({
         amount: amountPaise,
@@ -501,19 +479,6 @@ router.post(
         // Expires in 24 hours
         expire_by: Math.floor(Date.now() / 1000) + 86400,
       } as Parameters<Razorpay["paymentLink"]["create"]>[0]);
-
-      const payment = {
-        ...existingPayment,
-        method: "razorpay",
-        status: "pending",
-        paymentLinkId: link.id,
-        paymentLinkUrl: link.short_url,
-        paymentLinkCreatedAt: new Date().toISOString(),
-      };
-      await db
-        .update(ordersTable)
-        .set({ payment, updatedAt: new Date() })
-        .where(and(eq(ordersTable.id, Number(orderDbId)), eq(ordersTable.status, "payment-pending")));
 
       logger.info({ orderDbId, linkId: link.id }, "Razorpay payment link created");
       res.json({ url: link.short_url, linkId: link.id });
@@ -533,32 +498,29 @@ router.post(
   async (req: Request, res: Response): Promise<void> => {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     if (!secret) {
-      logger.error("RAZORPAY_WEBHOOK_SECRET not set — rejecting webhook");
-      res.status(503).json({ error: "Razorpay webhook is not configured" });
-      return;
+      logger.warn("RAZORPAY_WEBHOOK_SECRET not set — webhook verification skipped (unsafe)");
     }
 
-    const signature = req.headers["x-razorpay-signature"] as string | undefined;
-    if (!signature) {
-      res.status(400).json({ error: "Missing x-razorpay-signature header" });
-      return;
-    }
+    // Verify signature when secret is configured
+    if (secret) {
+      const signature = req.headers["x-razorpay-signature"] as string | undefined;
+      if (!signature) {
+        res.status(400).json({ error: "Missing x-razorpay-signature header" });
+        return;
+      }
 
-    // req.body is a Buffer because app.ts uses express.raw() for this path
-    const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(rawBody)
-      .digest("hex");
-    const expectedBytes = Buffer.from(expected);
-    const signatureBytes = Buffer.from(signature);
-    if (
-      expectedBytes.length !== signatureBytes.length ||
-      !crypto.timingSafeEqual(expectedBytes, signatureBytes)
-    ) {
-      logger.warn("Razorpay webhook signature mismatch");
-      res.status(400).json({ error: "Invalid webhook signature" });
-      return;
+      // req.body is a Buffer because app.ts uses express.raw() for this path
+      const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+      const expected = crypto
+        .createHmac("sha256", secret)
+        .update(rawBody)
+        .digest("hex");
+
+      if (expected !== signature) {
+        logger.warn("Razorpay webhook signature mismatch");
+        res.status(400).json({ error: "Invalid webhook signature" });
+        return;
+      }
     }
 
     // Parse event
@@ -592,38 +554,19 @@ router.post(
             .from(ordersTable)
             .where(eq(ordersTable.id, Number(orderDbId)));
 
-          const existingPayment = (order?.payment as Record<string, unknown>) ?? {};
-          const prescription = (order?.prescription as Record<string, unknown>) ?? {};
-          const prescriptionApproved =
-            prescription.required !== true ||
-            prescription.verified === true ||
-            prescription.status === "approved";
-          const orderIdMatches =
-            !razorpay_order_id ||
-            existingPayment.razorpayOrderId === razorpay_order_id;
-
-          if (
-            order &&
-            order.status === "payment-pending" &&
-            existingPayment.method === "razorpay" &&
-            prescriptionApproved &&
-            orderIdMatches
-          ) {
+          if (order && order.status !== "payment-verified" && order.status !== "delivered") {
             const payment = {
-              ...existingPayment,
+              ...(order.payment as Record<string, unknown>),
               status: "paid",
               razorpayPaymentId: razorpay_payment_id,
-              razorpayOrderId: razorpay_order_id ?? existingPayment.razorpayOrderId,
+              razorpayOrderId: razorpay_order_id ?? (order.payment as Record<string, unknown>)["razorpayOrderId"],
               paidAt: new Date().toISOString(),
               webhookVerified: true,
             };
             await db
               .update(ordersTable)
               .set({ payment, status: "payment-verified", updatedAt: new Date() })
-              .where(and(
-                eq(ordersTable.id, Number(orderDbId)),
-                eq(ordersTable.status, "payment-pending"),
-              ));
+              .where(eq(ordersTable.id, Number(orderDbId)));
             logger.info({ orderDbId, razorpay_payment_id }, "Webhook: order marked payment-verified");
           }
         }
@@ -637,14 +580,9 @@ router.post(
         const orderDbId = notes["orderDbId"] as string | undefined;
         if (orderDbId) {
           const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, Number(orderDbId)));
-          const existingPayment = (order?.payment as Record<string, unknown>) ?? {};
-          if (
-            order &&
-            order.status === "payment-pending" &&
-            existingPayment.method === "razorpay"
-          ) {
+          if (order) {
             const payment = {
-              ...existingPayment,
+              ...(order.payment as Record<string, unknown>),
               status: "failed",
               failedAt: new Date().toISOString(),
               webhookVerified: true,
@@ -652,10 +590,7 @@ router.post(
             await db
               .update(ordersTable)
               .set({ payment, status: "payment-pending", updatedAt: new Date() })
-              .where(and(
-                eq(ordersTable.id, Number(orderDbId)),
-                eq(ordersTable.status, "payment-pending"),
-              ));
+              .where(eq(ordersTable.id, Number(orderDbId)));
             logger.info({ orderDbId }, "Webhook: order marked payment-failed");
           }
         }

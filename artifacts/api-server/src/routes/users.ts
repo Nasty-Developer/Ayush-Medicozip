@@ -50,7 +50,7 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
     const [existing] = await db
       .select()
       .from(usersTable)
-      .where(or(eq(usersTable.firebaseUid, firebaseUid), eq(usersTable.email, email)));
+      .where(or(eq(usersTable.firebaseUid, data.firebaseUid), eq(usersTable.email, data.email)));
 
     let upserted;
     if (existing) {
