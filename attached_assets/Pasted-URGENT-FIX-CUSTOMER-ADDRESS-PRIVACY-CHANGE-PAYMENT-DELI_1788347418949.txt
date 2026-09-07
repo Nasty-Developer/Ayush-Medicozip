@@ -1,0 +1,591 @@
+URGENT — FIX CUSTOMER ADDRESS PRIVACY + CHANGE PAYMENT/DELIVERY WORKFLOW
+
+There are several important bugs in the current ordering system.
+
+Do NOT redesign unrelated parts.
+
+Fix the following workflow exactly.
+
+==================================================
+1. CRITICAL BUG — CUSTOMER ADDRESSES ARE SHARED
+==================================================
+
+CURRENT BUG:
+
+When Customer A saves an address, that address is being stored/shared in a way that causes another customer to see Customer A's address.
+
+THIS MUST NEVER HAPPEN.
+
+Customer addresses must be PRIVATE to that customer.
+
+For the current implementation, saved customer addresses should be stored CLIENT-SIDE only.
+
+Use the existing browser/client-side storage mechanism appropriately, such as customer-scoped localStorage/state.
+
+IMPORTANT:
+
+Customer A:
+→ saves Address A
+
+Customer B:
+→ must NOT see Address A
+
+Customer B:
+→ sees only Customer B's own saved addresses.
+
+Do NOT use one global localStorage key that exposes the same address list to every customer.
+
+If localStorage is used, scope the saved addresses by the authenticated customer's unique Firebase UID.
+
+Example concept:
+
+savedAddresses_${firebaseUser.uid}
+
+NOT:
+
+savedAddresses
+
+Do not use a shared global address record for customer saved addresses.
+
+==================================================
+2. ADMIN MUST SEE THE ADDRESS FOR AN ORDER
+==================================================
+
+There is an important distinction:
+
+SAVED CUSTOMER ADDRESSES:
+→ private/client-side
+
+ADDRESS ATTACHED TO A PLACED ORDER:
+→ must be stored with that specific order
+
+ADMIN:
+→ must be able to see the delivery address belonging to that specific order.
+
+Therefore:
+
+Customer A saved addresses
+→ private to Customer A
+
+Customer A places Order #123
+→ selected delivery address is copied into Order #123
+
+Admin opens Order #123
+→ admin sees the delivery address for Order #123
+
+Customer B:
+→ cannot see Customer A's saved addresses
+→ cannot see Customer A's order address
+
+Do NOT expose the customer's entire saved-address list to the admin.
+
+Only the address actually associated with the order should be available to the admin for fulfillment.
+
+==================================================
+3. DO NOT SHOW DELIVERY FEE YET
+==================================================
+
+We currently DO NOT have a delivery API/integration connected.
+
+Therefore REMOVE/HIDE the automatic delivery fee calculation from the current customer checkout/payment flow.
+
+Do NOT calculate a fake delivery fee.
+
+Do NOT show ₹267 or any placeholder delivery charge.
+
+Do NOT charge/request a delivery fee before admin has determined it.
+
+The current checkout should show the medicine/product amount and applicable existing charges, but delivery fee should remain:
+
+Pending / Not yet calculated
+
+until the admin determines it.
+
+==================================================
+4. NEW PAYMENT WORKFLOW
+==================================================
+
+We want this workflow:
+
+CUSTOMER
+↓
+Select products / request medicine
+↓
+Submit order/request
+↓
+Order reaches ADMIN
+↓
+ADMIN reviews order
+↓
+ADMIN verifies prescription where required
+↓
+ADMIN checks order details
+↓
+ADMIN manually determines delivery charge
+↓
+ADMIN adds delivery charge to the order
+↓
+SYSTEM calculates final payable amount
+↓
+PAYMENT REQUEST is sent/shown to CUSTOMER
+↓
+CUSTOMER pays using the current payment system
+↓
+CUSTOMER clicks "I Have Completed the Payment"
+↓
+Payment status becomes "Verification Pending"
+↓
+ADMIN verifies payment
+↓
+Order becomes confirmed/preparing
+↓
+Delivery can be attempted/booked later
+
+==================================================
+5. ADMIN MUST SET DELIVERY CHARGE
+==================================================
+
+Add a delivery charge field/control to the ADMIN order-review interface.
+
+Example:
+
+Product subtotal:
+₹100
+
+Delivery charge:
+[ Admin enters amount ]
+
+Final payable amount:
+₹100 + admin-entered delivery charge + applicable existing charges
+
+The admin decides the delivery amount manually.
+
+Do NOT automatically calculate it yet.
+
+Do NOT expose a delivery API yet.
+
+Do NOT hard-code a delivery amount.
+
+Example:
+
+Medicine subtotal = ₹100
+Admin delivery charge = ₹40
+
+Customer payment request:
+₹140
+
+Another order:
+
+Medicine subtotal = ₹300
+Admin delivery charge = ₹70
+
+Customer payment request:
+₹370
+
+The exact delivery charge must come from the admin.
+
+==================================================
+6. DELIVERY CHARGE MUST NOT BE MODIFIABLE BY CUSTOMER
+==================================================
+
+Once the admin sets the delivery charge:
+
+Customer can SEE it.
+
+Customer cannot change it.
+
+The final payable amount must come from the backend/order record.
+
+Do not trust a customer-supplied final total.
+
+==================================================
+7. PRESCRIPTION WORKFLOW
+==================================================
+
+For medicines/products requiring prescription:
+
+Customer
+→ submits order/request
+→ prescription is attached/provided
+→ admin reviews prescription
+→ admin approves/rejects
+
+If prescription is rejected:
+
+Do NOT send a payment request.
+
+Show the appropriate status to the customer.
+
+If prescription is approved:
+
+Continue to order review.
+
+==================================================
+8. GENERIC MEDICINES
+==================================================
+
+IMPORTANT:
+
+All generic medicines that require prescription under the application's rules must go through prescription verification.
+
+Do not allow payment/order confirmation before required prescription verification.
+
+The workflow is:
+
+Customer orders/request
+→ Admin verifies required prescription
+→ Admin reviews order
+→ Admin adds delivery charge
+→ Payment request sent
+→ Customer pays
+→ Admin verifies payment
+→ Order confirmed/preparing
+
+==================================================
+9. PAYMENT REQUEST
+==================================================
+
+Do NOT send the payment request immediately when the customer first submits the order if admin review is required.
+
+First:
+
+Order submitted
+→ Admin review
+
+Then:
+
+Admin verifies prescription/order
+→ Admin enters delivery charge
+→ Final amount calculated
+→ Payment request becomes available to customer
+
+Customer should clearly see:
+
+"Payment Required"
+
+with:
+
+Items subtotal
+Delivery charge
+Final payable amount
+
+Then the customer can use the existing payment mechanism.
+
+==================================================
+10. CURRENT UPI SYSTEM
+==================================================
+
+KEEP THE CURRENT UPI PAYMENT SYSTEM FOR NOW.
+
+Do NOT add Cashfree yet.
+
+Do NOT add Razorpay.
+
+Do NOT remove the current UPI system.
+
+We will replace/update the payment gateway later.
+
+For now:
+
+Customer receives payment request
+→ sees final amount
+→ completes UPI payment
+→ clicks:
+
+"I Have Completed the Payment"
+
+Do NOT require the customer to manually type a transaction ID.
+
+Then:
+
+Payment Status:
+Verification Pending
+
+Admin verifies payment.
+
+Only after admin verification:
+
+Payment Status:
+PAID
+
+==================================================
+11. ADMIN ORDER REVIEW SCREEN
+==================================================
+
+Admin should have a clear order-review flow.
+
+For each order/request:
+
+Customer
+Order ID
+Products
+Quantities
+Subtotal
+Prescription status
+Delivery address
+Delivery charge input
+Final payable amount
+Payment status
+Order status
+
+Admin actions should include where applicable:
+
+Verify Prescription
+Reject Prescription
+Set Delivery Charge
+Send Payment Request
+Verify Payment
+Confirm Order
+Preparing Order
+Update Delivery Status
+
+Do not show actions that are not applicable to the current order state.
+
+==================================================
+12. ORDER STATE MACHINE
+==================================================
+
+Use clear states.
+
+Example:
+
+ORDER SUBMITTED
+↓
+ADMIN REVIEW
+↓
+PRESCRIPTION VERIFICATION
+↓
+ORDER APPROVED
+↓
+DELIVERY CHARGE ADDED
+↓
+PAYMENT REQUEST SENT
+↓
+PAYMENT VERIFICATION PENDING
+↓
+PAYMENT VERIFIED
+↓
+ORDER CONFIRMED
+↓
+PREPARING
+↓
+DELIVERY
+
+For products that do not require prescription:
+
+ORDER SUBMITTED
+↓
+ADMIN REVIEW
+↓
+DELIVERY CHARGE ADDED
+↓
+PAYMENT REQUEST SENT
+↓
+PAYMENT VERIFICATION
+↓
+ORDER CONFIRMED
+↓
+PREPARING
+↓
+DELIVERY
+
+==================================================
+13. CUSTOMER ORDER PAGE
+==================================================
+
+Customer must see the correct state.
+
+Before admin review:
+
+"Order received. Waiting for admin review."
+
+After admin approval and delivery charge:
+
+"Payment required"
+
+Show:
+
+Subtotal
+Delivery charge
+Final amount
+
+After customer submits payment:
+
+"Payment verification pending"
+
+After admin verifies:
+
+"Payment confirmed"
+
+Then:
+
+"Order confirmed"
+
+"Preparing"
+
+"Out for delivery"
+
+etc.
+
+Do not show "Paid" before admin verifies the payment.
+
+==================================================
+14. DELIVERY INTEGRATION LATER
+==================================================
+
+Do NOT integrate a delivery API right now.
+
+The future delivery API will be added later.
+
+For now:
+
+Admin manually determines delivery charge.
+
+Later we can replace the manual delivery-charge field with an API calculation.
+
+Design the order data structure so this can be replaced cleanly later.
+
+For example:
+
+deliveryCharge
+deliveryProvider
+deliveryTrackingId
+deliveryStatus
+
+But do NOT fake API data.
+
+==================================================
+15. SECURITY / DATA ISOLATION
+==================================================
+
+This is extremely important.
+
+Customer data must be isolated.
+
+Customer A must never receive:
+
+- Customer B's saved addresses
+- Customer B's orders
+- Customer B's payment information
+- Customer B's prescriptions
+- Customer B's personal information
+
+Use authenticated Firebase UID/customer ID to associate orders with customers.
+
+Admin can access orders according to the existing admin authorization system.
+
+Do not weaken authentication or security rules.
+
+==================================================
+16. TEST THE BUG FIX
+==================================================
+
+Create/test with two separate customer accounts.
+
+CUSTOMER A:
+
+Save:
+Address A
+
+Verify:
+Customer A sees Address A.
+
+CUSTOMER B:
+
+Sign in as Customer B.
+
+Verify:
+Customer B does NOT see Address A.
+
+Save:
+Address B
+
+Verify:
+Customer B sees Address B.
+
+Switch back to Customer A.
+
+Verify:
+Customer A still sees only Address A.
+
+Then place an order as Customer A.
+
+Verify:
+Admin sees Address A attached ONLY to that order.
+
+==================================================
+17. TEST PAYMENT FLOW
+==================================================
+
+Test:
+
+Customer submits order
+→ admin receives order
+
+Admin:
+→ verifies prescription if required
+→ enters delivery charge
+→ final amount updates
+→ sends payment request
+
+Customer:
+→ sees payment request
+→ sees correct final amount
+→ completes current UPI payment
+→ clicks "I Have Completed the Payment"
+
+Admin:
+→ sees Payment Verification Pending
+→ verifies payment
+
+Customer:
+→ sees Payment Confirmed
+→ sees Order Confirmed / Preparing
+
+==================================================
+FINAL REQUIREMENTS
+
+FIX NOW:
+
+❌ Shared customer addresses
+✅ Customer-specific client-side saved addresses
+
+❌ Delivery fee automatically calculated before integration
+✅ Delivery fee entered manually by admin
+
+❌ Payment request too early
+✅ Payment request only after admin review
+
+❌ Prescription bypass
+✅ Required prescription verification before payment/order confirmation
+
+❌ Customer controls final delivery fee
+✅ Admin controls delivery fee
+
+❌ Fake delivery calculation
+✅ Manual delivery charge until API integration
+
+KEEP:
+
+✅ Current UPI payment
+✅ Admin verification
+✅ Customer order tracking
+✅ Existing authentication
+✅ Existing product/cart/checkout functionality
+
+The final architecture should be:
+
+CUSTOMER
+→ ORDER/REQUEST
+→ ADMIN REVIEW
+→ PRESCRIPTION VERIFICATION IF REQUIRED
+→ ADMIN ADDS DELIVERY CHARGE
+→ PAYMENT REQUEST
+→ CUSTOMER PAYS
+→ CUSTOMER MARKS PAYMENT COMPLETED
+→ ADMIN VERIFIES PAYMENT
+→ ORDER CONFIRMED
+→ PREPARING
+→ DELIVERY
+
+Fix the actual data-flow and state-management problems instead of only changing the UI labels.

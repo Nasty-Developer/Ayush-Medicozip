@@ -1,0 +1,241 @@
+CONTINUE THE PREVIOUS END-TO-END AYUSH MEDICO AUDIT FROM WHERE YOU STOPPED.
+
+The previous audit already identified concrete issues. Do NOT start over and do NOT rewrite working functionality.
+
+IMPORTANT:
+Replit Preview is currently working.
+Therefore use Replit Preview as the working baseline.
+
+Finish ONLY the remaining application-level fixes and verification from the previous audit.
+
+KNOWN ISSUES ALREADY IDENTIFIED:
+
+1. REQUEST MEDICINE
+- Request Medicine buttons were navigating to a form that was not properly mounted on the destination.
+- Fix the actual route/component/state issue.
+- Request Medicine must open correctly.
+- Form must work.
+- Submit must reach backend/database.
+- Admin must receive the request.
+- Success/error states must work.
+- Close/back must work.
+- Customer must never become stuck inside the drawer/aside.
+
+2. INQUIRY
+- Fix the complete Inquiry flow.
+- Open → fill → submit → backend/database → Admin Panel.
+- Proper success/error state.
+- Close/back must work.
+- No stuck overlay or drawer.
+
+3. SPECIAL MEDICINES
+- Verify medicines created from Admin Panel actually appear in the customer Special Medicines section.
+- Verify database/API/category/filter/status logic.
+- Verify product details.
+- Verify images.
+- Verify correct order/call/request action.
+- Do not use hardcoded/mock products.
+
+4. NEW ARRIVALS
+- Verify products marked/created as New Arrivals from Admin Panel actually appear on the customer side.
+- Fix API/query/filter/category/status problems.
+- Verify newly created products without changing code manually.
+
+5. FEATURED MEDICINES / OTHER PRODUCT SECTIONS
+- Verify Featured medicines/products and every other admin-controlled customer-facing section.
+- Admin changes must propagate through the real database/API to the customer UI.
+
+6. GENERAL PRODUCT DETAILS
+- General products currently lack a proper detail path.
+- Add/fix the correct detail route using the existing architecture.
+- Product details must load correctly.
+- Product image must load correctly.
+- Price/details/actions must be correct.
+
+7. ORDER BUTTON LOGIC
+For directly orderable medicines/products:
+- Place Order/Add to Cart must work.
+
+For products configured as call/inquiry-only:
+- Keep the Call to Order/Inquiry behavior.
+
+Do not force every product into the same flow.
+
+8. CART
+Fix and test the cart drawer completely:
+- Opens
+- Closes
+- X works
+- Back works where appropriate
+- No invisible overlay remains
+- Page remains clickable after closing
+- Reopening works
+- Checkout works
+- Proceed to Checkout works
+- No infinite loading/freezing.
+
+9. ORDER / RECENT ORDERS
+After an order is successfully created:
+- It must appear in Recent Orders/My Orders.
+- Customer can open the order.
+- Customer can see complete order information.
+- Invoice/bill must be available.
+- Order data must remain consistent between Admin and Customer.
+
+10. PRESCRIPTION FLOW
+- Prescription-required medicines must follow prescription verification.
+- Admin must be able to review the prescription.
+- Admin approval/rejection must work.
+- Do not bypass prescription verification.
+
+11. DELIVERY FEE
+There is currently NO delivery API integration.
+
+Therefore:
+- Do NOT calculate an automatic delivery fee.
+- Do NOT show a fake courier charge.
+- Do NOT call a nonexistent courier API.
+
+The intended current flow is:
+
+Customer order
+→ Admin reviews
+→ Admin verifies prescription where required
+→ Admin manually enters delivery amount
+→ Admin sends payment request
+→ Customer pays
+→ Order proceeds to fulfillment/delivery.
+
+Keep the code architecture ready for future courier API integration.
+
+12. ADDRESS PRIVACY
+Fix the previously identified privacy issue.
+
+A customer's saved address must be associated with that authenticated customer.
+
+Customer A must NEVER be able to see Customer B's address.
+
+Admin may see the address when legitimately associated with an order/request.
+
+Do this through backend authorization/ownership checks.
+Do NOT rely only on frontend filtering.
+
+13. PUBLIC API PRIVACY
+The previous audit identified possible privacy gaps in public lookup/notification/user routes.
+
+Audit and fix them.
+
+Private:
+- customer data
+- addresses
+- orders
+- inquiries
+- medicine requests
+- user information
+
+must require proper authorization/ownership.
+
+Do not expose private data through public endpoints.
+
+14. ADMIN MUTATIONS
+Some Admin Panel mutations were previously ignoring failed API responses.
+
+Fix this.
+
+Every mutation must:
+- check HTTP response status
+- handle API errors
+- show failure state
+- only show success when the backend actually succeeded.
+
+Do not create fake success messages.
+
+15. ERROR HANDLING
+Do not silently swallow errors.
+
+Important API/auth/database operations must expose useful errors during development.
+
+Do not replace every error with a generic success/fallback.
+
+16. AUTHENTICATION REGRESSION TEST
+Do not rewrite the existing Firebase authentication.
+
+Verify:
+Email/password sign-in
+→ Firebase Auth
+→ authenticated state
+→ signed-in customer.
+
+Sign-out:
+→ Firebase signOut()
+→ auth state clears
+→ signed-out UI.
+
+Google sign-in must continue working in the environment where it is already configured.
+
+Do not create users automatically.
+Do not bypass Firebase password verification.
+Do not hard-code credentials.
+
+17. END-TO-END TESTING
+After fixing the above, test the actual flows in Replit Preview:
+
+A. Admin creates General Product
+→ customer sees it
+→ opens details
+→ image loads
+→ ordering works.
+
+B. Admin creates Special Medicine
+→ customer sees it
+→ details work
+→ image loads
+→ appropriate ordering action works.
+
+C. Admin creates New Arrival
+→ customer sees it.
+
+D. Admin updates product
+→ customer receives updated data.
+
+E. Customer submits Inquiry
+→ Admin receives Inquiry.
+
+F. Customer submits Request Medicine
+→ Admin receives request.
+
+G. Cart:
+open → close → reopen → close → checkout.
+
+H. Order:
+product → cart → checkout → order → Recent Orders → order details → invoice.
+
+I. Prescription:
+order/request → Admin verification → correct next state.
+
+J. Address:
+Customer A saves address.
+Customer B must NOT see Customer A's address.
+
+K. Authentication:
+sign in → refresh → authenticated state remains.
+sign out → signed-out state.
+
+IMPORTANT:
+Do not stop at "the code looks correct."
+Actually test the flows.
+
+DO NOT WORK ON THE RENDER-ONLY DEPLOYMENT ISSUE IN THIS TASK.
+
+Replit Preview is our working baseline.
+The Render problem will be investigated separately because it may be caused by production environment variables, SPA routing, production build/runtime errors, API configuration, or another Render-specific issue.
+
+At the end provide:
+1. Actual root causes found.
+2. Files changed.
+3. Features fixed.
+4. Tests actually performed.
+5. Any remaining application-level issue.
+6. Clearly state that Render production was NOT used as the basis for claiming these Replit fixes work.
+
+Do not use mock data or fake success states.

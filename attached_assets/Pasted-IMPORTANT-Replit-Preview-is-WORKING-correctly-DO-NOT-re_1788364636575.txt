@@ -1,0 +1,112 @@
+IMPORTANT: Replit Preview is WORKING correctly. DO NOT rewrite or break the working application.
+
+The problem is specifically:
+- Replit Preview: WORKING ✅
+- Render deployment: BLANK/WHITE PAGE ❌
+- Therefore investigate the DIFFERENCE between Replit Preview and the Render production environment.
+
+Focus ONLY on why the production Render deployment does not mount/serve the React app.
+
+CHECK THESE FIRST:
+
+1. Compare the exact Replit Preview start command with the Render build/start configuration.
+
+2. Inspect:
+   - package.json
+   - vite.config.*
+   - index.html
+   - frontend entry point
+   - Render configuration
+   - Replit configuration
+   - workspace/monorepo structure
+   - build output directory
+
+3. Run the SAME production build locally in Replit:
+   npm/pnpm build
+   and inspect the generated dist/build directory.
+
+4. Confirm that the generated production HTML references JavaScript/CSS assets using correct paths.
+
+5. Check Vite `base` configuration.
+   Make sure it is compatible with the Render root domain and is NOT incorrectly pointing to a Replit-specific path.
+
+6. Check whether Render is serving the correct frontend directory.
+   Render must NOT be serving an empty/wrong directory.
+
+7. Check Render's build logs and runtime logs for:
+   - module not found
+   - missing dependency
+   - missing environment variable
+   - Node version mismatch
+   - wrong working directory
+   - failed build
+   - failed start command
+   - port binding problem
+   - static asset 404s
+   - JavaScript bundle 404s
+   - server-side runtime exception
+
+8. The Render server MUST listen on:
+   0.0.0.0
+   and use the PORT supplied by Render.
+   Do not hardcode localhost or a fixed development port.
+
+9. If the project has both frontend and API server:
+   verify that Render is starting the correct production server and that the server correctly serves the compiled frontend assets.
+
+10. If Render is using a separate API/frontend deployment configuration, verify that the frontend's production API URL is correct and does not accidentally point to localhost or a Replit-only URL.
+
+11. Firebase:
+   Replit Preview working does NOT prove Render has the same environment variables.
+   Compare the Firebase-related environment variables/configuration required by production.
+   DO NOT expose or hardcode secrets.
+   Missing Firebase configuration must not cause the entire storefront to become a blank page.
+
+12. Open the actual Render deployment in a browser and inspect:
+   - Network tab
+   - Console
+   - document HTML
+   - JS bundle requests
+   - CSS requests
+   - API requests
+
+13. If the HTML loads but the JS bundle does not:
+   FIX THE ASSET SERVING/PATH PROBLEM.
+
+14. If the JS bundle loads but React crashes:
+   identify the exact production runtime exception and fix that exception.
+
+15. If the frontend renders but API/Firebase fails:
+   keep the storefront mounted and fix the production environment/API configuration separately.
+
+DO NOT change the working Replit Preview behavior.
+
+DO NOT rewrite the application.
+
+DO NOT remove Firebase authentication.
+
+DO NOT remove existing product/order/request/inquiry functionality.
+
+The success criteria are very specific:
+
+A. Replit Preview continues working.
+B. `npm/pnpm build` succeeds.
+C. Render deployment loads the actual Ayush Medico UI instead of a blank page.
+D. Browser console has no fatal React startup exception.
+E. JS/CSS assets return successfully from Render.
+F. Firebase/authentication configuration works in production.
+G. API requests use the correct production API URL.
+H. Existing features remain intact.
+
+Before changing application logic, identify the EXACT difference between Replit Preview and Render that causes the blank page.
+
+At the end report:
+1. Exact root cause
+2. Render build/start configuration
+3. Files changed
+4. Environment variables required (names only, NEVER values/secrets)
+5. Production build result
+6. Render browser result
+7. Any remaining errors
+
+DO NOT claim success just because the build passes. The actual Render URL must visibly load the Ayush Medico application.

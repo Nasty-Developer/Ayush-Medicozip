@@ -1,0 +1,318 @@
+IMPORTANT — IMPROVE THE CUSTOMER ORDER HISTORY + INVOICE/BILL EXPERIENCE.
+
+Do not redesign unrelated parts of the website.
+
+The ordering system is already working. Now make the customer's order history and invoice information much more complete and usable.
+
+==================================================
+1. RECENTLY PLACED ORDERS
+==================================================
+
+After a customer successfully places an order, it must immediately appear in:
+
+"Recent Placed Orders"
+
+The customer should be able to see complete order information.
+
+For every recent order, show:
+
+- Order number / Order ID
+- Order date and time
+- All products ordered
+- Product image where available
+- Quantity of each product
+- Price of each product
+- Subtotal
+- Delivery charge
+- GST/tax where applicable
+- Final total
+- Payment status
+- Order status
+- Prescription status when applicable
+- Delivery status when applicable
+
+Do not show only a minimal summary.
+
+The customer should be able to understand the complete order from this section.
+
+==================================================
+2. MY ORDERS
+==================================================
+
+Add a clear:
+
+"My Orders"
+
+option in the TOP navigation/header.
+
+The customer should be able to click:
+
+My Orders
+
+and open a dedicated order-history page.
+
+Put it clearly in the top navigation near the other customer account actions.
+
+It should be easy to find on both desktop and mobile.
+
+==================================================
+3. MY ORDERS PAGE
+==================================================
+
+Create/complete a proper customer order-history page.
+
+Show all orders belonging to the currently signed-in customer.
+
+Do NOT show other customers' orders.
+
+For each order, show:
+
+Order ID
+Date
+Products
+Quantities
+Subtotal
+Delivery charge
+GST/taxes if applicable
+Final amount
+Payment status
+Order status
+Prescription status if applicable
+Delivery status if available
+
+Allow the customer to open an individual order and see its full details.
+
+==================================================
+4. RECENT ORDERS + MY ORDERS MUST USE THE SAME DATA
+==================================================
+
+Do not create two separate order systems.
+
+"Recent Placed Orders" and "My Orders" must use the same real order data from the backend/database.
+
+When a new order is created:
+
+Order created
+→ appears in Recent Placed Orders
+→ appears in My Orders
+
+When admin changes the order:
+
+Admin updates order status
+→ customer order data updates
+→ Recent Placed Orders reflects it
+→ My Orders reflects it
+
+Do not use hard-coded or duplicate frontend-only order data.
+
+==================================================
+5. ORDER DETAILS
+==================================================
+
+When customer opens an individual order, show a complete order details page/section.
+
+Include:
+
+Order number
+Order date/time
+Customer information
+Delivery address
+Products
+Product names
+Quantities
+Unit prices
+Subtotal
+Delivery fee
+GST/tax
+Final total
+Payment method/status
+Order status
+Prescription status if applicable
+Delivery status if available
+
+Make the information clean and easy to understand.
+
+==================================================
+6. INVOICE / BILL
+==================================================
+
+The customer's invoice/bill must be available from BOTH places:
+
+A. Recent Placed Orders
+B. My Orders
+
+For each completed/placed order, provide a clear:
+
+"View Invoice"
+
+button.
+
+The invoice should show:
+
+Ayush Medico
+Order number
+Order date
+Customer details
+Delivery address
+Items
+Quantity
+Unit price
+Subtotal
+Delivery charge
+GST/tax
+Grand total
+Payment status
+
+Use the actual order data.
+
+Do not create fake invoice values.
+
+==================================================
+7. DOWNLOAD / PRINT INVOICE
+==================================================
+
+Make the invoice usable.
+
+Provide:
+
+- View Invoice
+- Download Invoice
+- Print Invoice
+
+where supported by the application.
+
+The downloaded/printed bill must contain the same accurate order information as the order details page.
+
+Use a clean professional invoice layout.
+
+==================================================
+8. INVOICE ACCESS
+==================================================
+
+The customer should be able to access the invoice later.
+
+Example:
+
+My Orders
+→ Order
+→ View Invoice
+
+and:
+
+Recent Placed Orders
+→ Order
+→ View Invoice
+
+Do not make the customer place the order again to access the invoice.
+
+==================================================
+9. ORDER STATUS
+==================================================
+
+Make the customer-facing status clear.
+
+For example:
+
+Payment Verification Pending
+Payment Confirmed
+Order Confirmed
+Preparing
+Ready for Delivery
+Out for Delivery
+Delivered
+Cancelled
+
+For prescription orders, also show the prescription status when relevant.
+
+The customer should see the latest actual status from the backend.
+
+==================================================
+10. ADMIN SYNCHRONIZATION
+==================================================
+
+When admin changes an order status, the customer-side:
+
+Recent Placed Orders
+and
+My Orders
+
+must reflect the updated status.
+
+Do not require duplicate/manual data entry.
+
+The backend/database should remain the source of truth.
+
+==================================================
+11. CUSTOMER SECURITY
+==================================================
+
+A customer must ONLY be able to see their own orders and invoices.
+
+Do not expose another customer's order information by changing a URL or order ID.
+
+Use the authenticated customer identity when fetching order history.
+
+==================================================
+12. MOBILE + DESKTOP
+==================================================
+
+Make My Orders and invoice viewing work properly on:
+
+- Desktop
+- Mobile
+
+The order cards and invoice should remain readable and usable on small screens.
+
+==================================================
+13. FINAL UX
+==================================================
+
+The customer experience should be:
+
+Place Order
+↓
+Order Confirmation
+↓
+Recent Placed Orders
+↓
+My Orders
+↓
+Open Order
+↓
+View Invoice / Download Invoice
+↓
+Track Order Status
+
+Everything should use the REAL order data.
+
+==================================================
+14. IMPORTANT
+==================================================
+
+Do not create duplicate order systems.
+
+Do not hard-code order information.
+
+Do not show fake invoice totals.
+
+Do not break checkout.
+
+Do not break admin orders.
+
+Do not break payment status.
+
+Do not break prescription workflows.
+
+Do not change unrelated features.
+
+The final customer experience must have:
+
+RECENT PLACED ORDERS ✅
+MY ORDERS IN TOP NAVIGATION ✅
+FULL ORDER DETAILS ✅
+VIEW INVOICE ✅
+DOWNLOAD INVOICE ✅
+PRINT INVOICE ✅
+LIVE ORDER STATUS ✅
+LIVE PAYMENT STATUS ✅
+CUSTOMER-ONLY ORDER HISTORY ✅

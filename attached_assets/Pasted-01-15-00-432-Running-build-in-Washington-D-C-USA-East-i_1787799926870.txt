@@ -1,0 +1,171 @@
+01:15:00.432 Running build in Washington, D.C., USA (East) – iad1
+01:15:00.433 Build machine configuration: 2 cores, 8 GB
+01:15:00.560 Cloning github.com/Nasty-Developer/Ayush-Medicozip (Branch: main, Commit: 1d20af7)
+01:15:05.064 Warning: Failed to fetch one or more git submodules
+01:15:05.064 Cloning completed: 4.504s
+01:15:05.461 Restored build cache from previous deployment (Fha3Ssd9eLJN1pnCBqY3Rfw9mzhq)
+01:15:05.837 Running "vercel build"
+01:15:05.855 Vercel CLI 59.3.0
+01:15:06.710 > Detected ENABLE_EXPERIMENTAL_COREPACK=1 and "pnpm@10.26.1" in package.json
+01:15:06.906 Running "install" command: `pnpm install --frozen-lockfile`...
+01:15:07.978 Scope: all 9 workspace projects
+01:15:08.142 Lockfile is up to date, resolution step is skipped
+01:15:08.459 Progress: resolved 1, reused 0, downloaded 0, added 0
+01:15:08.568 Packages: +233 -210
+01:15:08.570 ++++++++++++++++++++++++++++++++++++++++++--------------------------------------
+01:15:09.460 Progress: resolved 233, reused 0, downloaded 16, added 0
+01:15:10.462 Progress: resolved 233, reused 0, downloaded 64, added 20
+01:15:11.463 Progress: resolved 233, reused 0, downloaded 78, added 22
+01:15:12.464 Progress: resolved 233, reused 0, downloaded 171, added 67
+01:15:13.464 Progress: resolved 233, reused 0, downloaded 231, added 85
+01:15:14.464 Progress: resolved 233, reused 0, downloaded 233, added 231
+01:15:14.566 Progress: resolved 233, reused 0, downloaded 233, added 233, done
+01:15:16.086 
+01:15:16.086 dependencies:
+01:15:16.086 + @replit/connectors-sdk 0.4.1
+01:15:16.086 
+01:15:16.086 devDependencies:
+01:15:16.087 - prettier 3.8.4
+01:15:16.087 + prettier 3.9.6
+01:15:16.087 
+01:15:16.122 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+01:15:16.293 . preinstall: Done
+01:15:16.449 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+01:15:16.450 │                                                                              │
+01:15:16.450 │   Ignored build scripts: @firebase/util@1.15.3, protobufjs@7.6.5.            │
+01:15:16.450 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+01:15:16.450 │   to run scripts.                                                            │
+01:15:16.450 │                                                                              │
+01:15:16.450 ╰──────────────────────────────────────────────────────────────────────────────╯
+01:15:16.458 Done in 9.4s using pnpm v10.26.1
+01:15:16.934 Scope: all 9 workspace projects
+01:15:17.055 Lockfile is up to date, resolution step is skipped
+01:15:17.165 Already up to date
+01:15:18.179 
+01:15:18.219 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+01:15:18.234 . preinstall: Done
+01:15:18.359 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+01:15:18.360 │                                                                              │
+01:15:18.360 │   Ignored build scripts: @firebase/util@1.15.3, protobufjs@7.6.5.            │
+01:15:18.360 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+01:15:18.361 │   to run scripts.                                                            │
+01:15:18.361 │                                                                              │
+01:15:18.361 ╰──────────────────────────────────────────────────────────────────────────────╯
+01:15:18.366 Done in 1.7s using pnpm v10.26.1
+01:15:19.470 
+01:15:19.471   api/.vercel-build/app.mjs                     8.1mb ⚠️
+01:15:19.472   api/.vercel-build/pino-worker.mjs           153.0kb
+01:15:19.472   api/.vercel-build/pino-file.mjs             141.6kb
+01:15:19.473   api/.vercel-build/pino-pretty.mjs           113.8kb
+01:15:19.473   api/.vercel-build/thread-stream-worker.mjs    7.2kb
+01:15:19.473 
+01:15:19.474 ⚡ Done in 1025ms
+01:15:19.831 
+01:15:19.832 > @workspace/ayush-medico@0.0.0 build /vercel/path0/artifacts/ayush-medico
+01:15:19.832 > vite build --config vite.config.ts
+01:15:19.833 
+01:15:20.163 vite v7.3.6 building client environment for production...
+01:15:20.266 transforming...
+01:15:21.647 src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+01:15:23.726 src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+01:15:25.968 ✓ 2325 modules transformed.
+01:15:26.354 rendering chunks...
+01:15:26.871 computing gzip size...
+01:15:26.926 dist/public/index.html                                  16.93 kB │ gzip:   4.23 kB
+01:15:26.927 dist/public/assets/hero-bg-Bj2CT7tl.webp               212.19 kB
+01:15:26.932 dist/public/assets/hero-bg-B08RZ6Xg.jpg                408.86 kB
+01:15:26.932 dist/public/assets/index-sJ0PnjuS.css                  236.95 kB │ gzip:  31.49 kB
+01:15:26.933 dist/public/assets/check-Dz3a1vy9.js                     0.12 kB │ gzip:   0.14 kB
+01:15:26.933 dist/public/assets/useDebounce-C3VgSOz3.js               0.19 kB │ gzip:   0.16 kB
+01:15:26.934 dist/public/assets/PageShell-BAW4VuC6.js                 0.19 kB │ gzip:   0.18 kB
+01:15:26.934 dist/public/assets/credit-card-D2fy3mgL.js               0.21 kB │ gzip:   0.19 kB
+01:15:26.935 dist/public/assets/upload-BRcHGJUT.js                    0.23 kB │ gzip:   0.19 kB
+01:15:26.935 dist/public/assets/log-in-BLx60yRT.js                    0.23 kB │ gzip:   0.19 kB
+01:15:26.936 dist/public/assets/message-square-BGnxyYvK.js            0.23 kB │ gzip:   0.20 kB
+01:15:26.936 dist/public/assets/eye-_zKY-b8R.js                       0.25 kB │ gzip:   0.20 kB
+01:15:26.936 dist/public/assets/external-link-D-sRt4BP.js             0.25 kB │ gzip:   0.20 kB
+01:15:26.937 dist/public/assets/file-check-CkIBoTh0.js                0.27 kB │ gzip:   0.20 kB
+01:15:26.937 dist/public/assets/shield-Ya3B5ltm.js                    0.27 kB │ gzip:   0.22 kB
+01:15:26.938 dist/public/assets/PrivacyPolicyPage-CE_H-AjN.js         0.29 kB │ gzip:   0.22 kB
+01:15:26.938 dist/public/assets/TermsPage-C-OGHdru.js                 0.29 kB │ gzip:   0.22 kB
+01:15:26.939 dist/public/assets/clipboard-check-DUmfBu-I.js           0.30 kB │ gzip:   0.23 kB
+01:15:26.940 dist/public/assets/RefundPolicyPage-BjaZrot7.js          0.30 kB │ gzip:   0.23 kB
+01:15:26.941 dist/public/assets/ShippingPolicyPage-BpDarVoC.js        0.30 kB │ gzip:   0.23 kB
+01:15:26.946 dist/public/assets/users-CmY3ZTSP.js                     0.31 kB │ gzip:   0.23 kB
+01:15:26.946 dist/public/assets/PrescriptionPolicyPage-CBzMW0D2.js    0.34 kB │ gzip:   0.24 kB
+01:15:26.947 dist/public/assets/shopping-bag-TXEI1C2U.js              0.34 kB │ gzip:   0.24 kB
+01:15:26.947 dist/public/assets/DisclaimerPage-Ro2SJ8DC.js            0.34 kB │ gzip:   0.25 kB
+01:15:26.947 dist/public/assets/paw-print-5PMMbU8V.js                 0.34 kB │ gzip:   0.25 kB
+01:15:26.948 dist/public/assets/scale-n2_0QHkW.js                     0.36 kB │ gzip:   0.23 kB
+01:15:26.948 dist/public/assets/building-2-D11mTbGQ.js                0.38 kB │ gzip:   0.24 kB
+01:15:26.948 dist/public/assets/package-check-DRxZAlOf.js             0.43 kB │ gzip:   0.29 kB
+01:15:26.948 dist/public/assets/chef-hat-CbUf7n1r.js                  0.44 kB │ gzip:   0.30 kB
+01:15:26.948 dist/public/assets/package-search-Bs_2-r00.js            0.49 kB │ gzip:   0.32 kB
+01:15:26.948 dist/public/assets/FAQPage-C7OI3mvy.js                   0.49 kB │ gzip:   0.33 kB
+01:15:26.948 dist/public/assets/AboutPage-ChJs3myX.js                 0.52 kB │ gzip:   0.34 kB
+01:15:26.948 dist/public/assets/ContactPage-M5XBW75-.js               0.53 kB │ gzip:   0.35 kB
+01:15:26.948 dist/public/assets/ServicesPage-BjbFLx3E.js              0.54 kB │ gzip:   0.35 kB
+01:15:26.948 dist/public/assets/CompliancePage-VTlE5vZR.js            0.58 kB │ gzip:   0.37 kB
+01:15:26.948 dist/public/assets/GeneralInquiryPage-ANYACxnv.js        0.58 kB │ gzip:   0.37 kB
+01:15:26.949 dist/public/assets/RequestMedicinePage-vSxKYmT5.js       0.68 kB │ gzip:   0.43 kB
+01:15:26.949 dist/public/assets/DeliveryPage-C-kPmnzO.js              0.74 kB │ gzip:   0.44 kB
+01:15:26.949 dist/public/assets/razorpayCheckout-C_WscCOe.js          0.79 kB │ gzip:   0.45 kB
+01:15:26.949 dist/public/assets/paymentService-gW8O7Lxu.js            1.44 kB │ gzip:   0.64 kB
+01:15:26.949 dist/public/assets/not-found-DBY5sRSl.js                 1.81 kB │ gzip:   0.75 kB
+01:15:26.949 dist/public/assets/storageHelpers-BcT-dAVk.js            2.36 kB │ gzip:   1.23 kB
+01:15:26.949 dist/public/assets/categoryColors-CaeKJC0M.js            2.47 kB │ gzip:   1.07 kB
+01:15:26.949 dist/public/assets/ContactCTA-D7njD6ss.js                2.59 kB │ gzip:   1.08 kB
+01:15:26.949 dist/public/assets/DynamicLegalPage-CCbjMn45.js          3.07 kB │ gzip:   1.21 kB
+01:15:26.949 dist/public/assets/OrderConfirmationPage-Cl8U_YBv.js     3.10 kB │ gzip:   1.21 kB
+01:15:26.949 dist/public/assets/TestimonialsPreview-BPifz2n0.js       4.18 kB │ gzip:   1.67 kB
+01:15:26.949 dist/public/assets/WhyChooseUs-D56nAXnn.js               4.37 kB │ gzip:   1.86 kB
+01:15:26.949 dist/public/assets/DeliveryFeatures-CLrh1rbg.js          4.69 kB │ gzip:   1.79 kB
+01:15:26.949 dist/public/assets/ExploreCollections-C4Dc8RDB.js        4.83 kB │ gzip:   1.94 kB
+01:15:26.949 dist/public/assets/AdminLogin-DdFCcC6f.js                5.01 kB │ gzip:   1.96 kB
+01:15:26.949 dist/public/assets/HowItWorks-DRHqRVdA.js                5.55 kB │ gzip:   2.23 kB
+01:15:26.949 dist/public/assets/Services-iHTYnvpX.js                  5.59 kB │ gzip:   2.21 kB
+01:15:26.949 dist/public/assets/FAQ-B8GEq9ns.js                       6.34 kB │ gzip:   2.73 kB
+01:15:26.949 dist/public/assets/MedicineDetailPage-BrJ5B1tQ.js        6.78 kB │ gzip:   2.36 kB
+01:15:26.949 dist/public/assets/Contact-DhWGoFVz.js                   6.84 kB │ gzip:   1.85 kB
+01:15:26.949 dist/public/assets/About-DZsH5NkT.js                     7.49 kB │ gzip:   2.68 kB
+01:15:26.949 dist/public/assets/FeaturedMedicines-nQUJDi_p.js         8.32 kB │ gzip:   2.83 kB
+01:15:26.949 dist/public/assets/MedicineCard-PlBlg0fe.js              8.80 kB │ gzip:   2.93 kB
+01:15:26.949 dist/public/assets/CartPage-DZzYfYjS.js                  8.89 kB │ gzip:   2.64 kB
+01:15:26.949 dist/public/assets/package-x-GL8l7jb6.js                 9.24 kB │ gzip:   3.46 kB
+01:15:26.950 dist/public/assets/SpecialMedicines-D9n4TAox.js          9.71 kB │ gzip:   3.24 kB
+01:15:26.950 dist/public/assets/NewArrivals-DE_JA5E5.js               9.87 kB │ gzip:   3.26 kB
+01:15:26.950 dist/public/assets/GeneralInquiry-pMZ6J8bN.js           10.30 kB │ gzip:   3.46 kB
+01:15:26.950 dist/public/assets/TrustCompliance-DfOvyfDu.js          10.67 kB │ gzip:   3.40 kB
+01:15:26.950 dist/public/assets/CategoryDetailPage-D-4OYHU5.js       11.14 kB │ gzip:   3.60 kB
+01:15:26.950 dist/public/assets/VetMedicinesPage-B50-vn99.js         11.23 kB │ gzip:   3.68 kB
+01:15:26.950 dist/public/assets/GeneralProductsPage-B-rFyDZa.js      11.75 kB │ gzip:   3.83 kB
+01:15:26.950 dist/public/assets/OrderDetailPage-DcEbd7bb.js          12.28 kB │ gzip:   3.55 kB
+01:15:26.950 dist/public/assets/OrderTracker-DZx48jv9.js             12.79 kB │ gzip:   4.20 kB
+01:15:26.950 dist/public/assets/useLegalContent-9SrdCfZv.js          14.01 kB │ gzip:   4.83 kB
+01:15:26.950 dist/public/assets/CategoriesPage-CbnOS9vC.js           14.70 kB │ gzip:   4.87 kB
+01:15:26.950 dist/public/assets/RequestMedicine-CiplQKHW.js          28.67 kB │ gzip:   8.18 kB
+01:15:26.950 dist/public/assets/CheckoutPage-Bd7wBrbO.js             35.54 kB │ gzip:   9.80 kB
+01:15:26.950 dist/public/assets/textarea-CvrF3tjl.js                 90.28 kB │ gzip:  25.36 kB
+01:15:26.950 dist/public/assets/AdminLayout-6W7d0I7h.js             264.93 kB │ gzip:  49.41 kB
+01:15:26.950 dist/public/assets/index-Bc8rYxg6.js                   736.29 kB │ gzip: 229.87 kB
+01:15:26.968 
+01:15:26.968 (!) Some chunks are larger than 500 kB after minification. Consider:
+01:15:26.969 - Using dynamic import() to code-split the application
+01:15:26.969 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+01:15:26.969 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+01:15:26.971 ✓ built in 6.74s
+01:15:27.120 Installing dependencies...
+01:15:27.720 Scope: all 9 workspace projects
+01:15:29.042 .. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+01:15:29.058 .. preinstall: Done
+01:15:29.186 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+01:15:29.187 │                                                                              │
+01:15:29.187 │   Ignored build scripts: @firebase/util@1.15.3, protobufjs@7.6.5.            │
+01:15:29.188 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+01:15:29.188 │   to run scripts.                                                            │
+01:15:29.188 │                                                                              │
+01:15:29.188 ╰──────────────────────────────────────────────────────────────────────────────╯
+01:15:29.193 Done in 1.9s using pnpm v10.26.1
+01:15:31.902 Using TypeScript 5.9.3 (local user-provided)
+01:15:41.875 Error: artifacts/api-server/src/routes/health.ts(8,14): error TS2339: Property 'status' does not exist on type 'Response<any, Record<string, any>>'.
+01:15:41.876 

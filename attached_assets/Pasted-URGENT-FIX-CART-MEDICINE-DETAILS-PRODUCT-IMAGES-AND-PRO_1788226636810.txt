@@ -1,0 +1,335 @@
+URGENT — FIX CART, MEDICINE DETAILS, PRODUCT IMAGES, AND PRODUCT ORDERING
+
+Do NOT redesign the whole website.
+
+Fix the existing broken functionality carefully and preserve the parts that already work.
+
+==================================================
+1. CART DRAWER — CLOSE BUTTON IS BROKEN
+==================================================
+
+On the Render production website:
+
+The cart opens correctly.
+
+BUT once "My Cart" opens, it does NOT reliably close.
+
+Fix the existing cart drawer at the ROOT CAUSE.
+
+Required behavior:
+
+Cart icon
+→ cart opens
+
+X / Close button
+→ cart closes immediately
+
+Click outside cart
+→ cart closes
+
+Press Escape
+→ cart closes
+
+Closing the cart must NOT:
+- remove products
+- clear the cart
+- change quantity
+- reset totals
+- navigate to Home
+
+The customer must remain on the same page.
+
+DO NOT create a second cart implementation.
+
+Inspect the actual cart state, drawer state, overlay, event propagation, parent click handlers, and React effects.
+
+Test this specifically on the Render production build.
+
+==================================================
+2. MEDICINE / PRODUCT DETAILS PAGE
+==================================================
+
+When a customer clicks a medicine/product to view its details:
+
+The product details page must open correctly.
+
+The product image must also load correctly.
+
+Currently some medicine/product detail pages show the image missing or failing to load.
+
+I have already provided the product image/reference.
+
+Inspect why the image is not loading.
+
+Check:
+
+- image URL
+- image path
+- Firebase/storage URL if used
+- public assets
+- backend image field
+- frontend image mapping
+- broken/missing image fallback
+- production build asset paths
+- case-sensitive filenames
+- relative vs absolute URLs
+
+Do not simply hide the image.
+
+The correct product image must actually load in production.
+
+If an image is unavailable, use a clean fallback image instead of a broken-image icon.
+
+==================================================
+3. PRODUCT ORDERING BUTTONS
+==================================================
+
+I want the ordering experience simplified.
+
+For products that are normally purchasable, the main action should be:
+
+"Place Order"
+
+or the existing appropriate order/add-to-cart action.
+
+Do NOT force customers to use:
+
+"Call to Order"
+
+for normal purchasable medicines/products.
+
+Remove the unnecessary "Call to Order" action from products where the customer can place a normal online order.
+
+KEEP the existing normal ordering functionality for:
+
+- General medicines
+- Other normally purchasable medicines
+- General pharmacy products
+- Products that are already configured as online-orderable
+
+The customer should be able to:
+
+Product
+→ Place Order / Add to Cart
+→ Cart
+→ Checkout
+→ Order
+
+Do not replace this with a phone call.
+
+==================================================
+4. CALL TO ORDER
+==================================================
+
+Only keep "Call to Order" where the product genuinely requires a phone/manual ordering process.
+
+Do not show "Call to Order" as the primary action for normal online-orderable products.
+
+Do not remove the ability to call the pharmacy where it is genuinely useful.
+
+The rule should be:
+
+ONLINE ORDERABLE
+→ Place Order / Add to Cart
+
+MANUAL/CONTACT REQUIRED
+→ Call to Order
+
+==================================================
+5. FEATURED / SPECIAL / TAGGED PRODUCTS
+==================================================
+
+There are sections/tags such as:
+
+- Featured
+- Featured Medicines
+- Special
+- Special Medicines
+- Any similar product collections/tags
+
+Some of these are not working correctly.
+
+Fix them.
+
+Check:
+
+- Featured products load
+- Special products load
+- Category/tag filtering works
+- Clicking a featured product opens the correct product
+- Product image loads
+- Product ordering action works
+- Product data is correct
+- No empty/broken sections when valid products exist
+
+Do NOT make fake placeholder products just to fill the section.
+
+Use the actual database/product data.
+
+==================================================
+6. FEATURED / SPECIAL BUTTONS
+==================================================
+
+If a section has:
+
+View All
+Explore
+Shop Now
+See More
+Featured
+Special
+Category
+
+or similar buttons, make sure they actually navigate to the correct content.
+
+There must be no dead buttons.
+
+==================================================
+7. PRODUCT CARD CONSISTENCY
+==================================================
+
+Every product card should clearly show the appropriate action.
+
+For a normal online-orderable product:
+
+Product image
+Product name
+Price
+Relevant information
+Place Order / Add to Cart
+
+For a manual/contact product:
+
+Product image
+Product name
+Price/information when applicable
+Call to Order / Contact
+
+Do not display contradictory actions.
+
+==================================================
+8. PERFORMANCE
+==================================================
+
+The Render website sometimes feels slow even for simple actions.
+
+While fixing these issues, inspect unnecessary requests and rendering.
+
+Pay particular attention to:
+
+- Cart opening/closing
+- Product detail loading
+- Product images
+- Featured products
+- Special products
+- Category pages
+- Order button actions
+
+Do not simply add spinners.
+
+Fix unnecessary API requests, duplicate data loading, and repeated React effects where possible.
+
+==================================================
+9. DO NOT BREAK EXISTING FUNCTIONALITY
+==================================================
+
+Preserve:
+
+- Customer authentication
+- Google Sign-In
+- Sign Out
+- Cart
+- Checkout
+- Existing order system
+- Medicine request system
+- Admin panel
+- Product management
+- Existing working API connections
+
+Do not rewrite unrelated features.
+
+==================================================
+10. TEST ON PRODUCTION
+==================================================
+
+After fixing, test the actual Render deployment.
+
+Test:
+
+CART:
+Open
+→ Close with X
+→ Reopen
+→ Close with outside click
+→ Close with Escape
+
+PRODUCT:
+Open product
+→ Details page
+→ Image loads
+→ Price/details correct
+
+ORDER:
+Normal medicine
+→ Place Order / Add to Cart
+→ Cart
+→ Checkout
+
+CALL:
+Only products that actually require manual ordering
+→ Call to Order
+
+FEATURED:
+Open Featured
+→ Products load
+→ Click product
+→ Details open
+→ Image loads
+→ Order works
+
+SPECIAL:
+Open Special
+→ Products load
+→ Click product
+→ Details open
+→ Image loads
+→ Order works
+
+CATEGORY/TAGS:
+Open category/tag
+→ Correct products load
+→ Product can be opened
+→ Product can be ordered
+
+==================================================
+FINAL REQUIRED BEHAVIOR
+==================================================
+
+I want:
+
+CART:
+OPEN ✅
+CLOSE ✅
+
+PRODUCT DETAILS:
+OPEN ✅
+IMAGE LOADS ✅
+
+NORMAL MEDICINE:
+PLACE ORDER ✅
+
+CALL TO ORDER:
+ONLY WHERE ACTUALLY REQUIRED ✅
+
+FEATURED:
+WORKS ✅
+
+SPECIAL:
+WORKS ✅
+
+CATEGORY/TAGS:
+WORK ✅
+
+Do not make cosmetic changes instead of fixing the functionality.
+
+Fix the actual underlying problems and verify everything on the production build.
