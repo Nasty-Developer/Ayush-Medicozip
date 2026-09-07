@@ -1,0 +1,165 @@
+FIX AND SAFELY SYNC GIT FOR AYUSH MEDICOZIP
+
+We need to fix the Git synchronization for this Replit project.
+
+CURRENT SCREEN SHOWS:
+- Branch: main
+- Working tree: no changes to commit
+- Remote Updates: "Not pulled from remote"
+- GitHub remote: Nasty-Developer/Ayush-Medicozip
+
+IMPORTANT:
+Previously this repository had rebase/merge conflicts, so DO NOT blindly reset, force-push, checkout --ours, checkout --theirs, or discard files.
+
+GOAL:
+Safely determine the exact Git state and synchronize the Replit project with GitHub while preserving all current work.
+
+STEP 1 — INSPECT ONLY FIRST
+
+Run:
+
+git status --short --branch
+git remote -v
+git fetch origin main
+git rev-list --left-right --count HEAD...origin/main
+git log --oneline --decorate -10
+git status
+
+Interpret the result carefully.
+
+STEP 2 — PROTECT CURRENT STATE
+
+Before making any synchronization change, create a backup branch from the current HEAD:
+
+git branch backup-before-git-sync-$(date +%Y%m%d-%H%M%S)
+
+Do NOT delete or overwrite this backup.
+
+STEP 3 — DETERMINE THE ACTUAL STATE
+
+There are several possible cases:
+
+CASE A:
+Local main is behind origin/main and has no unique commits.
+
+Then safely fast-forward:
+
+git merge --ff-only origin/main
+
+Do NOT create an unnecessary merge commit.
+
+CASE B:
+Local main is ahead of origin/main and contains legitimate Replit work.
+
+Preserve the local commits and push normally:
+
+git push origin main
+
+Do NOT force-push.
+
+CASE C:
+Local main and origin/main have diverged.
+
+DO NOT reset anything.
+
+Safely merge origin/main into the current main branch:
+
+git merge origin/main
+
+If there are conflicts:
+STOP.
+
+Do NOT automatically choose "ours" or "theirs".
+Do NOT discard files.
+Report the exact conflicted files and inspect both versions before resolving them.
+
+CASE D:
+There is an unfinished rebase/merge/cherry-pick already in progress.
+
+Do NOT start another operation on top of it.
+
+Inspect:
+
+git status
+
+Determine exactly what operation is in progress.
+
+If it is a broken stale operation and it is safe to abort without losing working files, preserve a backup first and then abort it.
+
+STEP 4 — VERIFY THE REPOSITORY
+
+After synchronization, check:
+
+git status
+git branch -vv
+git log --oneline --decorate -10
+
+Make sure:
+
+- branch is main
+- working tree is clean unless there are intentional new changes
+- no merge/rebase is left unfinished
+- no conflict markers remain
+
+Search for conflict markers in source files:
+
+git grep -n -E '^(<<<<<<<|=======|>>>>>>>)' -- ':!package-lock.json' ':!pnpm-lock.yaml' ':!yarn.lock'
+
+If any real conflict markers exist, STOP and fix them properly.
+
+STEP 5 — BUILD CHECK
+
+Run the project's normal build command.
+
+Prefer:
+
+pnpm run build
+
+or the appropriate existing package-manager build command based on the repository.
+
+Do not modify application code merely to make Git pass.
+
+If build fails, report the actual error.
+
+STEP 6 — FINAL SYNC
+
+Only after confirming the repository is valid:
+
+git status
+git log --oneline --decorate -10
+
+If the local main contains commits that need to go to GitHub and there is no conflict:
+
+git push origin main
+
+Use a NORMAL push.
+
+DO NOT use:
+
+git push --force
+git push --force-with-lease
+git reset --hard
+git checkout --ours
+git checkout --theirs
+
+unless I explicitly instruct you later.
+
+STEP 7 — FINAL REPORT
+
+Tell me clearly:
+
+1. Local branch state
+2. Remote branch state
+3. Whether local was behind/ahead/diverged
+4. Whether anything was merged
+5. Whether anything was pushed
+6. Whether conflicts existed
+7. Whether build passed
+8. Final git status
+9. Exact backup branch name
+
+IMPORTANT:
+Do not claim Git is fixed unless you actually verify the final state.
+
+Do not change application functionality during this task.
+This task is ONLY to safely diagnose and synchronize Git.

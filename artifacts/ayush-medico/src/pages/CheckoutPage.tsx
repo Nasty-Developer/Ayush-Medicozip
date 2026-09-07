@@ -36,6 +36,43 @@ function cartFingerprint(items: { medicineId: string; quantity: number; unitPric
     .join("|");
 }
 
+function getOrderErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message.trim() : "";
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("insufficient stock")) {
+    return "One or more items no longer have enough stock. Go back to your cart and reduce the quantity.";
+  }
+  if (normalized.includes("unavailable")) {
+    return "One or more cart items are no longer available. Go back to your cart and remove or re-add the item.";
+  }
+  if (normalized.includes("invalid order item")) {
+    return "A cart item is outdated. Go back to your cart and remove and re-add that item.";
+  }
+  if (normalized.includes("delivery address not found")) {
+    return "This delivery address is no longer available. Go back and select a saved address again.";
+  }
+  if (normalized.includes("prescription is required")) {
+    return "Please upload the prescription required for one or more items.";
+  }
+  if (
+    normalized.includes("not authenticated") ||
+    normalized.includes("sign in") ||
+    normalized.includes("firebase")
+  ) {
+    return "Your sign-in session expired. Please sign in again and retry.";
+  }
+  if (normalized.includes("failed to generate order id")) {
+    return "The order service is temporarily unavailable. Please wait a moment and try again.";
+  }
+  if (message && !normalized.includes("request failed")) {
+    // The API returns deliberately safe, customer-facing error messages. Keep
+    // those visible so checkout failures are actionable instead of opaque.
+    return message;
+  }
+  return "The order could not be placed right now. Please try again.";
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CheckoutPage() {
@@ -70,9 +107,9 @@ export default function CheckoutPage() {
     });
   }, [user?.uid, addresses, loadingAddresses]);
 
-  const [tempOrderId] = useState(
-    () => `temp-${user?.uid?.slice(-6) ?? "guest"}-${Date.now()}`
-  );
+  // Reserve the server-generated order key before prescription upload so the
+  // uploaded file is attached to the same id used by createOrder.
+  const [draftOrderId, setDraftOrderId] = useState<string | null>(null);
 
   if (items.length === 0 && !placing) {
     return (
@@ -128,9 +165,22 @@ export default function CheckoutPage() {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
-  const handleAddressContinue = () => {
+  const handleAddressContinue = async () => {
     if (!selectedAddress) { setError("Please select or add a delivery address."); return; }
     setError(null);
+    if (!draftOrderId) {
+      try {
+        const generated = await generateNewOrderId();
+        setDraftOrderId(generated);
+        localStorage.setItem(
+          `ayush-medico-order-draft:${user.uid}`,
+          JSON.stringify({ orderId: generated, cartFingerprint: cartFingerprint(items) }),
+        );
+      } catch {
+        setError("Could not prepare this order. Please try again.");
+        return;
+      }
+    }
     setStep("payment");
   };
 
@@ -152,7 +202,7 @@ export default function CheckoutPage() {
 
     try {
       const draftKey = `ayush-medico-order-draft:${user.uid}`;
-      let orderId = "";
+      let orderId = draftOrderId ?? "";
       try {
         const draft = JSON.parse(localStorage.getItem(draftKey) ?? "null") as
           { orderId?: string; cartFingerprint?: string } | null;
@@ -190,6 +240,7 @@ export default function CheckoutPage() {
       // total are server-owned and intentionally unset at this stage.
       let orderInput = {
         orderId,
+        addressId: selectedAddress.id,
         customerId: user.uid,
         customerName: user.displayName ?? user.email ?? "Customer",
         customerEmail: user.email,
@@ -270,10 +321,10 @@ export default function CheckoutPage() {
         console.warn("Order notification could not be queued:", notificationError);
       }
       clearCart();
-      navigate(`/order/${docId}`);
+      navigate(`/order-confirmation/${docId}`);
     } catch (err) {
       console.error("Place order error:", err);
-      setError("Failed to place order. Please try again.");
+      setError(getOrderErrorMessage(err));
       setPlacing(false);
     }
   };
@@ -398,7 +449,7 @@ export default function CheckoutPage() {
                       </p>
                       <PrescriptionUpload
                         userId={user.uid}
-                        orderId={tempOrderId}
+                        orderId={draftOrderId ?? "pending"}
                         onUploadComplete={(url) => setPrescriptionUrl(url)}
                         onClear={() => setPrescriptionUrl(null)}
                         uploadedUrl={prescriptionUrl}

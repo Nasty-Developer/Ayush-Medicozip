@@ -89,7 +89,7 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
 // Customer updates prescription URL after upload (non-auth, keyed by inquiryId)
 router.patch("/:inquiryId/prescription", requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { inquiryId } = req.params;
+    const inquiryId = String(req.params.inquiryId ?? "");
     const { prescriptionUrl, hasPrescription, medicinePhotoUrl } = req.body as {
       prescriptionUrl?: string;
       hasPrescription?: boolean;

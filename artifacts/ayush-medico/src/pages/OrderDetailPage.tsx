@@ -22,24 +22,29 @@ import { queueNotification } from "@/lib/notificationService";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import UpiPaymentPanel from "@/components/customer/UpiPaymentPanel";
 import { InvoiceActions } from "@/components/customer/Invoice";
+import SignInModal from "@/components/customer/SignInModal";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function OrderDetailPage() {
   const [matched, params] = useRoute("/order/:docId");
   const [, navigate] = useLocation();
-  const { user } = useCustomerAuth();
+  const { user, loading: loadingAuth } = useCustomerAuth();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [showSignIn, setShowSignIn] = useState(false);
 
   const docId = params?.docId ?? "";
 
   useEffect(() => {
-    if (!docId) return;
+    if (!docId || loadingAuth || !user) {
+      if (!loadingAuth) setLoading(false);
+      return;
+    }
     const unsub = subscribeToOrder(
       docId,
        (o) => {
@@ -53,7 +58,7 @@ export default function OrderDetailPage() {
        }
     );
     return unsub;
-  }, [docId]);
+  }, [docId, loadingAuth, user?.uid]);
 
   const handleCancel = async () => {
     if (!order || !user) return;
@@ -86,6 +91,23 @@ export default function OrderDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center pt-16">
         <Loader2 size={32} className="animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 pt-16 text-center">
+        <AlertCircle size={40} className="text-amber-500" />
+        <p className="text-lg font-semibold text-foreground">Sign in to view this order</p>
+        <p className="text-sm text-muted-foreground">Order details are available only to the signed-in customer.</p>
+        <button
+          onClick={() => setShowSignIn(true)}
+          className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary/90"
+        >
+          Sign In
+        </button>
+        {showSignIn && <SignInModal onClose={() => setShowSignIn(false)} />}
       </div>
     );
   }

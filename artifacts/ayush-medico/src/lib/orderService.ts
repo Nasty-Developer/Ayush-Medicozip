@@ -118,7 +118,9 @@ export type Order = {
   updatedAt: Timestamp;
 };
 
-export type CreateOrderInput = Omit<Order, "id" | "createdAt" | "updatedAt">;
+export type CreateOrderInput = Omit<Order, "id" | "createdAt" | "updatedAt"> & {
+  addressId: string;
+};
 
 // ─── Row → Order mapping ──────────────────────────────────────────────────────
 

@@ -1,0 +1,274 @@
+URGENT BUG FIX — AYUSH MEDICO CHECKOUT ADD ADDRESS RETURNS 500
+
+The production checkout page has a broken Add Address flow.
+
+Observed behavior:
+- Customer is on /checkout
+- Address form is filled correctly
+- City: Mumbai
+- State: Maharashtra
+- Pincode: 400070
+- "Set as default address" is enabled
+- Clicking "Add Address" results in:
+  "Request failed: 500"
+- The address is not saved.
+- Checkout cannot continue.
+
+DO NOT just hide the error or change the frontend message.
+
+Find and fix the ROOT CAUSE.
+
+==================================================
+1. TRACE THE COMPLETE ADDRESS FLOW
+==================================================
+
+Inspect the entire flow:
+
+CheckoutPage
+→ address form/component
+→ address service/helper
+→ API request
+→ backend address route
+→ authentication
+→ database
+→ response
+→ frontend state update
+
+Find the exact endpoint being called when Add Address is clicked.
+
+Inspect both frontend and backend implementations.
+
+==================================================
+2. CHECK SERVER LOGS / ACTUAL ERROR
+==================================================
+
+Reproduce the Add Address request.
+
+Inspect the backend/server console and identify the actual exception causing HTTP 500.
+
+Do not guess.
+
+Fix the underlying exception.
+
+Make sure the backend returns a useful 4xx error for invalid input instead of incorrectly returning 500.
+
+Do NOT expose stack traces or secrets to customers.
+
+==================================================
+3. AUTHENTICATION
+==================================================
+
+The address must be associated with the currently authenticated Firebase customer.
+
+Do NOT trust a customerId/userId supplied blindly by the browser.
+
+Use the authenticated user's identity on the server.
+
+Verify the authentication middleware works correctly for this endpoint.
+
+Logged-out users should receive an appropriate authentication error, not a 500.
+
+==================================================
+4. ADDRESS DATA
+==================================================
+
+Verify the frontend payload matches the backend schema exactly.
+
+Check all fields being sent, including:
+
+- fullName
+- mobileNumber
+- alternateNumber
+- houseNumber
+- buildingName
+- street
+- area
+- landmark
+- city
+- state
+- pincode
+- addressType
+- lat
+- lng
+- isDefault
+
+Some fields may be optional.
+
+Do not make optional fields fail database insertion when they are empty/null.
+
+Validate required fields properly.
+
+==================================================
+5. DATABASE
+==================================================
+
+Inspect the address table/schema/model and compare it with the actual insert/update code.
+
+Look specifically for:
+
+- incorrect column names
+- missing required columns
+- null constraint failures
+- wrong data types
+- undefined values
+- schema mismatch
+- incorrect user/customer ID field
+- broken default-address logic
+
+Fix the schema/code mismatch at the correct layer.
+
+Do not create duplicate address records.
+
+==================================================
+6. DEFAULT ADDRESS
+==================================================
+
+If "Set as default address" is selected:
+
+- save the new address
+- make it the customer's default
+- unset the customer's previous default address
+
+This operation must be scoped ONLY to the authenticated customer.
+
+Customer A must never modify Customer B's addresses.
+
+If default=false:
+
+- simply save the address normally.
+
+==================================================
+7. CUSTOMER PRIVACY
+==================================================
+
+CRITICAL:
+
+Customer A must NEVER receive Customer B's saved addresses.
+
+Every address read/update/delete operation must be customer-scoped.
+
+The selected address attached to an order must be stored with that order.
+
+Do not expose another customer's address through public APIs.
+
+==================================================
+8. FRONTEND ERROR HANDLING
+==================================================
+
+Fix the frontend so:
+
+SUCCESS:
+- address is saved
+- new address immediately appears in address selection
+- form closes/resets
+- selected address is updated correctly
+- Continue becomes available
+
+ERROR:
+- loading state stops
+- Add Address button becomes usable again
+- clear useful error is displayed
+- form data is not unnecessarily destroyed
+
+Prevent double-click from sending duplicate address requests.
+
+Disable Add Address while the request is in progress.
+
+==================================================
+9. CHECKOUT CONTINUATION
+==================================================
+
+After successfully adding an address:
+
+- selectedAddress must update
+- address list must refresh/update
+- Continue button must work
+- checkout must proceed to the next step
+
+Do not require a page refresh.
+
+==================================================
+10. TEST THE EXACT CASE
+==================================================
+
+Use a test customer and reproduce:
+
+Name
+Mobile
+Mumbai
+Maharashtra
+400070
+
+Save address.
+
+Verify:
+
+1. POST/request succeeds
+2. HTTP response is successful
+3. Address appears in the UI
+4. Address remains after refresh
+5. Address belongs to the correct customer
+6. Default address works
+7. Existing default is handled correctly
+8. Continue works
+9. Repeated clicks do not create duplicates
+10. Another customer cannot see the saved address
+
+==================================================
+11. CHECK ALL ADDRESS ACTIONS
+==================================================
+
+While fixing this, audit:
+
+- Add Address
+- Select Address
+- Edit Address
+- Delete Address
+- Set Default Address
+- Checkout selected address
+- Address loading
+- Address error states
+
+Make sure all of them use the same correct customer-scoped backend logic.
+
+==================================================
+12. DO NOT BREAK EXISTING ORDER FLOW
+==================================================
+
+Do NOT remove or bypass:
+
+- prescription verification
+- pending pharmacy review
+- admin delivery charge
+- current UPI payment flow
+- order creation
+- invoice/order details
+
+The address fix must integrate with the existing checkout/order architecture.
+
+==================================================
+13. FINAL VERIFICATION
+==================================================
+
+After fixing:
+
+- run typecheck/build
+- inspect backend logs
+- test Add Address
+- test checkout continuation
+- test refresh persistence
+- test default address
+- test duplicate click protection
+- test customer privacy
+
+Do not claim the bug is fixed unless the Add Address request actually succeeds.
+
+At the end report:
+
+- exact root cause
+- files changed
+- API endpoint involved
+- database/schema issue if any
+- tests performed
+- build result
+- final Add Address result

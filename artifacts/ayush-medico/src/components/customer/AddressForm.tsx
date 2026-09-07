@@ -196,7 +196,7 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
             inputMode="numeric"
             maxLength={6}
             value={form.pincode}
-            onChange={(e) => set("pincode", e.target.value.replace(/\D/, ""))}
+            onChange={(e) => set("pincode", e.target.value.replace(/\D/g, ""))}
             placeholder="6-digit pincode"
             className={`w-full px-3 py-2.5 rounded-xl border text-sm bg-background
                         text-foreground placeholder:text-muted-foreground/50 outline-none
