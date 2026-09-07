@@ -75,14 +75,35 @@ app.use(
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 // Empty/missing Origin is same-origin, CLI, or server-to-server traffic and remains allowed.
-const corsOrigins = (process.env["CORS_ALLOWLIST"] ?? process.env["CORS_ORIGINS"] ?? "")
-  .split(",").map((origin) => origin.trim()).filter(Boolean);
+// The Render deployment serves the frontend and API from the same hostname, but browsers
+// still send an Origin header on some same-origin POST/preflight requests. Keep that
+// exact production origin in the allowlist while retaining environment overrides for
+// additional explicitly-approved domains.
+const defaultCorsOrigins = [
+  "https://ayush-medicozip-4.onrender.com",
+  "http://localhost:18169",
+  "http://localhost:5173",
+  "http://127.0.0.1:18169",
+  "http://127.0.0.1:5173",
+];
+const configuredCorsOrigins = (process.env["CORS_ALLOWLIST"] ?? process.env["CORS_ORIGINS"] ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const corsOrigins = new Set([...defaultCorsOrigins, ...configuredCorsOrigins]);
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || corsOrigins.includes(origin)) { callback(null, true); return; }
+    if (!origin || corsOrigins.has(origin)) { callback(null, true); return; }
     callback(new Error("Origin is not allowed by CORS"));
   },
 }));
+app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof Error && err.message === "Origin is not allowed by CORS") {
+    res.status(403).json({ error: "Origin is not allowed by CORS" });
+    return;
+  }
+  next(err);
+});
 
 // ── Body parsing ──────────────────────────────────────────────────────────────
 // Razorpay webhook needs raw body for HMAC verification — mount before json().
