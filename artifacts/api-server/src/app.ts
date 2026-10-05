@@ -80,6 +80,8 @@ app.use(
 // exact production origin in the allowlist while retaining environment overrides for
 // additional explicitly-approved domains.
 const defaultCorsOrigins = [
+  "https://ayushmedico.com",
+  "https://www.ayushmedico.com",
   "https://ayush-medicozip-4.onrender.com",
   "http://localhost:18169",
   "http://localhost:5173",
@@ -96,6 +98,11 @@ app.use(cors({
     if (!origin || corsOrigins.has(origin)) { callback(null, true); return; }
     callback(new Error("Origin is not allowed by CORS"));
   },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  optionsSuccessStatus: 204,
+  maxAge: 86400,
 }));
 app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err instanceof Error && err.message === "Origin is not allowed by CORS") {
