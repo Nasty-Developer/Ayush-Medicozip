@@ -1,7 +1,7 @@
 // CheckoutPage — address, prescription, then order review.
 // Payment is requested only after the pharmacy reviews the order.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -14,7 +14,7 @@ import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { useAddresses } from "@/hooks/useAddresses";
 import AddressList from "@/components/customer/AddressList";
 import PrescriptionUpload from "@/components/customer/PrescriptionUpload";
-import { createOrder, generateNewOrderId, getOrderById, type OrderAddress } from "@/lib/orderService";
+import { createOrder, generateNewOrderId, getOrderByOrderId, type Order, type OrderAddress } from "@/lib/orderService";
 import { queueNotification } from "@/lib/notificationService";
 import type { CustomerAddress } from "@/lib/addressService";
 import SignInModal from "@/components/customer/SignInModal";
@@ -34,6 +34,70 @@ function cartFingerprint(items: { medicineId: string; quantity: number; unitPric
     .sort((a, b) => a.medicineId.localeCompare(b.medicineId))
     .map((item) => `${item.medicineId}:${item.quantity}:${item.unitPrice.toFixed(2)}`)
     .join("|");
+}
+
+type OrderDraft = { orderId: string; cartFingerprint: string };
+
+function draftKeyForUser(uid: string) {
+  return `ayush-medico-order-draft:${uid}`;
+}
+
+function readOrderDraft(key: string): OrderDraft | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) ?? "null") as Partial<OrderDraft> | null;
+    if (
+      value &&
+      typeof value.orderId === "string" &&
+      /^AYM-\d{4}-\d{6}$/.test(value.orderId) &&
+      typeof value.cartFingerprint === "string"
+    ) {
+      return { orderId: value.orderId, cartFingerprint: value.cartFingerprint };
+    }
+  } catch {
+    // Storage may be disabled or contain invalid JSON; checkout can still run
+    // with the draft held in component state.
+  }
+  return null;
+}
+
+function saveOrderDraft(key: string, draft: OrderDraft) {
+  try {
+    localStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    // A blocked or full localStorage must not prevent placing an order.
+  }
+}
+
+function clearOrderDraft(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Clearing a local recovery hint is best effort after order creation.
+  }
+}
+
+function isSameOrderRequest(
+  existing: Order,
+  customerId: string,
+  address: OrderAddress,
+  items: { medicineId: string; quantity: number }[],
+) {
+  const signature = (rows: { medicineId: string; quantity: number }[]) =>
+    rows.map((item) => `${item.medicineId}:${item.quantity}`).sort().join("|");
+  const addressFields: (keyof OrderAddress)[] = [
+    "fullName", "mobileNumber", "alternateNumber", "houseNumber", "buildingName",
+    "street", "area", "landmark", "deliveryInstructions", "city", "state",
+    "pincode", "addressType", "lat", "lng",
+  ];
+  return existing.customerId === customerId
+    && signature(existing.items) === signature(items)
+    && addressFields.every(
+      (field) => String(existing.address[field] ?? "") === String(address[field] ?? ""),
+    );
+}
+
+function isOrderIdConflict(error: unknown): boolean {
+  return error instanceof Error && error.message.toLowerCase().includes("already exists");
 }
 
 function getOrderErrorMessage(error: unknown): string {
@@ -93,6 +157,10 @@ export default function CheckoutPage() {
   const [error, setError]                 = useState<string | null>(null);
   const [showSignIn, setShowSignIn]       = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [preparingOrder, setPreparingOrder] = useState(false);
+  const preparingOrderLock = useRef(false);
+  const placingOrderLock = useRef(false);
+  const previousUserId = useRef<string | null>(null);
 
   // A saved default address should be ready to use as soon as checkout opens.
   // Without this, customers with an address could see a permanently disabled
@@ -100,16 +168,23 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!user || loadingAddresses) return;
     setSelectedAddress((current) => {
-      if (current && addresses.some((address) => address.id === current.id)) {
-        return current;
-      }
+      const refreshed = current && addresses.find((address) => address.id === current.id);
+      if (refreshed) return refreshed;
       return addresses.find((address) => address.isDefault) ?? addresses[0] ?? null;
     });
   }, [user?.uid, addresses, loadingAddresses]);
 
+  useEffect(() => {
+    const nextUserId = user?.uid ?? null;
+    if (previousUserId.current !== nextUserId) {
+      previousUserId.current = nextUserId;
+      setSelectedAddress(null);
+    }
+  }, [user?.uid]);
+
   // Reserve the server-generated order key before prescription upload so the
   // uploaded file is attached to the same id used by createOrder.
-  const [draftOrderId, setDraftOrderId] = useState<string | null>(null);
+  const [draftOrder, setDraftOrder] = useState<OrderDraft | null>(null);
 
   if (items.length === 0 && !placing) {
     return (
@@ -167,21 +242,30 @@ export default function CheckoutPage() {
 
   const handleAddressContinue = async () => {
     if (!selectedAddress) { setError("Please select or add a delivery address."); return; }
+    if (preparingOrderLock.current) return;
+    preparingOrderLock.current = true;
+    setPreparingOrder(true);
     setError(null);
-    if (!draftOrderId) {
-      try {
-        const generated = await generateNewOrderId();
-        setDraftOrderId(generated);
-        localStorage.setItem(
-          `ayush-medico-order-draft:${user.uid}`,
-          JSON.stringify({ orderId: generated, cartFingerprint: cartFingerprint(items) }),
-        );
-      } catch {
-        setError("Could not prepare this order. Please try again.");
-        return;
+    try {
+      const fingerprint = cartFingerprint(items);
+      const draftKey = draftKeyForUser(user.uid);
+      let nextDraft = draftOrder?.cartFingerprint === fingerprint ? draftOrder : null;
+      if (!nextDraft) {
+        const savedDraft = readOrderDraft(draftKey);
+        if (savedDraft?.cartFingerprint === fingerprint) nextDraft = savedDraft;
       }
+      if (!nextDraft) {
+        nextDraft = { orderId: await generateNewOrderId(), cartFingerprint: fingerprint };
+      }
+      setDraftOrder(nextDraft);
+      saveOrderDraft(draftKey, nextDraft);
+      setStep("payment");
+    } catch {
+      setError("Could not prepare this order. Please check your connection and try again.");
+    } finally {
+      preparingOrderLock.current = false;
+      setPreparingOrder(false);
     }
-    setStep("payment");
   };
 
   const handlePaymentContinue = () => {
@@ -197,28 +281,26 @@ export default function CheckoutPage() {
     if (prescriptionRequired && !prescriptionUrl) {
       setError("Please upload your prescription before placing the order."); return;
     }
+    if (placingOrderLock.current) return;
+    placingOrderLock.current = true;
     setPlacing(true);
     setError(null);
 
     try {
-      const draftKey = `ayush-medico-order-draft:${user.uid}`;
-      let orderId = draftOrderId ?? "";
-      try {
-        const draft = JSON.parse(localStorage.getItem(draftKey) ?? "null") as
-          { orderId?: string; cartFingerprint?: string } | null;
-        if (draft?.orderId && draft.cartFingerprint === cartFingerprint(items)) {
-          orderId = draft.orderId;
-        }
-      } catch {
-        localStorage.removeItem(draftKey);
+      const fingerprint = cartFingerprint(items);
+      const draftKey = draftKeyForUser(user.uid);
+      let currentDraft = draftOrder?.cartFingerprint === fingerprint ? draftOrder : null;
+      if (!currentDraft) {
+        const savedDraft = readOrderDraft(draftKey);
+        if (savedDraft?.cartFingerprint === fingerprint) currentDraft = savedDraft;
       }
-      if (!orderId) {
-        orderId = await generateNewOrderId();
-        localStorage.setItem(
-          draftKey,
-          JSON.stringify({ orderId, cartFingerprint: cartFingerprint(items) }),
-        );
+      if (!currentDraft) {
+        currentDraft = { orderId: await generateNewOrderId(), cartFingerprint: fingerprint };
       }
+      let orderId = currentDraft.orderId;
+      setDraftOrder(currentDraft);
+      saveOrderDraft(draftKey, currentDraft);
+
       const addr: OrderAddress = {
         fullName: selectedAddress.fullName,
         mobileNumber: selectedAddress.mobileNumber,
@@ -228,6 +310,7 @@ export default function CheckoutPage() {
         street: selectedAddress.street,
         area: selectedAddress.area,
         landmark: selectedAddress.landmark,
+        deliveryInstructions: selectedAddress.deliveryInstructions,
         city: selectedAddress.city,
         state: selectedAddress.state,
         pincode: selectedAddress.pincode,
@@ -279,29 +362,47 @@ export default function CheckoutPage() {
         status: "pending" as const,
         source: "website" as const,
       };
-      let docId: string;
-      try {
-        docId = await createOrder(orderInput);
-      } catch (err) {
-        if (!(err instanceof Error) || !err.message.toLowerCase().includes("already exists")) throw err;
-        // A lost response can make a successfully-created order look like a
-        // failed request. Reuse the same order ID and recover the existing
-        // order instead of consuming stock a second time.
-        const existing = await getOrderById(orderId);
-        if (existing && existing.customerId === user.uid) {
-          docId = existing.id;
-        } else {
+      let docId: string | undefined;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          docId = await createOrder(orderInput);
+          break;
+        } catch (err) {
+          if (!isOrderIdConflict(err)) throw err;
+
+          // The server's next-id endpoint is advisory, so concurrent checkouts
+          // can receive the same key. Recover only for the same customer,
+          // basket, and delivery destination.
+          let existing: Order | null = null;
+          try {
+            existing = await getOrderByOrderId(orderInput.orderId);
+          } catch (lookupError) {
+            const isNotOwnedConflict =
+              lookupError instanceof Error && /:\s*403$/.test(lookupError.message);
+            if (!isNotOwnedConflict) throw lookupError;
+          }
+          const expectedItems = orderInput.items.map((item) => ({
+            medicineId: item.medicineId,
+            quantity: item.quantity,
+          }));
+          if (existing && isSameOrderRequest(existing, user.uid, addr, expectedItems)) {
+            docId = existing.id;
+            orderId = existing.orderId;
+            break;
+          }
+          if (attempt === 2) throw err;
+
           orderId = await generateNewOrderId();
           orderInput = { ...orderInput, orderId };
-          localStorage.setItem(
-            draftKey,
-            JSON.stringify({ orderId, cartFingerprint: cartFingerprint(items) }),
-          );
-          docId = await createOrder(orderInput);
+          const nextDraft = { orderId, cartFingerprint: fingerprint };
+          setDraftOrder(nextDraft);
+          saveOrderDraft(draftKey, nextDraft);
         }
       }
 
-      localStorage.removeItem(draftKey);
+      if (!docId) throw new Error("Could not confirm the created order. Please retry.");
+      clearOrderDraft(draftKey);
+      setDraftOrder(null);
       try {
         await queueNotification({
           orderId,
@@ -326,6 +427,7 @@ export default function CheckoutPage() {
       console.error("Place order error:", err);
       setError(getOrderErrorMessage(err));
       setPlacing(false);
+      placingOrderLock.current = false;
     }
   };
 
@@ -387,34 +489,43 @@ export default function CheckoutPage() {
                       <div className="flex justify-center py-8">
                         <Loader2 size={24} className="animate-spin text-primary" />
                       </div>
-                    ) : addressesError ? (
-                      <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
-                        <p>Could not load saved addresses.</p>
-                        <button
-                          type="button"
-                          onClick={retryAddresses}
-                          className="mt-3 rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-semibold hover:bg-destructive/10 transition-colors"
-                        >
-                          Try again
-                        </button>
-                      </div>
                     ) : (
-                      <AddressList
-                        addresses={addresses}
-                        selectedId={selectedAddress?.id}
-                        onSelect={setSelectedAddress}
-                        showControls={false}
-                      />
+                      <>
+                        {addressesError && (
+                          <div
+                            role="alert"
+                            className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive"
+                          >
+                            <p>Saved addresses could not be loaded. Retry, or add an address below.</p>
+                            <button
+                              type="button"
+                              onClick={retryAddresses}
+                              className="mt-3 rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-semibold hover:bg-destructive/10 transition-colors"
+                            >
+                              Try again
+                            </button>
+                          </div>
+                        )}
+                        <AddressList
+                          addresses={addressesError ? [] : addresses}
+                          selectedId={selectedAddress?.id}
+                          onSelect={setSelectedAddress}
+                          showControls
+                          allowDelete={false}
+                        />
+                      </>
                     )}
                   </div>
                   {error && <p className="text-sm text-destructive">{error}</p>}
                   <button
                     onClick={handleAddressContinue}
-                    disabled={!selectedAddress}
+                    disabled={
+                      !selectedAddress || preparingOrder || loadingAddresses || Boolean(addressesError)
+                    }
                     className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-primary text-white font-bold text-sm
                                hover:bg-primary/90 disabled:opacity-50 transition-colors"
                   >
-                    Continue <ChevronRight size={15} />
+                    {preparingOrder ? <><Loader2 size={15} className="animate-spin" /> Preparing…</> : <>Continue <ChevronRight size={15} /></>}
                   </button>
                 </motion.div>
               )}
@@ -449,7 +560,7 @@ export default function CheckoutPage() {
                       </p>
                       <PrescriptionUpload
                         userId={user.uid}
-                        orderId={draftOrderId ?? "pending"}
+                        orderId={draftOrder?.orderId ?? "pending"}
                         onUploadComplete={(url) => setPrescriptionUrl(url)}
                         onClear={() => setPrescriptionUrl(null)}
                         uploadedUrl={prescriptionUrl}
@@ -498,9 +609,15 @@ export default function CheckoutPage() {
                         <p className="text-sm font-semibold text-foreground">{selectedAddress.fullName}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {[selectedAddress.houseNumber, selectedAddress.buildingName, selectedAddress.street,
-                            selectedAddress.area, selectedAddress.city, selectedAddress.pincode].filter(Boolean).join(", ")}
+                            selectedAddress.area, selectedAddress.landmark, selectedAddress.city,
+                            selectedAddress.state, selectedAddress.pincode].filter(Boolean).join(", ")}
                         </p>
                         <p className="text-xs text-muted-foreground">{selectedAddress.mobileNumber}</p>
+                        {selectedAddress.deliveryInstructions && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Delivery note: {selectedAddress.deliveryInstructions}
+                          </p>
+                        )}
                       </>
                     )}
                   </div>

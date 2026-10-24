@@ -31,7 +31,7 @@ function escapeHtml(value: unknown): string {
 
 function addressLines(order: Order): string {
   const address = order.address;
-  return [
+  const lines = [
     address.houseNumber,
     address.buildingName,
     address.street,
@@ -41,6 +41,9 @@ function addressLines(order: Order): string {
     address.state,
     address.pincode,
   ].filter(Boolean).join(", ");
+  return address.deliveryInstructions
+    ? `${lines} · Delivery note: ${address.deliveryInstructions}`
+    : lines;
 }
 
 export function getInvoiceMarkup(order: Order): string {

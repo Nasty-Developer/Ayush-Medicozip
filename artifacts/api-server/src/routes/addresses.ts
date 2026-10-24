@@ -30,6 +30,7 @@ const optionalStringFields = [
   "buildingName",
   "area",
   "landmark",
+  "deliveryInstructions",
   "city",
   "state",
 ] as const;
@@ -63,6 +64,9 @@ function parseAddressBody(
       return { error: `${field} must be a string` };
     }
     const trimmed = typeof value === "string" ? value.trim() : "";
+    if (field === "deliveryInstructions" && trimmed.length > 500) {
+      return { error: "deliveryInstructions must be 500 characters or fewer" };
+    }
     if (field === "city" || field === "state") {
       if (!trimmed) return { error: `${field} cannot be empty` };
       data[field] = trimmed;
@@ -158,6 +162,14 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res: Response): P
     const userId = await resolveUserId(req);
     res.json(await sortedAddresses(userId));
   } catch (err) {
+    if (err instanceof Error && err.message === "AUTH_EMAIL_REQUIRED") {
+      res.status(400).json({ error: "Verified token email is required" });
+      return;
+    }
+    if (err instanceof Error && err.message === "USER_EMAIL_CONFLICT") {
+      res.status(409).json({ error: "This email is already linked to another account" });
+      return;
+    }
     logger.error({ err }, "GET /addresses failed");
     res.status(500).json({ error: "Failed to fetch addresses" });
   }

@@ -502,6 +502,11 @@ function OrderCard({ order, expanded, onToggle, onOrderUpdated }: {
                         {[order.address.houseNumber, order.address.buildingName, order.address.street, order.address.area, order.address.city, order.address.pincode].filter(Boolean).join(", ")}
                       </p>
                       <p className="text-muted-foreground">{order.address.mobileNumber}</p>
+                      {order.address.deliveryInstructions && (
+                        <p className="text-muted-foreground mt-1">
+                          Delivery note: {order.address.deliveryInstructions}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

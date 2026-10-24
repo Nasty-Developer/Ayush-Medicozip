@@ -21,6 +21,8 @@ type Props = {
   onSelect?: (address: CustomerAddress) => void;
   /** Whether to show the delete / edit / default controls. */
   showControls?: boolean;
+  /** Hide deletion when this list is used as part of checkout. */
+  allowDelete?: boolean;
 };
 
 const TYPE_ICONS: Record<CustomerAddress["addressType"], typeof Home> = {
@@ -36,6 +38,7 @@ export default function AddressList({
   selectedId,
   onSelect,
   showControls = true,
+  allowDelete = true,
 }: Props) {
   const { user } = useCustomerAuth();
   const [editing, setEditing] = useState<CustomerAddress | null>(null);
@@ -154,6 +157,7 @@ export default function AddressList({
                       addr.buildingName,
                       addr.street,
                       addr.area,
+                      addr.landmark,
                       addr.city,
                       addr.state,
                       addr.pincode,
@@ -162,6 +166,11 @@ export default function AddressList({
                       .join(", ")}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">{addr.mobileNumber}</p>
+                  {addr.deliveryInstructions && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Delivery note: {addr.deliveryInstructions}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -196,22 +205,24 @@ export default function AddressList({
                   >
                     <Edit2 size={11} /> Edit
                   </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(addr);
-                    }}
-                    disabled={isDeleting}
-                    className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground
-                               hover:text-destructive transition-colors disabled:opacity-50"
-                  >
-                    {isDeleting ? (
-                      <Loader2 size={11} className="animate-spin" />
-                    ) : (
-                      <Trash2 size={11} />
-                    )}
-                    Delete
-                  </button>
+                  {allowDelete && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(addr);
+                      }}
+                      disabled={isDeleting}
+                      className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground
+                                 hover:text-destructive transition-colors disabled:opacity-50"
+                    >
+                      {isDeleting ? (
+                        <Loader2 size={11} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={11} />
+                      )}
+                      Delete
+                    </button>
+                  )}
                 </div>
               )}
             </motion.div>
