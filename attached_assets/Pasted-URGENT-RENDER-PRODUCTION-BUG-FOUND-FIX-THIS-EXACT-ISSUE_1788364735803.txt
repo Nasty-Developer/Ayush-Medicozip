@@ -1,0 +1,60 @@
+URGENT RENDER PRODUCTION BUG FOUND. FIX THIS EXACT ISSUE.
+
+Render server starts successfully:
+- Firebase Admin initializes successfully
+- Server listens on port 10000
+- GET / returns 200
+- site.webmanifest returns 200
+- favicon.svg returns 200
+- sw.js returns 200
+
+BUT THE CRITICAL FRONTEND ASSET FAILS:
+
+GET /assets/index-CS5Pb4Dz.js → 500
+
+Render logs show:
+
+Error: Origin is not allowed by CORS
+at artifacts/api-server/src/app.ts:71:14
+
+Therefore the React production JavaScript bundle is being blocked by the API server's CORS middleware. This causes the Render site to show a completely blank page.
+
+DO NOT rewrite the application.
+DO NOT change working Replit Preview functionality.
+DO NOT remove Firebase.
+DO NOT change product/order/request/inquiry features yet.
+
+Fix the production static-asset serving architecture.
+
+Investigate artifacts/api-server/src/app.ts around line 71 and determine why the CORS middleware is being applied to /assets/* requests.
+
+Static frontend assets such as:
+- /assets/*
+- /favicon.svg
+- /site.webmanifest
+- /sw.js
+must be served normally and must NOT be rejected by API CORS validation.
+
+Preferred architecture:
+1. Serve the compiled frontend static assets before API CORS middleware, OR
+2. Explicitly bypass API CORS validation for static frontend asset requests.
+3. Keep strict/appropriate CORS validation for actual API routes.
+4. Do NOT simply allow every Origin globally.
+5. Do NOT use '*' as a careless production CORS fix if credentials/authentication are involved.
+
+Also inspect why the browser's request for /assets/index-CS5Pb4Dz.js is reaching the CORS rejection at all.
+
+After fixing:
+1. Build the production frontend.
+2. Verify /assets/index-CS5Pb4Dz.js returns HTTP 200 from the production server.
+3. Verify the JavaScript bundle has the correct Content-Type.
+4. Verify the Render homepage loads the actual React UI.
+5. Verify browser console has no fatal startup error.
+6. Verify API requests still have the intended CORS protection.
+7. Do NOT claim success just because the server starts. Actually test the Render production URL.
+
+The Render logs already prove the root failure is:
+
+/assets/index-CS5Pb4Dz.js → 500 → CORS "Origin is not allowed"
+
+Fix that first. Then re-test the deployed Render site.

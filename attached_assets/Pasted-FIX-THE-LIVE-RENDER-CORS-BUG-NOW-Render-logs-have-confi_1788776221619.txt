@@ -1,0 +1,117 @@
+FIX THE LIVE RENDER CORS BUG NOW.
+
+Render logs have confirmed the exact production failure:
+
+POST /api/addresses -> HTTP 500
+
+Error:
+Error: Origin is not allowed by CORS
+    at /opt/render/project/src/artifacts/api-server/src/app.ts:83:14
+    at cors middleware
+
+The LIVE production URL is:
+https://ayush-medicozip-4.onrender.com
+
+The deployment itself succeeds and the server starts correctly:
+- Firebase Admin initialized
+- Server listening on port 10000
+- GET /api/categories -> 304
+- GET /api/settings/store -> 304
+- GET /api/medicines -> 200
+- GET /api/addresses -> 304
+- POST /api/addresses -> 500 because CORS rejects the Origin
+
+THIS IS THE CURRENT ROOT CAUSE.
+
+Do not tell me the address route is fixed unless you verify the actual production request.
+
+TASK:
+
+1. Open artifacts/api-server/src/app.ts.
+2. Inspect the CORS middleware around line 83.
+3. Determine exactly which Origin is being sent by the live frontend:
+   https://ayush-medicozip-4.onrender.com
+
+4. Make the production frontend origin explicitly allowed by the API CORS configuration.
+
+5. IMPORTANT:
+   - Do NOT use Access-Control-Allow-Origin: *
+   - Do NOT disable CORS
+   - Do NOT remove authentication
+   - Do NOT weaken admin/customer authorization
+   - Do NOT allow arbitrary origins
+   - Keep development/Replit origins working
+   - Keep API security intact
+
+6. Use a clean explicit allowlist for the actual deployed frontend origin(s), including:
+   https://ayush-medicozip-4.onrender.com
+
+7. Inspect how allowed origins are loaded from environment variables/configuration. If the project already has a FRONTEND_URL / APP_URL / ALLOWED_ORIGINS mechanism, use that architecture rather than creating a second conflicting system.
+
+8. IMPORTANT ARCHITECTURE CHECK:
+   The frontend and API are being served by the same Render service/domain.
+   Verify whether same-origin production requests should bypass unnecessary CORS rejection while cross-origin API requests still use the allowlist.
+
+9. Do NOT fix this by blindly allowing every origin.
+
+10. After modifying app.ts, rebuild the API so the production dist output contains the change.
+
+11. Verify the actual Render deployment receives the new commit/build.
+
+12. Test the LIVE endpoint with the real production Origin header:
+
+Origin: https://ayush-medicozip-4.onrender.com
+
+Test:
+GET /api/addresses
+POST /api/addresses
+
+For POST use an authenticated test request matching the actual frontend request shape. Do not create fake success responses.
+
+13. Verify:
+- OPTIONS /api/addresses behaves correctly if the browser sends a preflight
+- GET /api/addresses works
+- authenticated POST /api/addresses returns 2xx
+- unauthenticated POST still returns 401/403
+- invalid payload returns 400/422 rather than 500
+- customer ownership protections remain intact
+
+14. Check the browser Network tab after deployment:
+- POST /api/addresses must no longer return 500
+- no "Origin is not allowed by CORS"
+- address should save successfully
+- checkout should continue normally
+
+15. Run:
+- API typecheck
+- frontend typecheck
+- production build
+- relevant tests
+
+16. Check for any OTHER API endpoints affected by the same CORS configuration. Test at minimum:
+- /api/addresses
+- /api/orders
+- /api/medicines
+- /api/settings/*
+- payment-related API routes
+- admin API routes
+
+17. Do not change unrelated checkout/payment/product functionality.
+
+FINAL REPORT MUST STATE:
+
+A. Exact CORS root cause
+B. Exact change made in app.ts
+C. How production origins are now allowed
+D. Whether same-origin production requests work
+E. POST /api/addresses before = 500
+F. POST /api/addresses after = exact status
+G. Whether OPTIONS/preflight works
+H. Authentication/authorization tests
+I. Build/typecheck result
+J. Git commit deployed to Render
+K. Confirmation that LIVE Render checkout can save an address
+
+DO NOT STOP AT "BUILD SUCCESSFUL".
+The critical requirement is proving the LIVE Render POST /api/addresses works with:
+Origin: https://ayush-medicozip-4.onrender.com

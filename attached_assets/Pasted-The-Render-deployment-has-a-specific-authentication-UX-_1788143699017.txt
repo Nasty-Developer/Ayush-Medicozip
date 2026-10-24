@@ -1,0 +1,209 @@
+The Render deployment has a specific authentication UX problem:
+
+The page loads correctly.
+Firebase configuration/environment variables are already configured.
+Replit preview authentication works.
+
+But on the Render production deployment, when a normal customer clicks:
+
+- Email/Password Sign In
+OR
+- Continue with Google
+
+the sign-in UI starts loading and then appears to do nothing.
+
+There is no useful error shown to the customer and the authenticated UI does not update.
+
+IMPORTANT:
+Do NOT redesign the authentication system from scratch.
+Do NOT change Firebase project credentials.
+Do NOT randomly change environment variables.
+
+Diagnose the production authentication flow specifically.
+
+==================================================
+1. CHECK FOR A HANGING AUTH PROMISE
+==================================================
+
+Inspect the email/password sign-in function.
+
+Make sure the Firebase sign-in promise is properly awaited/handled.
+
+The flow must always have:
+
+try:
+  start loading
+  await Firebase sign-in
+  update authenticated user state
+catch:
+  show actual error
+finally:
+  stop loading
+
+There must be no code path where the loading state remains stuck forever.
+
+Do not swallow errors with empty catch blocks.
+
+==================================================
+2. CHECK GOOGLE SIGN-IN
+==================================================
+
+Inspect the Google sign-in implementation.
+
+Make sure signInWithPopup/signInWithRedirect is properly handled.
+
+If popup/redirect authentication fails, show the Firebase error instead of silently doing nothing.
+
+Handle:
+- popup blocked
+- popup closed
+- unauthorized domain
+- provider configuration errors
+- account/credential errors
+- network errors
+
+Do not leave the sign-in modal stuck on a loading state.
+
+==================================================
+3. CHECK AUTH STATE INITIALIZATION
+==================================================
+
+Use one proper Firebase auth-state listener for the application.
+
+Make sure the app correctly responds to:
+
+onAuthStateChanged(auth, user)
+
+When user exists:
+- update the signed-in customer state
+- stop authentication loading
+- render the signed-in UI
+
+When user is null:
+- update signed-out state
+- stop authentication loading
+
+Do not create duplicate auth listeners unnecessarily.
+
+Do not make the entire application wait on unrelated API requests before updating authentication state.
+
+==================================================
+4. CHECK PRODUCTION BUILD DIFFERENCES
+==================================================
+
+Because Replit preview works but Render does not, inspect anything that behaves differently in production.
+
+Check:
+- environment variable usage
+- Firebase initialization
+- production build configuration
+- base URL/origin handling
+- auth redirect/popup handling
+- HTTPS requirements
+- browser console errors
+- API requests triggered after authentication
+- any production-only code branches
+
+The production build must use the same Firebase project as the working Replit preview:
+
+projectId:
+ayush-medico
+
+==================================================
+5. CHECK AUTHORIZED DOMAINS
+==================================================
+
+Production hostname:
+
+ayush-medicozip-4.onrender.com
+
+Make sure Firebase Authentication supports this production domain.
+
+Do not weaken security.
+
+If an unauthorized-domain issue exists, surface the real Firebase error instead of hiding it.
+
+==================================================
+6. DO NOT BLOCK AUTH ON OTHER DATA
+==================================================
+
+A successful Firebase login must update the authenticated state immediately.
+
+Do NOT wait for:
+- product catalogue loading
+- medicine API calls
+- cart loading
+- admin checks
+- profile API calls
+- unrelated backend requests
+
+before showing that the customer is signed in.
+
+After the customer is authenticated, load secondary data independently.
+
+==================================================
+7. FIX SIGN-OUT TOO
+==================================================
+
+Sign-out must follow:
+
+click Sign Out
+→ await Firebase signOut()
+→ clear auth state
+→ clear stale customer state
+→ stop loading
+→ show signed-out UI
+
+Make sure sign-out cannot get stuck in loading.
+
+==================================================
+8. ERROR VISIBILITY
+==================================================
+
+Never silently fail.
+
+Log the real Firebase error to the browser console during development/debugging.
+
+Show the customer a clean message based on the Firebase error.
+
+Examples:
+- Invalid credentials
+- Account not found
+- Unauthorized domain
+- Popup blocked
+- Provider disabled
+- Network problem
+
+Do not expose secrets.
+
+==================================================
+9. TEST ON THE ACTUAL PRODUCTION BUILD
+==================================================
+
+After fixing the code:
+
+Build the production version and test it.
+
+Test on the actual Render deployment:
+
+1. Email/password sign in
+2. Google sign in
+3. Sign out
+4. Sign in again
+5. Refresh while signed in
+6. Refresh while signed out
+
+Also verify:
+- no infinite loading
+- no silent failure
+- no stuck modal
+- no console auth errors
+- authenticated UI updates immediately
+
+IMPORTANT:
+
+Replit preview already works.
+
+The main goal is to make the SAME authentication behavior work reliably on Render.
+
+Do not modify unrelated application features while fixing this.

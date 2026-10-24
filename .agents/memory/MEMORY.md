@@ -1,0 +1,1 @@
+- [Imported pnpm workspaces](imported-pnpm-workspaces.md) — a filtered package install may not link dependencies for other packages; run a full install before workspace checks.

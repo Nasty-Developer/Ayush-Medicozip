@@ -1,0 +1,247 @@
+I want to improve the existing Ayush Medico website carefully.
+
+IMPORTANT: This is a fresh start. Do NOT immediately rewrite the application or redesign everything blindly.
+
+FIRST, inspect the existing project and understand:
+- Current frontend structure
+- Current backend/API structure
+- Authentication
+- Product/medicine system
+- Cart
+- Medicine request system
+- Admin panel
+- Database connections
+- Existing routes and API endpoints
+- Existing environment-variable usage
+
+The existing functionality is important. Preserve anything that is already working.
+
+==================================================
+PHASE 1 — FUNCTIONALITY FIRST
+==================================================
+
+Before making major visual changes, check the application for broken functionality.
+
+Make sure these work correctly:
+
+1. Sign up
+2. Sign in
+3. Sign out
+4. Navigation
+5. Categories
+6. Medicine/product browsing
+7. Product details
+8. Add product to cart
+9. Change cart quantity
+10. Remove products from cart
+11. Cart totals
+12. Medicine request functionality
+13. Forms and form submission
+14. Admin panel
+15. Admin navigation
+16. Admin buttons
+17. Add/edit/delete medicine functionality
+18. Saving edited medicines
+19. Updating product information
+20. Backend/API communication
+21. Loading states
+22. Error handling
+
+Pay special attention to the ADMIN PANEL.
+
+When editing medicine/product information, numeric fields MUST support decimal values.
+
+For example:
+
+143.54
+
+must be accepted correctly, displayed correctly, editable correctly, and saved correctly.
+
+Do not accidentally convert decimal values to integers.
+
+If something is genuinely broken, fix it.
+
+Do NOT remove working features.
+Do NOT replace working APIs unnecessarily.
+Do NOT change the database structure unless it is actually required to fix a problem.
+
+==================================================
+PHASE 2 — DESIGN DIRECTION
+==================================================
+
+ONLY AFTER understanding and checking the functionality, improve the UI.
+
+The design direction is VERY IMPORTANT.
+
+I want Ayush Medico to look like a:
+
+CLEAN
+BRIGHT
+LIGHT
+PROFESSIONAL
+MODERN
+PREMIUM
+MEDICAL / PHARMACY WEBSITE
+
+The interface should be predominantly WHITE and LIGHT.
+
+Use a clean medical colour palette with subtle green/teal accents.
+
+DO NOT create a dark website.
+
+DO NOT use a dark teal background across the hero.
+
+DO NOT create an overly colourful interface.
+
+DO NOT use excessive gradients.
+
+DO NOT make the interface look like a gaming website.
+
+DO NOT make the typography unnecessarily huge.
+
+DO NOT add lots of decorative floating cards just for visual effects.
+
+The website should feel trustworthy and easy to use.
+
+Think of a modern professional healthcare/pharmacy website.
+
+==================================================
+HOMEPAGE / HERO SECTION
+==================================================
+
+The homepage hero section is especially important.
+
+Create a beautiful, high-quality medical/pharmacy hero background.
+
+The background should be bright, clean and professional.
+
+If an image needs to be generated, use/generate a high-quality realistic medical/pharmacy image.
+
+The background MUST NOT make the text difficult to read.
+
+The most important branding element is:
+
+AYUSH MEDICO
+
+The "Ayush Medico" name/logo/title must be clearly visible.
+
+Do NOT camouflage the website name into the background.
+
+Do NOT place the title over a busy part of the image.
+
+Use proper contrast, spacing, positioning and possibly a subtle light overlay if necessary.
+
+The background and the Ayush Medico branding should look like they were designed together.
+
+The hero should feel balanced rather than oversized.
+
+Use a clear heading hierarchy.
+
+The hero should immediately communicate that this is a professional medical/pharmacy website.
+
+==================================================
+HEADER
+==================================================
+
+Keep the header clean and light.
+
+Use:
+- White/light background
+- Clear navigation
+- Easy-to-read text
+- Simple icons
+- Professional buttons
+- Good spacing
+
+The navigation should not feel crowded.
+
+The Ayush Medico branding should remain clearly visible.
+
+==================================================
+ENTIRE WEBSITE UI
+==================================================
+
+After the homepage is improved, bring the rest of the UI into the same visual language.
+
+Use:
+- White/light backgrounds
+- Clean cards
+- Subtle borders
+- Very subtle shadows
+- Good spacing
+- Consistent typography
+- Consistent buttons
+- Clear form fields
+- Professional medical styling
+
+Make the UI responsive for desktop and mobile.
+
+Do not redesign things simply for the sake of changing them.
+
+Improve areas that actually need improvement.
+
+==================================================
+ADMIN PANEL
+==================================================
+
+The admin panel should be highly usable.
+
+Make sure every visible button actually performs its intended action.
+
+Editing medicines/products must work properly.
+
+Decimal values such as:
+
+143.54
+
+must work correctly.
+
+Forms should clearly show:
+- What is being edited
+- Which field is being changed
+- What value is currently stored
+- Whether the save operation succeeded
+
+Make the admin interface clean and easy to understand.
+
+==================================================
+VERY IMPORTANT WORKFLOW
+==================================================
+
+Do NOT spend the entire task making visual changes while functionality remains broken.
+
+Follow this order:
+
+STEP 1:
+Inspect the existing application.
+
+STEP 2:
+Test existing functionality.
+
+STEP 3:
+Fix genuine functionality problems.
+
+STEP 4:
+Verify that the important user and admin flows work.
+
+STEP 5:
+Improve the homepage and hero design.
+
+STEP 6:
+Apply the same clean LIGHT design language throughout the rest of the UI.
+
+STEP 7:
+Test the application again after the UI changes.
+
+The final website should be:
+
+FUNCTIONAL FIRST.
+THEN BEAUTIFUL.
+
+Do not introduce unnecessary complexity.
+
+Do not remove working functionality.
+
+Do not create a completely different application.
+
+Improve the existing Ayush Medico application carefully and professionally.
