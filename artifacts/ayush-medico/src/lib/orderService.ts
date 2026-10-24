@@ -39,6 +39,7 @@ export type OrderAddress = {
   street: string;
   area?: string;
   landmark?: string;
+  deliveryInstructions?: string | null;
   city: string;
   state: string;
   pincode: string;

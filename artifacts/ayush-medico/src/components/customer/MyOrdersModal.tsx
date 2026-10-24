@@ -358,9 +358,15 @@ export default function MyOrdersModal({ onClose }: { onClose: () => void }) {
                     <p className="text-sm font-semibold text-foreground">{selected.address.fullName}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {[selected.address.houseNumber, selected.address.buildingName, selected.address.street,
-                        selected.address.area, selected.address.city, selected.address.pincode].filter(Boolean).join(", ")}
+                        selected.address.area, selected.address.landmark, selected.address.city,
+                        selected.address.state, selected.address.pincode].filter(Boolean).join(", ")}
                     </p>
                     <p className="text-xs text-muted-foreground">{selected.address.mobileNumber}</p>
+                    {selected.address.deliveryInstructions && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Delivery note: {selected.address.deliveryInstructions}
+                      </p>
+                    )}
                   </div>
                 )}
 

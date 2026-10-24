@@ -116,6 +116,14 @@ function saveToStorage(items: CartItem[]) {
   }
 }
 
+function removeFromStorage(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Storage restrictions should never block cart actions.
+  }
+}
+
 function roundCurrency(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
@@ -166,7 +174,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (items.length === 0) {
       setCouponCode(null);
       setCouponDiscount(0);
-      localStorage.removeItem(COUPON_STORAGE_KEY);
+      removeFromStorage(COUPON_STORAGE_KEY);
       return;
     }
     try {
@@ -176,7 +184,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           JSON.stringify({ code: couponCode, discount: couponDiscount }),
         );
       } else {
-        localStorage.removeItem(COUPON_STORAGE_KEY);
+        removeFromStorage(COUPON_STORAGE_KEY);
       }
     } catch {
       // Private browsing or quota limits should not block checkout.

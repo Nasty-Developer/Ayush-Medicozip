@@ -14,43 +14,57 @@ type UseAddressesResult = {
 
 export function useAddresses(): UseAddressesResult {
   const { user } = useCustomerAuth();
-  const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [state, setState] = useState<{
+    uid: string | null;
+    addresses: CustomerAddress[];
+    loading: boolean;
+    error: Error | null;
+  }>({ uid: null, addresses: [], loading: true, error: null });
   const [retryToken, setRetryToken] = useState(0);
+  const activeUid = user?.uid ?? null;
 
   useEffect(() => {
     if (!user) {
-      setAddresses([]);
-      setLoading(false);
-      setError(null);
+      setState({ uid: null, addresses: [], loading: false, error: null });
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setState((current) => ({
+      uid: user.uid,
+      addresses: current.uid === user.uid ? current.addresses : [],
+      loading: true,
+      error: null,
+    }));
     const unsub = subscribeToAddresses(
       user.uid,
       (data) => {
-        setAddresses(data);
-        setLoading(false);
-        setError(null);
+        setState({ uid: user.uid, addresses: data, loading: false, error: null });
       },
       (err) => {
-        setError(err);
-        setLoading(false);
+        setState((current) => ({
+          uid: user.uid,
+          addresses: current.uid === user.uid ? current.addresses : [],
+          loading: false,
+          error: err,
+        }));
       }
     );
 
     return () => unsub();
   }, [user?.uid, retryToken]);
 
+  // Never expose a previous account's addresses during the render before the
+  // auth-change effect runs.
+  const currentState = state.uid === activeUid
+    ? state
+    : { uid: activeUid, addresses: [], loading: Boolean(user), error: null };
+  const addresses = currentState.addresses;
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0] ?? null;
 
   return {
     addresses,
-    loading,
-    error,
+    loading: currentState.loading,
+    error: currentState.error,
     defaultAddress,
     retry: () => setRetryToken((value) => value + 1),
   };

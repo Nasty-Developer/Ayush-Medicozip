@@ -1,7 +1,7 @@
 // AddressForm — Add or edit a customer delivery address.
 // Used inside the Checkout page and the My Addresses section.
 
-import { useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Home, Briefcase, MapPin, X, Loader2, Check } from "lucide-react";
 import { addAddress, updateAddress, type CustomerAddress, type CreateAddressInput, type AddressType } from "@/lib/addressService";
@@ -34,6 +34,7 @@ const EMPTY_FORM: Omit<CreateAddressInput, "isDefault"> = {
   street: "",
   area: "",
   landmark: "",
+  deliveryInstructions: "",
   city: "Mumbai",
   state: "Maharashtra",
   pincode: "",
@@ -55,6 +56,7 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
           street: existing.street,
           area: existing.area ?? "",
           landmark: existing.landmark ?? "",
+          deliveryInstructions: existing.deliveryInstructions ?? "",
           city: existing.city,
           state: existing.state,
           pincode: existing.pincode,
@@ -67,8 +69,12 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
   const [saveError, setSaveError] = useState("");
+  const submitLock = useRef(false);
 
   const set = (field: keyof typeof form, value: string) => {
+    if (field === "mobileNumber" || field === "alternateNumber") {
+      value = value.replace(/\D/g, "").slice(0, 10);
+    }
     setForm((f) => ({ ...f, [field]: value }));
     setErrors((e) => ({ ...e, [field]: undefined }));
     if (field === "pincode") setPincodeError("");
@@ -78,6 +84,9 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
     const e: Partial<Record<keyof typeof form, string>> = {};
     if (!form.fullName.trim()) e.fullName = "Name is required";
     if (!/^[6-9]\d{9}$/.test(form.mobileNumber)) e.mobileNumber = "Enter a valid 10-digit mobile number";
+    if (form.alternateNumber && !/^[6-9]\d{9}$/.test(form.alternateNumber)) {
+      e.alternateNumber = "Enter a valid 10-digit alternate mobile number";
+    }
     if (!form.houseNumber.trim()) e.houseNumber = "House / flat number is required";
     if (!form.street.trim()) e.street = "Street / locality is required";
     if (!form.pincode.trim()) e.pincode = "Pincode is required";
@@ -88,7 +97,11 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (submitLock.current) return;
+    if (!user) {
+      setSaveError("Please sign in again before saving this address.");
+      return;
+    }
     if (!validate()) return;
 
     if (!ALLOWED_PINCODES.includes(form.pincode)) {
@@ -98,6 +111,7 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
       return;
     }
 
+    submitLock.current = true;
     setSaving(true);
     setSaveError("");
     try {
@@ -113,6 +127,7 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
       console.error("AddressForm error:", err);
       setSaveError(err instanceof Error ? err.message : "Could not save this address. Please try again.");
     } finally {
+      submitLock.current = false;
       setSaving(false);
     }
   };
@@ -122,7 +137,7 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
     id: keyof typeof form,
     label: string,
     placeholder: string,
-    opts?: { type?: string; required?: boolean; half?: boolean }
+    opts?: { type?: string; required?: boolean; half?: boolean; numeric?: boolean; maxLength?: number }
   ) => (
     <div className={opts?.half ? "col-span-1" : "col-span-2"}>
       <label htmlFor={id} className="block text-xs font-medium text-muted-foreground mb-1">
@@ -131,6 +146,8 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
       <input
         id={id}
         type={opts?.type ?? "text"}
+        inputMode={opts?.numeric ? "numeric" : undefined}
+        maxLength={opts?.maxLength}
         value={form[id] as string}
         onChange={(e) => set(id, e.target.value)}
         placeholder={placeholder}
@@ -175,8 +192,8 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
       {/* Fields grid */}
       <div className="grid grid-cols-2 gap-3">
         {field("fullName",      "Full Name",         "e.g. Rahul Sharma", { required: true })}
-        {field("mobileNumber",  "Mobile Number",     "10-digit number",   { type: "tel", required: true, half: true })}
-        {field("alternateNumber", "Alternate Number (optional)", "10-digit", { type: "tel", required: false, half: true })}
+        {field("mobileNumber",  "Mobile Number",     "10-digit number",   { type: "tel", numeric: true, maxLength: 10, required: true, half: true })}
+        {field("alternateNumber", "Alternate Number (optional)", "10-digit", { type: "tel", numeric: true, maxLength: 10, required: false, half: true })}
         {field("houseNumber",   "House / Flat No.",  "e.g. 4B",           { required: true, half: true })}
         {field("buildingName",  "Building / Society","e.g. Sunrise Apts",  { required: false, half: true })}
         {field("street",        "Street / Locality", "e.g. LBS Marg",     { required: true })}
@@ -207,6 +224,26 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
             <p className="text-xs text-destructive mt-1">{errors.pincode || pincodeError}</p>
           )}
         </div>
+      </div>
+
+      <div>
+        <label htmlFor="deliveryInstructions" className="block text-xs font-medium text-muted-foreground mb-1">
+          Delivery Instructions <span className="text-muted-foreground">(optional)</span>
+        </label>
+        <textarea
+          id="deliveryInstructions"
+          value={form.deliveryInstructions ?? ""}
+          onChange={(e) => set("deliveryInstructions", e.target.value)}
+          maxLength={500}
+          rows={2}
+          placeholder="For example, call on arrival or leave with security"
+          className="w-full px-3 py-2.5 rounded-xl border border-border text-sm bg-background text-foreground
+                     placeholder:text-muted-foreground/50 outline-none transition-all
+                     focus:ring-2 focus:ring-primary/20 focus:border-primary resize-y"
+        />
+        <p className="text-[11px] text-muted-foreground mt-1 text-right">
+          {(form.deliveryInstructions ?? "").length}/500
+        </p>
       </div>
 
       {/* Default toggle */}
