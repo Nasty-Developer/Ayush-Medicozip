@@ -17,6 +17,7 @@ export type CustomerAddress = {
   street: string;
   area?: string;
   landmark?: string;
+  deliveryInstructions?: string;
   city: string;
   state: string;
   pincode: string;
@@ -51,6 +52,7 @@ function normalizeAddress(row: Record<string, unknown>): CustomerAddress {
     street: String(row.street ?? ""),
     area: row.area ? String(row.area) : undefined,
     landmark: row.landmark ? String(row.landmark) : undefined,
+    deliveryInstructions: row.deliveryInstructions ? String(row.deliveryInstructions) : undefined,
     city: String(row.city ?? "Mumbai"),
     state: String(row.state ?? "Maharashtra"),
     pincode: String(row.pincode ?? ""),
@@ -84,6 +86,7 @@ function normalizeInput(input: CreateAddressInput): CreateAddressInput {
     street: input.street.trim(),
     area: input.area?.trim() || undefined,
     landmark: input.landmark?.trim() || undefined,
+    deliveryInstructions: input.deliveryInstructions?.trim() || undefined,
     city: input.city.trim(),
     state: input.state.trim(),
     pincode: input.pincode.trim(),
@@ -93,7 +96,7 @@ function normalizeInput(input: CreateAddressInput): CreateAddressInput {
 function normalizePatch(input: Partial<CreateAddressInput>): Partial<CreateAddressInput> {
   const stringFields = [
     "fullName", "mobileNumber", "alternateNumber", "houseNumber", "buildingName",
-    "street", "area", "landmark", "city", "state", "pincode",
+    "street", "area", "landmark", "deliveryInstructions", "city", "state", "pincode",
   ] as const;
   return Object.fromEntries(
     Object.entries(input)
@@ -115,8 +118,28 @@ function addressPayload(input: CreateAddressInput | Partial<CreateAddressInput>)
 
 export async function getAddresses(uid: string): Promise<CustomerAddress[]> {
   if (!uid) return [];
-  const rows = await authFetchJson<unknown[]>("/api/addresses");
-  return normalizeAddresses(rows);
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      controller.abort();
+      reject(new Error("Saved addresses took too long to load. Please try again."));
+    }, 15_000);
+  });
+  try {
+    const rows = await Promise.race([
+      authFetchJson<unknown[]>("/api/addresses", { signal: controller.signal }),
+      timedOut,
+    ]);
+    return normalizeAddresses(rows);
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("Saved addresses took too long to load. Please try again.");
+    }
+    throw error;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 export async function addAddress(uid: string, input: CreateAddressInput): Promise<string> {

@@ -337,6 +337,7 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
         street: savedAddress.street,
         area: savedAddress.area,
         landmark: savedAddress.landmark,
+        deliveryInstructions: savedAddress.deliveryInstructions,
         city: savedAddress.city,
         state: savedAddress.state,
         pincode: savedAddress.pincode,
