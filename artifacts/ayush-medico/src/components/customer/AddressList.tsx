@@ -87,7 +87,10 @@ export default function AddressList({
       <div>
         <h3 className="text-sm font-semibold text-foreground mb-4">Add New Address</h3>
         <AddressForm
-          onSuccess={() => setAdding(false)}
+          onSuccess={(_id, savedAddress) => {
+            if (savedAddress) onSelect?.(savedAddress);
+            setAdding(false);
+          }}
           onCancel={() => setAdding(false)}
         />
       </div>
@@ -100,7 +103,10 @@ export default function AddressList({
         <h3 className="text-sm font-semibold text-foreground mb-4">Edit Address</h3>
         <AddressForm
           existing={editing}
-          onSuccess={() => setEditing(null)}
+          onSuccess={(_id, savedAddress) => {
+            if (savedAddress) onSelect?.(savedAddress);
+            setEditing(null);
+          }}
           onCancel={() => setEditing(null)}
         />
       </div>
@@ -123,62 +129,71 @@ export default function AddressList({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className={`relative rounded-2xl border p-4 transition-all duration-200 ${
+              className={`relative overflow-hidden rounded-2xl border transition-all duration-200 ${
                 isSelected
                   ? "border-primary bg-primary/5 shadow-sm shadow-primary/10"
                   : "border-border hover:border-primary/30"
-              } ${onSelect ? "cursor-pointer" : ""}`}
-              onClick={() => onSelect?.(addr)}
+              }`}
             >
-              {/* Selected checkmark */}
-              {isSelected && (
-                <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                  <Check size={11} className="text-white" />
-                </div>
-              )}
+              <button
+                type="button"
+                disabled={!onSelect}
+                aria-pressed={onSelect ? isSelected : undefined}
+                aria-label={`Select ${addr.addressType} address for ${addr.fullName}`}
+                onClick={() => onSelect?.(addr)}
+                className="relative block w-full p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-default"
+              >
+                {/* Selected checkmark */}
+                {isSelected && (
+                  <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                    <Check size={11} className="text-white" />
+                  </div>
+                )}
 
-              {/* Default badge */}
-              {addr.isDefault && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 mb-2">
-                  <Star size={9} /> Default
-                </span>
-              )}
+                {/* Default badge */}
+                {addr.isDefault && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 mb-2">
+                    <Star size={9} /> Default
+                  </span>
+                )}
 
-              {/* Address type icon + name */}
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 p-1.5 rounded-lg bg-primary/10">
-                  <Icon size={14} className="text-primary" />
-                </div>
-                <div className="flex-1 min-w-0 pr-6">
-                  <p className="text-sm font-semibold text-foreground">{addr.fullName}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                    {[
-                      addr.houseNumber,
-                      addr.buildingName,
-                      addr.street,
-                      addr.area,
-                      addr.landmark,
-                      addr.city,
-                      addr.state,
-                      addr.pincode,
-                    ]
-                      .filter(Boolean)
-                      .join(", ")}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{addr.mobileNumber}</p>
-                  {addr.deliveryInstructions && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Delivery note: {addr.deliveryInstructions}
+                {/* Address type icon + name */}
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 p-1.5 rounded-lg bg-primary/10">
+                    <Icon size={14} className="text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0 pr-6">
+                    <p className="text-sm font-semibold text-foreground">{addr.fullName}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                      {[
+                        addr.houseNumber,
+                        addr.buildingName,
+                        addr.street,
+                        addr.area,
+                        addr.landmark,
+                        addr.city,
+                        addr.state,
+                        addr.pincode,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
                     </p>
-                  )}
+                    <p className="text-xs text-muted-foreground mt-0.5">{addr.mobileNumber}</p>
+                    {addr.deliveryInstructions && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Delivery note: {addr.deliveryInstructions}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </button>
 
               {/* Controls */}
               {showControls && (
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/60">
+                <div className="flex items-center gap-2 px-4 py-3 border-t border-border/60">
                   {!addr.isDefault && (
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleSetDefault(addr);
@@ -196,6 +211,7 @@ export default function AddressList({
                     </button>
                   )}
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setEditing(addr);
@@ -207,6 +223,7 @@ export default function AddressList({
                   </button>
                   {allowDelete && (
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(addr);
@@ -232,8 +249,10 @@ export default function AddressList({
 
       {/* Add new address button */}
       <motion.button
+        type="button"
         layout
         onClick={() => setAdding(true)}
+        aria-label="Add a new delivery address"
         className="w-full flex items-center justify-center gap-2 rounded-2xl border-2
                    border-dashed border-border hover:border-primary/40 hover:bg-primary/5
                    py-3.5 text-sm font-medium text-muted-foreground hover:text-primary

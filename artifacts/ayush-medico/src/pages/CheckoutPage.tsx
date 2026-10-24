@@ -18,6 +18,7 @@ import { createOrder, generateNewOrderId, getOrderByOrderId, type Order, type Or
 import { queueNotification } from "@/lib/notificationService";
 import type { CustomerAddress } from "@/lib/addressService";
 import SignInModal from "@/components/customer/SignInModal";
+import { ApiResponseError } from "@/lib/apiAuth";
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,38 @@ type OrderDraft = { orderId: string; cartFingerprint: string };
 
 function draftKeyForUser(uid: string) {
   return `ayush-medico-order-draft:${uid}`;
+}
+
+function selectedAddressKeyForUser(uid: string) {
+  return `ayush-medico-selected-address:${uid}`;
+}
+
+function readSelectedAddressId(uid: string): string | null {
+  try {
+    return sessionStorage.getItem(selectedAddressKeyForUser(uid));
+  } catch {
+    return null;
+  }
+}
+
+function getAddressLoadMessage(error: Error): string {
+  const message = error.message.toLowerCase();
+  const status = error instanceof ApiResponseError ? error.status : undefined;
+  const code = error instanceof ApiResponseError ? error.code : undefined;
+
+  if (status === 503 || code === "firebase_admin_not_configured" || message.includes("firebase is not configured")) {
+    return "Secure sign-in is not available in this environment yet. You can still add an address, but contact support if saving it fails.";
+  }
+  if (status === 401 || message.includes("not authenticated") || message.includes("token")) {
+    return "Your sign-in needs to be refreshed. Sign in again, then retry loading your addresses.";
+  }
+  if (status === 403 || message.includes("permission")) {
+    return "Your account could not access its saved addresses. You can retry or add an address; contact support if the problem continues.";
+  }
+  if (message.includes("timed out") || message.includes("failed to fetch") || message.includes("network")) {
+    return "We could not reach the address service. Check your connection and retry, or add an address below.";
+  }
+  return "Saved addresses could not be loaded. Retry, or add a new address below.";
 }
 
 function readOrderDraft(key: string): OrderDraft | null {
@@ -170,9 +203,23 @@ export default function CheckoutPage() {
     setSelectedAddress((current) => {
       const refreshed = current && addresses.find((address) => address.id === current.id);
       if (refreshed) return refreshed;
+      const persistedId = readSelectedAddressId(user.uid);
+      const persisted = persistedId
+        ? addresses.find((address) => address.id === persistedId)
+        : undefined;
+      if (persisted) return persisted;
       return addresses.find((address) => address.isDefault) ?? addresses[0] ?? null;
     });
   }, [user?.uid, addresses, loadingAddresses]);
+
+  useEffect(() => {
+    if (!user || !selectedAddress) return;
+    try {
+      sessionStorage.setItem(selectedAddressKeyForUser(user.uid), selectedAddress.id);
+    } catch {
+      // Checkout can continue when browser storage is unavailable.
+    }
+  }, [user?.uid, selectedAddress?.id]);
 
   useEffect(() => {
     const nextUserId = user?.uid ?? null;
@@ -485,36 +532,34 @@ export default function CheckoutPage() {
                     <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                       <MapPin size={16} className="text-primary" /> Delivery Address
                     </h2>
-                    {loadingAddresses ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 size={24} className="animate-spin text-primary" />
+                    {loadingAddresses && (
+                      <div className="mb-4 flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground" role="status">
+                        <Loader2 size={18} className="animate-spin text-primary" />
+                        Loading saved addresses…
                       </div>
-                    ) : (
-                      <>
-                        {addressesError && (
-                          <div
-                            role="alert"
-                            className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive"
-                          >
-                            <p>Saved addresses could not be loaded. Retry, or add an address below.</p>
-                            <button
-                              type="button"
-                              onClick={retryAddresses}
-                              className="mt-3 rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-semibold hover:bg-destructive/10 transition-colors"
-                            >
-                              Try again
-                            </button>
-                          </div>
-                        )}
-                        <AddressList
-                          addresses={addressesError ? [] : addresses}
-                          selectedId={selectedAddress?.id}
-                          onSelect={setSelectedAddress}
-                          showControls
-                          allowDelete={false}
-                        />
-                      </>
                     )}
+                    {addressesError && (
+                      <div
+                        role="alert"
+                        className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive"
+                      >
+                        <p>{getAddressLoadMessage(addressesError)}</p>
+                        <button
+                          type="button"
+                          onClick={retryAddresses}
+                          className="mt-3 rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-semibold hover:bg-destructive/10 transition-colors"
+                        >
+                          Try again
+                        </button>
+                      </div>
+                    )}
+                    <AddressList
+                      addresses={loadingAddresses || addressesError ? [] : addresses}
+                      selectedId={selectedAddress?.id}
+                      onSelect={setSelectedAddress}
+                      showControls
+                      allowDelete={false}
+                    />
                   </div>
                   {error && <p className="text-sm text-destructive">{error}</p>}
                   <button

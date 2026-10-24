@@ -32,6 +32,8 @@ export type CustomerAddress = {
 export type CreateAddressInput = Omit<CustomerAddress, "id" | "createdAt" | "updatedAt">;
 
 const listeners = new Map<string, Set<(addresses: CustomerAddress[]) => void>>();
+const addressCache = new Map<string, CustomerAddress[]>();
+const mutationVersions = new Map<string, number>();
 
 function toTimestamp(value: unknown): Timestamp | undefined {
   if (typeof value !== "string" && !(value instanceof Date)) return undefined;
@@ -72,6 +74,8 @@ function normalizeAddresses(rows: unknown): CustomerAddress[] {
 }
 
 function notify(uid: string, addresses: CustomerAddress[]) {
+  addressCache.set(uid, addresses);
+  mutationVersions.set(uid, (mutationVersions.get(uid) ?? 0) + 1);
   listeners.get(uid)?.forEach((listener) => listener(addresses));
 }
 
@@ -118,6 +122,7 @@ function addressPayload(input: CreateAddressInput | Partial<CreateAddressInput>)
 
 export async function getAddresses(uid: string): Promise<CustomerAddress[]> {
   if (!uid) return [];
+  const versionAtStart = mutationVersions.get(uid) ?? 0;
   const controller = new AbortController();
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const timedOut = new Promise<never>((_, reject) => {
@@ -131,7 +136,14 @@ export async function getAddresses(uid: string): Promise<CustomerAddress[]> {
       authFetchJson<unknown[]>("/api/addresses", { signal: controller.signal }),
       timedOut,
     ]);
-    return normalizeAddresses(rows);
+    const addresses = normalizeAddresses(rows);
+    // If a save/edit/delete completed while this request was in flight, don't
+    // replace its newer result with an older response.
+    if ((mutationVersions.get(uid) ?? 0) !== versionAtStart) {
+      return addressCache.get(uid) ?? addresses;
+    }
+    addressCache.set(uid, addresses);
+    return addresses;
   } catch (error) {
     if (controller.signal.aborted) {
       throw new Error("Saved addresses took too long to load. Please try again.");
@@ -142,26 +154,37 @@ export async function getAddresses(uid: string): Promise<CustomerAddress[]> {
   }
 }
 
-export async function addAddress(uid: string, input: CreateAddressInput): Promise<string> {
+export async function addAddress(uid: string, input: CreateAddressInput): Promise<CustomerAddress> {
   const normalized = normalizeInput(input);
   const result = await authFetchJson<{ id: number; addresses: unknown[] }>("/api/addresses", {
     method: "POST",
     body: JSON.stringify(addressPayload(normalized)),
   });
-  notify(uid, normalizeAddresses(result.addresses));
-  return String(result.id);
+  const addresses = normalizeAddresses(result.addresses);
+  const created = addresses.find((address) => address.id === String(result.id));
+  if (!created) {
+    throw new Error("The address was created, but the refreshed address list did not include it. Please retry loading your addresses.");
+  }
+  notify(uid, addresses);
+  return created;
 }
 
 export async function updateAddress(
   uid: string,
   addressId: string,
   data: Partial<CreateAddressInput>,
-): Promise<void> {
+): Promise<CustomerAddress> {
   const result = await authFetchJson<unknown[]>(`/api/addresses/${encodeURIComponent(addressId)}`, {
     method: "PUT",
     body: JSON.stringify(addressPayload(normalizePatch(data))),
   });
-  notify(uid, normalizeAddresses(result));
+  const addresses = normalizeAddresses(result);
+  const updated = addresses.find((address) => address.id === addressId);
+  if (!updated) {
+    throw new Error("The address was updated, but the refreshed address list did not include it. Please retry loading your addresses.");
+  }
+  notify(uid, addresses);
+  return updated;
 }
 
 export async function deleteAddress(uid: string, addressId: string): Promise<void> {

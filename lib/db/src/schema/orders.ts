@@ -12,6 +12,7 @@ export const addressesTable = pgTable("addresses", {
   street: text("street").notNull(),
   area: text("area"),
   landmark: text("landmark"),
+  deliveryInstructions: text("delivery_instructions"),
   pincode: text("pincode").notNull(),
   city: text("city").default("Mumbai").notNull(),
   state: text("state").default("Maharashtra").notNull(),

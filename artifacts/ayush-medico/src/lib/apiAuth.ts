@@ -4,6 +4,17 @@
 
 import { auth, firebaseProjectId } from "./firebase";
 
+export class ApiResponseError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "ApiResponseError";
+  }
+}
+
 /**
  * Return a current Firebase ID token for the signed-in user.
  *
@@ -60,7 +71,12 @@ export async function authFetchJson<T>(path: string, init: RequestInit = {}): Pr
   const res = await authFetch(path, init);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `Request failed: ${res.status}`);
+    const errorBody = body as { error?: string; code?: string };
+    throw new ApiResponseError(
+      errorBody.error ?? `Request failed: ${res.status}`,
+      res.status,
+      errorBody.code,
+    );
   }
   return res.json() as Promise<T>;
 }

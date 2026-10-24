@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { subscribeToAddresses, type CustomerAddress } from "@/lib/addressService";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
+import { ApiResponseError } from "@/lib/apiAuth";
 
 type UseAddressesResult = {
   addresses: CustomerAddress[];
@@ -41,11 +42,17 @@ export function useAddresses(): UseAddressesResult {
         setState({ uid: user.uid, addresses: data, loading: false, error: null });
       },
       (err) => {
+        const loadError = err instanceof Error ? err : new Error("Could not fetch saved addresses.");
+        console.error("[Addresses] Failed to load saved addresses", {
+          status: loadError instanceof ApiResponseError ? loadError.status : undefined,
+          code: loadError instanceof ApiResponseError ? loadError.code : undefined,
+          message: loadError.message,
+        });
         setState((current) => ({
           uid: user.uid,
           addresses: current.uid === user.uid ? current.addresses : [],
           loading: false,
-          error: err,
+          error: loadError,
         }));
       }
     );
