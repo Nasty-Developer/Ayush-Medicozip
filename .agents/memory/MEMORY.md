@@ -1,1 +1,2 @@
 - [Imported monorepo artifacts](imported-monorepo-artifacts.md) — preserve source code while registering artifact metadata and refreshing shared workspace declarations.
+- [Imported pnpm workspaces](imported-pnpm-workspaces.md) — a filtered package install may not link dependencies for other packages; run a full install before workspace checks.

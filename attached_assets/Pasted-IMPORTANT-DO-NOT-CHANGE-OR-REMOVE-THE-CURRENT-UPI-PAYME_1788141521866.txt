@@ -1,0 +1,443 @@
+IMPORTANT: DO NOT CHANGE OR REMOVE THE CURRENT UPI PAYMENT SYSTEM YET.
+
+We are waiting for the Cashfree API integration and will replace the payment system later.
+
+For NOW, the existing UPI payment system must remain exactly usable so customers can continue placing orders.
+
+Do NOT add Cashfree yet.
+Do NOT remove the current UPI flow.
+Do NOT remove the existing UPI QR/UPI payment information.
+Do NOT break payment/order functionality.
+
+Our immediate goal is to make the CURRENT ORDER + UPI PAYMENT + ADMIN VERIFICATION workflow work properly.
+
+==================================================
+1. CUSTOMER PLACES ORDER
+==================================================
+
+Customer should be able to:
+
+Cart
+→ Checkout
+→ See products
+→ See quantities
+→ See subtotal
+→ See delivery charge
+→ See final amount
+→ Continue to the existing UPI payment screen
+→ Make the UPI payment
+
+The customer must be able to successfully create the order.
+
+Do NOT redirect the customer to Home unexpectedly.
+
+==================================================
+2. AFTER CUSTOMER MAKES UPI PAYMENT
+==================================================
+
+I do NOT want the customer to manually type a transaction ID right now.
+
+REMOVE/DO NOT REQUIRE:
+
+"Enter Transaction ID"
+
+or any mandatory transaction-number input.
+
+Instead, after showing the existing UPI payment information, provide ONE clear button:
+
+"Transaction is Done"
+
+or:
+
+"I Have Completed the Payment"
+
+The exact button wording can be polished, but there should be only one simple confirmation action.
+
+The customer clicks this AFTER actually making the UPI payment.
+
+==================================================
+3. CUSTOMER EXPERIENCE AFTER CLICKING THE BUTTON
+==================================================
+
+When the customer clicks:
+
+"I Have Completed the Payment"
+
+DO NOT immediately mark the payment as verified.
+
+Instead:
+
+1. Save/update the order.
+2. Mark payment status as something like:
+
+PAYMENT_VERIFICATION_PENDING
+
+3. Keep the order active.
+4. Show the customer a clear confirmation message such as:
+
+"Confirming your payment and placing your order."
+
+or:
+
+"Payment submitted for verification. Your order is being processed."
+
+The customer should remain on the website.
+
+Do NOT send the customer to the homepage.
+
+Take the customer to the order confirmation/order tracking page.
+
+==================================================
+4. CUSTOMER ORDER TRACKING PAGE
+==================================================
+
+After submitting payment confirmation, the customer should be able to see the order status on the website.
+
+Show:
+
+Order Number
+Products
+Quantities
+Subtotal
+Delivery Charge
+Total
+Payment Status
+Order Status
+Prescription Status when applicable
+Delivery Status when applicable
+
+Initially it can show:
+
+Payment:
+Verification Pending
+
+Order:
+Payment Verification Pending
+
+The page should clearly explain that the payment is waiting for admin verification.
+
+==================================================
+5. ADMIN PAYMENT VERIFICATION
+==================================================
+
+In the Admin Panel, the order must appear with a clear status.
+
+Admin should be able to identify the order using the order number.
+
+The existing admin order section should have appropriate action buttons.
+
+For example:
+
+PAYMENT DONE
+PREPARING YOUR ORDER
+
+These buttons/actions should ACTUALLY WORK.
+
+When admin confirms that the UPI payment was received:
+
+Payment status becomes:
+
+PAID
+
+Then the order status can become:
+
+CONFIRMED
+
+or:
+
+PREPARING
+
+depending on the workflow.
+
+The important thing is:
+
+ADMIN MUST VERIFY THE PAYMENT.
+
+Do not automatically mark the order as PAID merely because the customer clicked "Transaction is Done".
+
+==================================================
+6. CUSTOMER STATUS AFTER ADMIN VERIFICATION
+==================================================
+
+Once admin verifies payment, the customer-facing order status must update.
+
+For example:
+
+Before admin verification:
+
+"Payment verification pending"
+
+After admin verifies payment:
+
+"Payment confirmed"
+"Your order is confirmed and being prepared."
+
+Then, when admin clicks the preparation/progress button:
+
+"Your order is being prepared."
+
+Later:
+
+"Ready for delivery"
+
+Then:
+
+"Out for delivery"
+
+Then:
+
+"Delivered"
+
+The customer should see these changes on the website.
+
+==================================================
+7. PRESCRIPTION ORDERS
+==================================================
+
+Prescription medicine orders need a separate review step.
+
+When a prescription is required:
+
+Customer submits order
+↓
+Payment submitted
+↓
+Admin reviews prescription
+↓
+Admin verifies/approves prescription
+↓
+Admin confirms order
+↓
+Order moves to preparation
+
+Do NOT automatically confirm a prescription medicine order just because the customer clicked the payment confirmation button.
+
+The customer should see something like:
+
+"Your prescription is being reviewed."
+
+Then after admin approval:
+
+"Prescription verified"
+"Your order is confirmed."
+
+==================================================
+8. ADMIN WORKFLOW
+==================================================
+
+Make the admin workflow very clear.
+
+For each order, admin should be able to see:
+
+Order number
+Customer
+Products
+Quantities
+Subtotal
+Delivery charge
+Final total
+Payment status
+Order status
+Prescription status
+Delivery status
+
+Use appropriate buttons for the current stage.
+
+For example:
+
+Payment pending
+→ Verify Payment
+
+After verification:
+
+Payment verified
+→ Confirm / Prepare Order
+
+Prescription order:
+
+Prescription pending
+→ Verify Prescription
+
+After approval:
+
+Prescription verified
+→ Confirm Order
+
+The buttons must update the actual backend/order status.
+
+Do not create buttons that only change frontend text.
+
+==================================================
+9. ORDER STATUS MODEL
+==================================================
+
+Keep payment and order status logically separate.
+
+For example:
+
+paymentStatus:
+PENDING
+VERIFICATION_PENDING
+PAID
+FAILED
+
+orderStatus:
+PLACED
+PAYMENT_VERIFICATION_PENDING
+CONFIRMED
+PREPARING
+READY_FOR_DELIVERY
+OUT_FOR_DELIVERY
+DELIVERED
+CANCELLED
+
+prescriptionStatus:
+NOT_REQUIRED
+PENDING
+VERIFIED
+REJECTED
+
+Use whatever naming fits the existing code, but preserve the separation of these concepts.
+
+==================================================
+10. DELIVERY LATER
+==================================================
+
+Do NOT integrate Borzo automatically yet.
+
+We are still waiting for the Borzo API access.
+
+For now, the order only needs to progress through:
+
+Payment verification
+→ Order confirmation
+→ Preparing
+
+Later, when the Borzo API is available, delivery can be connected to the appropriate order state.
+
+Do not break the order structure while preparing for this future integration.
+
+==================================================
+11. CURRENT UPI PAYMENT MUST REMAIN
+==================================================
+
+Again:
+
+KEEP THE CURRENT UPI PAYMENT SYSTEM.
+
+Do not remove the UPI QR.
+Do not remove the UPI ID.
+Do not replace it with Cashfree yet.
+Do not add Razorpay.
+Do not require transaction IDs.
+
+We will replace this system AFTER the Cashfree API is available.
+
+==================================================
+12. IMPORTANT: NO FAKE PAYMENT VERIFICATION
+==================================================
+
+The customer button:
+
+"I Have Completed the Payment"
+
+only means:
+
+"The customer says they completed payment."
+
+It must NOT mean:
+
+"Payment is verified."
+
+Only the admin can currently move the order from:
+
+PAYMENT_VERIFICATION_PENDING
+
+to:
+
+PAID
+
+until we integrate a real automated payment gateway.
+
+Make this distinction explicit in the backend.
+
+==================================================
+13. FIX CURRENT NAVIGATION
+==================================================
+
+The customer must remain inside the order flow.
+
+Fix any current behavior where:
+
+Medicine request
+Checkout
+Payment confirmation
+Order submission
+
+unexpectedly sends the customer to the homepage.
+
+After submitting an order, the customer should arrive at their order confirmation/tracking page.
+
+==================================================
+14. TEST THE FULL FLOW
+==================================================
+
+Actually test this complete workflow:
+
+Customer
+→ Add medicine
+→ Cart
+→ Checkout
+→ Enter customer details
+→ See subtotal
+→ See delivery
+→ See final amount
+→ Existing UPI payment screen
+→ Make payment externally
+→ Click "I Have Completed the Payment"
+→ Order saved
+→ Payment Verification Pending
+→ Customer sees confirmation/tracking page
+→ Admin sees the order
+→ Admin verifies payment
+→ Payment becomes PAID
+→ Order becomes CONFIRMED/PREPARING
+→ Customer sees the updated status
+
+For prescription orders:
+
+Customer order
+→ Payment confirmation
+→ Prescription Pending
+→ Admin verifies prescription
+→ Prescription Verified
+→ Admin confirms order
+→ Customer sees updated order status
+
+Everything must actually update in the backend/database.
+
+Do not simply change labels in the frontend.
+
+==================================================
+15. DO NOT REDESIGN THE PAYMENT SYSTEM
+==================================================
+
+Do not spend this task redesigning payment architecture.
+
+The immediate priority is:
+
+CURRENT UPI PAYMENT
++
+ORDER CREATION
++
+CUSTOMER CONFIRMATION
++
+ADMIN PAYMENT VERIFICATION
++
+ADMIN ORDER ACTIONS
++
+CUSTOMER ORDER STATUS
+
+Cashfree will be integrated later when the API credentials/access are available.
+
+Keep the existing UPI system working until then.

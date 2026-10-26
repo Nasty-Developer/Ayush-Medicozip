@@ -1,0 +1,220 @@
+Fix the Google Sign-In flow on the production/Render deployment.
+
+CURRENT BEHAVIOR:
+
+When a customer clicks "Continue with Google":
+
+1. A Firebase/Google authentication popup opens.
+2. The popup navigates to the Firebase auth handler.
+3. The popup does not complete authentication.
+4. The website returns:
+   "Google sign-in was cancelled."
+
+The exact production Firebase auth handler is being opened from:
+
+ayush-medico.firebaseapp.com
+
+The production website is:
+
+ayush-medicozip-4.onrender.com
+
+==================================================
+IMPORTANT
+==================================================
+
+Do NOT remove Google Sign-In.
+
+Do NOT replace Firebase Authentication.
+
+Do NOT change the Firebase project.
+
+The correct Firebase project is:
+
+ayush-medico
+
+The goal is to make Google authentication work correctly on the Render production deployment while keeping the Replit preview working.
+
+==================================================
+1. INSPECT GOOGLE AUTH IMPLEMENTATION
+==================================================
+
+Find the current Google sign-in implementation.
+
+Determine whether it uses:
+
+signInWithPopup()
+
+or
+
+signInWithRedirect()
+
+and verify the implementation is correct for a production Vite application.
+
+Make sure the returned promise is properly handled.
+
+Use proper:
+
+try / catch / finally
+
+handling.
+
+Do not treat every popup failure as "Google sign-in was cancelled."
+
+Log the real Firebase Auth error code during debugging.
+
+==================================================
+2. CHECK PRODUCTION DOMAIN CONFIGURATION
+==================================================
+
+Verify that the production domain:
+
+ayush-medicozip-4.onrender.com
+
+is correctly supported by the Firebase Authentication configuration.
+
+Verify the Firebase project configuration being used by the production build is:
+
+projectId:
+ayush-medico
+
+Verify the Google provider is enabled in Firebase Authentication.
+
+Do not weaken authentication security.
+
+==================================================
+3. CHECK OAUTH REDIRECT / POPUP FLOW
+==================================================
+
+The current popup reaches:
+
+ayush-medico.firebaseapp.com/__/auth/handler
+
+but authentication does not return successfully to:
+
+https://ayush-medicozip-4.onrender.com
+
+Inspect the OAuth configuration and make sure the authentication result can return to the production origin correctly.
+
+Check all relevant Firebase Auth settings and the application's Google auth implementation.
+
+Do not hard-code an incorrect redirect URL.
+
+==================================================
+4. CHECK AUTHORISED DOMAINS
+==================================================
+
+Make sure the Firebase project's Authorized Domains include the production host:
+
+ayush-medicozip-4.onrender.com
+
+Also preserve any required Firebase domains.
+
+==================================================
+5. CHECK FIREBASE GOOGLE PROVIDER
+==================================================
+
+Verify the Google sign-in provider is enabled.
+
+Verify its configuration is valid.
+
+Do not disable/re-enable providers randomly.
+
+Do not change the Firebase project.
+
+==================================================
+6. CHECK THE POPUP ERROR
+==================================================
+
+The customer should NEVER be left with an apparently frozen/blank popup.
+
+If the authentication fails, return a useful error.
+
+Handle at least:
+
+auth/popup-blocked
+auth/popup-closed-by-user
+auth/cancelled-popup-request
+auth/unauthorized-domain
+auth/account-exists-with-different-credential
+auth/network-request-failed
+
+Do not incorrectly report a technical OAuth failure as:
+
+"Google sign-in was cancelled."
+
+Only use that message when the user actually closes/cancels the popup.
+
+==================================================
+7. CHECK AUTH STATE AFTER GOOGLE LOGIN
+==================================================
+
+After successful Google authentication:
+
+Firebase authentication succeeds
+↓
+onAuthStateChanged receives the user
+↓
+customer state updates
+↓
+sign-in modal closes
+↓
+customer is shown as signed in
+
+Do not wait for unrelated product/API requests before updating authentication state.
+
+==================================================
+8. TEST EMAIL AUTH TOO
+==================================================
+
+Do not break email/password authentication while fixing Google.
+
+Verify:
+
+Email/password sign in
+Email/password sign out
+Google sign in
+Google sign out
+
+all continue to work.
+
+==================================================
+9. TEST THE ACTUAL PRODUCTION BUILD
+==================================================
+
+Do not test only in the development preview.
+
+Build/run the production version and test the actual Render deployment.
+
+Test:
+
+1. Open Render website
+2. Click Sign In
+3. Click Continue with Google
+4. Complete Google account selection
+5. Return to the Render website
+6. Verify customer is signed in
+7. Refresh
+8. Verify session persists
+9. Sign out
+10. Sign in again
+
+Also verify there are no:
+- blank popup screens
+- infinite loading states
+- silent auth failures
+- incorrect "cancelled" messages
+- unauthorized-domain errors
+
+==================================================
+10. DO NOT CHANGE UNRELATED FEATURES
+==================================================
+
+Do not redesign the site.
+Do not modify the cart.
+Do not modify the admin panel.
+Do not modify checkout.
+Do not modify the payment system.
+
+This task is specifically to FIX CUSTOMER GOOGLE AUTHENTICATION ON RENDER.
+
+Keep all currently working functionality intact.
