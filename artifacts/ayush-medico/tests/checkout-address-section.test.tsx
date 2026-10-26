@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import CheckoutAddressSection from "../src/components/customer/CheckoutAddressSection";
+import { ApiResponseError } from "../src/lib/apiAuth";
 import type { CustomerAddress } from "../src/lib/addressService";
 
 vi.mock("@/components/customer/AddressForm", () => ({
@@ -52,5 +53,29 @@ describe("checkout address recovery", () => {
     expect(screen.getByRole("alert").textContent).toContain("Check your connection");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("offers sign-in again when a token-related error shows the refresh message", () => {
+    render(
+      <CheckoutAddressSection
+        {...props}
+        error={new ApiResponseError("Token verification failed", 500)}
+      />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain("Your sign-in needs to be refreshed");
+    expect(screen.getByRole("button", { name: "Sign in again" })).toBeTruthy();
+  });
+
+  it("does not offer sign-in again when Firebase Admin is unavailable", () => {
+    render(
+      <CheckoutAddressSection
+        {...props}
+        error={new ApiResponseError("Authentication service is not configured", 503, "firebase_admin_not_configured")}
+      />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain("Secure sign-in is not available");
+    expect(screen.queryByRole("button", { name: "Sign in again" })).toBeNull();
   });
 });

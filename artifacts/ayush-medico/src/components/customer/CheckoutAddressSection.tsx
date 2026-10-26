@@ -34,6 +34,21 @@ function getAddressLoadMessage(error: Error): string {
   return "Saved addresses could not be loaded. Retry, or add a new address below.";
 }
 
+function shouldOfferSignInAgain(error: Error): boolean {
+  const message = error.message.toLowerCase();
+  const status = error instanceof ApiResponseError ? error.status : undefined;
+  const code = error instanceof ApiResponseError ? error.code : undefined;
+
+  if (status === 503 || code === "firebase_admin_not_configured" || message.includes("firebase is not configured")) {
+    return false;
+  }
+
+  return status === 401 ||
+    message.includes("not authenticated") ||
+    message.includes("please sign in again") ||
+    message.includes("token");
+}
+
 export default function CheckoutAddressSection({
   addresses,
   selectedId,
@@ -43,11 +58,7 @@ export default function CheckoutAddressSection({
   onRetry,
 }: Props) {
   const [showSignIn, setShowSignIn] = useState(false);
-  const errorMessage = error?.message.toLowerCase() ?? "";
-  const needsSignIn = error instanceof ApiResponseError
-    ? error.status === 401
-    : errorMessage.includes("not authenticated") ||
-      errorMessage.includes("please sign in again");
+  const needsSignIn = error ? shouldOfferSignInAgain(error) : false;
 
   return (
     <section aria-label="Delivery address">
