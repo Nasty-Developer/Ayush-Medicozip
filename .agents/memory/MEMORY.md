@@ -1,0 +1,1 @@
+- [Imported monorepo artifacts](imported-monorepo-artifacts.md) — preserve source code while registering artifact metadata and refreshing shared workspace declarations.
