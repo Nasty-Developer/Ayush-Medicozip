@@ -3,7 +3,7 @@ import { pgTable, serial, text, timestamp, boolean, uuid } from "drizzle-orm/pg-
 export const usersTable = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   firebaseUid: text("firebase_uid").unique(),
-  email: text("email").notNull().unique(),
+  email: text("email").unique(),
   displayName: text("display_name"),
   phone: text("phone"),
   role: text("role", { enum: ["customer", "admin"] }).default("customer").notNull(),

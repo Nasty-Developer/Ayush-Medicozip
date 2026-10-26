@@ -109,33 +109,43 @@ function parseAddressBody(
 }
 
 async function resolveUserId(req: AuthenticatedRequest): Promise<string> {
-  const firebaseUid = req.firebaseUser!.uid;
+  const firebaseUser = req.firebaseUser!;
+  const firebaseUid = firebaseUser.uid;
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.firebaseUid, firebaseUid));
   if (existing) return existing.id;
 
-  const email = req.firebaseUser!.email;
-  if (!email) throw new Error("AUTH_EMAIL_REQUIRED");
+  // The verified Firebase UID is the account identity. Phone-auth customers
+  // may not have an email claim, so email is optional and is only used to link
+  // an older account when Firebase confirms that it is verified.
+  const tokenEmail = typeof firebaseUser.email === "string" ? firebaseUser.email.trim() : "";
+  const verifiedEmail = firebaseUser.email_verified && tokenEmail ? tokenEmail : null;
 
-  const [emailMatch] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-  if (emailMatch) {
-    if (emailMatch.firebaseUid && emailMatch.firebaseUid !== firebaseUid) {
-      throw new Error("USER_EMAIL_CONFLICT");
+  if (verifiedEmail) {
+    const [emailMatch] = await db.select().from(usersTable).where(eq(usersTable.email, verifiedEmail));
+    if (emailMatch) {
+      if (emailMatch.firebaseUid && emailMatch.firebaseUid !== firebaseUid) {
+        throw new Error("USER_EMAIL_CONFLICT");
+      }
+      const [linked] = await db
+        .update(usersTable)
+        .set({
+          firebaseUid,
+          displayName: firebaseUser.name ?? emailMatch.displayName,
+          updatedAt: new Date(),
+        })
+        .where(eq(usersTable.id, emailMatch.id))
+        .returning();
+      if (linked) return linked.id;
     }
-    const [linked] = await db
-      .update(usersTable)
-      .set({
-        firebaseUid,
-        displayName: req.firebaseUser!.name ?? emailMatch.displayName,
-        updatedAt: new Date(),
-      })
-      .where(eq(usersTable.id, emailMatch.id))
-      .returning();
-    if (linked) return linked.id;
   }
 
   const [created] = await db
     .insert(usersTable)
-    .values({ firebaseUid, email, displayName: req.firebaseUser!.name ?? null })
+    .values({
+      firebaseUid,
+      email: verifiedEmail,
+      displayName: firebaseUser.name ?? null,
+    })
     .onConflictDoNothing({ target: usersTable.firebaseUid })
     .returning();
   if (created) return created.id;
@@ -162,10 +172,6 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res: Response): P
     const userId = await resolveUserId(req);
     res.json(await sortedAddresses(userId));
   } catch (err) {
-    if (err instanceof Error && err.message === "AUTH_EMAIL_REQUIRED") {
-      res.status(400).json({ error: "Verified token email is required" });
-      return;
-    }
     if (err instanceof Error && err.message === "USER_EMAIL_CONFLICT") {
       res.status(409).json({ error: "This email is already linked to another account" });
       return;
@@ -196,10 +202,6 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
 
     res.status(201).json({ id: created.id, addresses: await sortedAddresses(userId) });
   } catch (err) {
-    if (err instanceof Error && err.message === "AUTH_EMAIL_REQUIRED") {
-      res.status(400).json({ error: "Verified token email is required" });
-      return;
-    }
     if (err instanceof Error && err.message === "USER_EMAIL_CONFLICT") {
       res.status(409).json({ error: "This email is already linked to another account" });
       return;
