@@ -78,4 +78,60 @@ describe("checkout address recovery", () => {
     expect(screen.getByRole("alert").textContent).toContain("Secure sign-in is not available");
     expect(screen.queryByRole("button", { name: "Sign in again" })).toBeNull();
   });
+
+  it("reports a server-side outage as unavailable, not as a connection problem", () => {
+    // This is the production failure shape: the API answers 500 with
+    // "Failed to fetch addresses" when its database is suspended. The word
+    // "fetch" in that body must not be mistaken for a network error.
+    render(
+      <CheckoutAddressSection
+        {...props}
+        error={new ApiResponseError("Failed to fetch addresses", 500)}
+      />,
+    );
+
+    const alert = screen.getByRole("alert").textContent ?? "";
+    expect(alert).toContain("temporarily unavailable");
+    expect(alert).not.toContain("Check your connection");
+    expect(screen.queryByRole("button", { name: "Sign in again" })).toBeNull();
+  });
+
+  it("explains a database outage reported as 503", () => {
+    render(
+      <CheckoutAddressSection
+        {...props}
+        error={
+          new ApiResponseError(
+            "The address service is temporarily unavailable, so it could not load your saved addresses. Please retry in a moment.",
+            503,
+            "database_unavailable",
+          )
+        }
+      />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain("temporarily unavailable");
+  });
+
+  it("still shows the connection message for a real transport failure", () => {
+    render(
+      <CheckoutAddressSection
+        {...props}
+        error={new TypeError("Failed to fetch")}
+      />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain("Check your connection");
+  });
+
+  it("shows the timeout message when loading takes too long", () => {
+    render(
+      <CheckoutAddressSection
+        {...props}
+        error={new Error("Saved addresses took too long to load. Please try again.")}
+      />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain("taking longer than usual");
+  });
 });
