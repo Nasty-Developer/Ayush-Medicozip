@@ -511,11 +511,13 @@ export default function CheckoutPage() {
                     <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                       <MapPin size={16} className="text-primary" /> Delivery Address
                     </h2>
+                    {/* A failed refresh must not hide addresses we already have,
+                        otherwise a transient error leaves no way to continue. */}
                     <CheckoutAddressSection
                       loading={loadingAddresses}
                       error={addressesError}
                       onRetry={retryAddresses}
-                      addresses={loadingAddresses || addressesError ? [] : addresses}
+                      addresses={addresses}
                       selectedId={selectedAddress?.id}
                       onSelect={setSelectedAddress}
                     />
@@ -523,9 +525,7 @@ export default function CheckoutPage() {
                   {error && <p className="text-sm text-destructive">{error}</p>}
                   <button
                     onClick={handleAddressContinue}
-                    disabled={
-                      !selectedAddress || preparingOrder || loadingAddresses || Boolean(addressesError)
-                    }
+                    disabled={!selectedAddress || preparingOrder || loadingAddresses}
                     className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-primary text-white font-bold text-sm
                                hover:bg-primary/90 disabled:opacity-50 transition-colors"
                   >

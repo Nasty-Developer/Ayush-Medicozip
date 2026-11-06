@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Home, Briefcase, MapPin, Loader2 } from "lucide-react";
 import { addAddress, updateAddress, type CustomerAddress, type CreateAddressInput, type AddressType } from "@/lib/addressService";
+import { ApiResponseError } from "@/lib/apiAuth";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 
 // ─── Delivery-eligible pincodes (matches RequestMedicine.tsx allowlist) ───────
@@ -127,7 +128,21 @@ export default function AddressForm({ existing, onSuccess, onCancel }: Props) {
       }
     } catch (err) {
       console.error("AddressForm error:", err);
-      setSaveError(err instanceof Error ? err.message : "Could not save this address. Please try again.");
+      // The API's own validation messages are customer-safe and specific, so keep
+      // them. Server-side and transport failures get a message that tells the
+      // customer the save did not happen instead of echoing "Failed to create".
+      const status = err instanceof ApiResponseError ? err.status : undefined;
+      if (typeof status === "number" && status >= 500) {
+        setSaveError("The address service is temporarily unavailable, so your address was not saved. Please retry in a moment.");
+      } else if (err instanceof ApiResponseError && err.status === 401) {
+        setSaveError("Your sign-in needs to be refreshed. Sign in again, then save this address.");
+      } else if (err instanceof ApiResponseError && status !== undefined) {
+        setSaveError(err.message);
+      } else if (err instanceof Error && /failed to fetch|load failed|networkerror|network request failed/i.test(err.message)) {
+        setSaveError("We could not reach the address service. Your address was not saved. Check your connection and retry.");
+      } else {
+        setSaveError(err instanceof Error ? err.message : "Could not save this address. Please try again.");
+      }
     } finally {
       submitLock.current = false;
       setSaving(false);

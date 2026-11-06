@@ -155,6 +155,56 @@ async function resolveUserId(req: AuthenticatedRequest): Promise<string> {
   return row.id;
 }
 
+/**
+ * True when the failure is the connection to PostgreSQL rather than the request
+ * itself: the instance is suspended, restarting, out of connections, or the
+ * network cannot reach it. These are transient service outages, so they must not
+ * be reported as a broken address record (500).
+ */
+const DB_UNAVAILABLE_CODES = new Set([
+  "57P03", // cannot_connect_now (server starting up / suspended)
+  "57P01", // admin_shutdown
+  "57P02", // crash_shutdown
+  "53300", // too_many_connections
+  "08000", // connection_exception
+  "08001", // sqlclient_unable_to_establish_sqlconnection
+  "08003", // connection_does_not_exist
+  "08006", // connection_failure
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ENOTFOUND",
+  "ETIMEDOUT",
+  "EHOSTUNREACH",
+]);
+
+function isDatabaseUnavailable(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const candidate = err as { code?: unknown; message?: unknown; cause?: unknown };
+  const code = typeof candidate.code === "string" ? candidate.code : "";
+  if (code && DB_UNAVAILABLE_CODES.has(code)) return true;
+  const message = typeof candidate.message === "string" ? candidate.message.toLowerCase() : "";
+  if (
+    message.includes("econnrefused") ||
+    message.includes("connection refused") ||
+    message.includes("connection terminated") ||
+    message.includes("terminating connection") ||
+    message.includes("server closed the connection") ||
+    message.includes("timeout expired") ||
+    message.includes("getaddrinfo")
+  ) {
+    return true;
+  }
+  return isDatabaseUnavailable(candidate.cause);
+}
+
+/** 503 for a database outage, so the client can say "temporarily unavailable". */
+function sendDatabaseUnavailable(res: Response, action: string): void {
+  res.status(503).json({
+    error: `The address service is temporarily unavailable, so it could not ${action}. Please retry in a moment.`,
+    code: "database_unavailable",
+  });
+}
+
 async function sortedAddresses(userId: string) {
   const rows = await db
     .select()
@@ -177,6 +227,7 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res: Response): P
       return;
     }
     logger.error({ err }, "GET /addresses failed");
+    if (isDatabaseUnavailable(err)) { sendDatabaseUnavailable(res, "load your saved addresses"); return; }
     res.status(500).json({ error: "Failed to fetch addresses" });
   }
 });
@@ -207,6 +258,7 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
       return;
     }
     logger.error({ err }, "POST /addresses failed");
+    if (isDatabaseUnavailable(err)) { sendDatabaseUnavailable(res, "save this address"); return; }
     res.status(500).json({ error: "Failed to create address" });
   }
 });
@@ -241,6 +293,7 @@ router.put("/:id", requireAuth, async (req: AuthenticatedRequest, res: Response)
   } catch (err) {
     if (err instanceof Error && err.message === "ADDRESS_NOT_FOUND") { res.status(404).json({ error: "Address not found" }); return; }
     logger.error({ err }, "PUT /addresses/:id failed");
+    if (isDatabaseUnavailable(err)) { sendDatabaseUnavailable(res, "update this address"); return; }
     res.status(500).json({ error: "Failed to update address" });
   }
 });
@@ -267,6 +320,7 @@ router.patch("/:id/default", requireAuth, async (req: AuthenticatedRequest, res:
   } catch (err) {
     if (err instanceof Error && err.message === "ADDRESS_NOT_FOUND") { res.status(404).json({ error: "Address not found" }); return; }
     logger.error({ err }, "PATCH /addresses/:id/default failed");
+    if (isDatabaseUnavailable(err)) { sendDatabaseUnavailable(res, "set the default address"); return; }
     res.status(500).json({ error: "Failed to set default address" });
   }
 });
@@ -281,6 +335,7 @@ router.delete("/:id", requireAuth, async (req: AuthenticatedRequest, res: Respon
     res.json({ success: true, addresses: await sortedAddresses(userId) });
   } catch (err) {
     logger.error({ err }, "DELETE /addresses/:id failed");
+    if (isDatabaseUnavailable(err)) { sendDatabaseUnavailable(res, "delete this address"); return; }
     res.status(500).json({ error: "Failed to delete address" });
   }
 });
