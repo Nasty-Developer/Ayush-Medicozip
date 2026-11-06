@@ -1,5 +1,6 @@
 import app from "./app.js";
 import { logger } from "./lib/logger.js";
+import { ensureSchema, reportSchemaDrift } from "./lib/schemaSync.js";
 
 const rawPort = process.env["PORT"];
 
@@ -15,11 +16,32 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
+/**
+ * Reconcile the additive schema and report any remaining drift before serving
+ * traffic. A database problem must never stop the API from booting: the routes
+ * already return a clear 503 for an unavailable database.
+ */
+async function main(): Promise<void> {
+  try {
+    await ensureSchema();
+  } catch (err) {
+    logger.error({ err }, "Schema reconciliation could not run");
   }
 
-  logger.info({ port }, "Server listening");
-});
+  try {
+    await reportSchemaDrift();
+  } catch (err) {
+    logger.error({ err }, "Schema drift check could not run");
+  }
+
+  app.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+
+    logger.info({ port }, "Server listening");
+  });
+}
+
+void main();
