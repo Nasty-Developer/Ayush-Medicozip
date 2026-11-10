@@ -19,9 +19,12 @@ const statements = sql
   .map((part) => part.trim())
   .filter(Boolean)
   .map((statement) => {
-    let next = statement.startsWith('CREATE TABLE "')
-      ? statement.replace('CREATE TABLE "', 'CREATE TABLE IF NOT EXISTS "')
-      : statement;
+    // drizzle-kit terminates every statement with ";", which would become an
+    // empty statement (and a syntax error) once wrapped in a DO block.
+    const body = statement.replace(/;+\s*$/, "");
+    let next = body.startsWith('CREATE TABLE "')
+      ? body.replace('CREATE TABLE "', 'CREATE TABLE IF NOT EXISTS "')
+      : body;
     if (next.toUpperCase().startsWith("ALTER TABLE")) {
       next = `DO $$ BEGIN\n${next};\nEXCEPTION WHEN duplicate_object THEN NULL; WHEN invalid_table_definition THEN NULL; END $$`;
     }

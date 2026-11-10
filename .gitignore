@@ -48,3 +48,10 @@ Thumbs.db
 .cache/
 .local/
 .conversation/
+
+# local env files (never commit secrets)
+.env
+.env.*
+**/.env
+**/.env.local
+.neon
