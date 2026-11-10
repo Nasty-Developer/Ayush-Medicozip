@@ -1,6 +1,6 @@
 import app from "./app.js";
 import { logger } from "./lib/logger.js";
-import { ensureSchema, reportSchemaDrift } from "./lib/schemaSync.js";
+import { bootstrapSchema, ensureSchema, reportSchemaDrift } from "./lib/schemaSync.js";
 import { refreshAdminCache } from "./lib/adminAccounts.js";
 
 const rawPort = process.env["PORT"];
@@ -23,6 +23,14 @@ if (Number.isNaN(port) || port <= 0) {
  * already return a clear 503 for an unavailable database.
  */
 async function main(): Promise<void> {
+  // A brand new database gets the full schema before anything else runs.
+  try {
+    const { bootstrapped, applied, failed } = await bootstrapSchema();
+    if (bootstrapped) logger.info({ applied, failed }, "Database schema bootstrapped");
+  } catch (err) {
+    logger.error({ err }, "Schema bootstrap could not run");
+  }
+
   try {
     await ensureSchema();
   } catch (err) {

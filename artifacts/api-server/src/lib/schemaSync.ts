@@ -2,6 +2,7 @@ import { getTableConfig } from "drizzle-orm/pg-core";
 import { pool } from "@workspace/db";
 import * as schema from "@workspace/db/schema";
 import { logger } from "./logger.js";
+import { BOOTSTRAP_STATEMENTS } from "./bootstrapStatements.js";
 
 /**
  * Additive, idempotent reconciliation between the Drizzle schema in code and the
@@ -148,4 +149,38 @@ export async function reportSchemaDrift(): Promise<DriftReport> {
     logger.info({ tables: tableNames.length }, "Database schema matches the code");
   }
   return report;
+}
+
+
+export type BootstrapResult = { bootstrapped: boolean; applied: number; failed: number };
+
+/**
+ * Creates the whole schema when the API is pointed at an empty database.
+ *
+ * Postgres aborts the rest of a transaction after one failed statement, so the
+ * statements are issued one by one (each auto-commits) and every one of them is
+ * idempotent. A single failing statement is logged and skipped rather than
+ * leaving the database half-built and unusable.
+ */
+export async function bootstrapSchema(): Promise<BootstrapResult> {
+  const { rows } = await pool.query<{ present: string | null }>(
+    "SELECT to_regclass('public.orders')::text AS present",
+  );
+  if (rows[0]?.present) return { bootstrapped: false, applied: 0, failed: 0 };
+
+  let applied = 0;
+  let failed = 0;
+
+  for (const statement of BOOTSTRAP_STATEMENTS) {
+    try {
+      await pool.query(statement);
+      applied += 1;
+    } catch (err) {
+      failed += 1;
+      logger.warn({ err, statement: statement.slice(0, 120) }, "Schema bootstrap statement failed");
+    }
+  }
+
+  logger.info({ applied, failed }, "Empty database bootstrapped from the Drizzle schema");
+  return { bootstrapped: true, applied, failed };
 }
