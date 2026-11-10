@@ -10,9 +10,24 @@ const CRITICAL_TABLES = ["orders", "order_items", "medicines", "users", "address
 type DbProbe = {
   connected: boolean;
   error: string | null;
+  host: string | null;
   missingTables: string[];
   presentTables: string[];
 };
+
+/**
+ * Hostname only (never user, password or query string) so a support check can
+ * match the running value against the hosting dashboard.
+ */
+function databaseHost(): string | null {
+  const url = process.env["DATABASE_URL"];
+  if (!url) return null;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "unparseable";
+  }
+}
 
 async function probeDatabase(): Promise<DbProbe> {
   try {
@@ -23,6 +38,7 @@ async function probeDatabase(): Promise<DbProbe> {
     return {
       connected: false,
       error: code ? `connection_failed:${code}` : "connection_failed",
+      host: databaseHost(),
       missingTables: [],
       presentTables: [],
     };
@@ -38,6 +54,7 @@ async function probeDatabase(): Promise<DbProbe> {
     return {
       connected: true,
       error: null,
+      host: databaseHost(),
       presentTables: CRITICAL_TABLES.filter((table) => present.has(table)),
       missingTables: CRITICAL_TABLES.filter((table) => !present.has(table)),
     };
@@ -47,6 +64,7 @@ async function probeDatabase(): Promise<DbProbe> {
     return {
       connected: true,
       error: code ? `schema_probe_failed:${code}` : "schema_probe_failed",
+      host: databaseHost(),
       missingTables: [],
       presentTables: [],
     };

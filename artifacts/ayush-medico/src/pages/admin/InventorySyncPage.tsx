@@ -468,8 +468,11 @@ export default function InventorySyncPage() {
         const retryMessage = body.retryAt
           ? ` You can retry after ${new Date(body.retryAt).toLocaleTimeString()}.`
           : "";
+        const serverMessage = sessionResp.status >= 500
+          ? "The store database is unreachable, so the import cannot start. Check /api/healthz for the database status."
+          : undefined;
         throw new Error(
-          `${body.error ?? `Failed to create upload session (${sessionResp.status})`}${retryMessage}`,
+          `${serverMessage ?? body.error ?? `Failed to create upload session (${sessionResp.status})`}${retryMessage}`,
         );
       }
       const { sessionId } = await sessionResp.json() as { sessionId: string };
