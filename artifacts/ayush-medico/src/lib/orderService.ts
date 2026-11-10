@@ -27,7 +27,9 @@ export type Timestamp = { seconds: number };
 
 function toTimestamp(iso: string | null | undefined): Timestamp | undefined {
   if (!iso) return undefined;
-  return { seconds: Math.floor(new Date(iso).getTime() / 1000) };
+  const ms = new Date(iso).getTime();
+  if (!Number.isFinite(ms)) return undefined;
+  return { seconds: Math.floor(ms / 1000) };
 }
 
 export type OrderAddress = {
@@ -146,13 +148,22 @@ type OrderRow = {
 };
 
 function mapRow(row: OrderRow): Order {
+  // Rows written by older flows can miss any of the JSONB sections (or store a
+  // null). One incomplete row must never blank the whole order history, so every
+  // section is defaulted before it is read.
+  const rawPricing = (row.pricing ?? {}) as Partial<OrderPricing>;
+  const rawAddress = (row.address ?? {}) as Partial<OrderAddress>;
+  const rawPayment = (row.payment ?? {}) as Partial<OrderPayment>;
+  const rawPrescription = (row.prescription ?? {}) as Partial<OrderPrescription>;
+  const rawDelivery = (row.delivery ?? {}) as Partial<OrderDelivery>;
+
   const pricing = {
-    ...row.pricing,
-    subtotal: Number(row.pricing.subtotal),
-    discount: Number(row.pricing.discount),
-    gst: Number(row.pricing.gst),
-    deliveryCharge: row.pricing.deliveryCharge == null ? null : Number(row.pricing.deliveryCharge),
-    grandTotal: row.pricing.grandTotal == null ? null : Number(row.pricing.grandTotal),
+    ...rawPricing,
+    subtotal: Number(rawPricing.subtotal ?? 0),
+    discount: Number(rawPricing.discount ?? 0),
+    gst: Number(rawPricing.gst ?? 0),
+    deliveryCharge: rawPricing.deliveryCharge == null ? null : Number(rawPricing.deliveryCharge),
+    grandTotal: rawPricing.grandTotal == null ? null : Number(rawPricing.grandTotal),
   };
   return {
     id: String(row.id),
@@ -161,7 +172,17 @@ function mapRow(row: OrderRow): Order {
     customerName: row.customerName,
     customerEmail: row.customerEmail,
     customerPhone: row.customerPhone,
-    address: row.address,
+    address: {
+      ...rawAddress,
+      fullName: rawAddress.fullName ?? row.customerName ?? "",
+      mobileNumber: rawAddress.mobileNumber ?? row.customerPhone ?? "",
+      houseNumber: rawAddress.houseNumber ?? "",
+      street: rawAddress.street ?? "",
+      city: rawAddress.city ?? "",
+      state: rawAddress.state ?? "",
+      pincode: rawAddress.pincode ?? "",
+      addressType: rawAddress.addressType ?? "home",
+    },
     items: (row.items ?? []).map((i) => ({
       medicineId: i.medicineId,
       medicineName: i.medicineName,
@@ -174,14 +195,14 @@ function mapRow(row: OrderRow): Order {
       prescriptionRequired: i.prescriptionRequired,
     })),
     pricing,
-    payment: row.payment,
-    prescription: row.prescription,
-    delivery: row.delivery,
+    payment: { ...rawPayment, method: rawPayment.method ?? "cod", status: rawPayment.status ?? "pending" },
+    prescription: { ...rawPrescription, required: rawPrescription.required ?? false, verified: rawPrescription.verified ?? false },
+    delivery: { ...rawDelivery, status: rawDelivery.status ?? "not-assigned" },
     status: row.status as OrderStatus,
     notes: row.notes ?? undefined,
-    source: row.source,
-    createdAt: toTimestamp(row.createdAt)!,
-    updatedAt: toTimestamp(row.updatedAt)!,
+    source: row.source ?? "website",
+    createdAt: toTimestamp(row.createdAt) ?? { seconds: 0 },
+    updatedAt: toTimestamp(row.updatedAt) ?? { seconds: 0 },
   };
 }
 

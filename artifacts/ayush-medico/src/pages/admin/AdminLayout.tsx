@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Pill, Megaphone, MessageSquare, HelpCircle,
   Star, Settings, LogOut, Menu, X, ChevronRight, ExternalLink,
   Shield, Tag, Building2, Sparkles, Award, Home, ClipboardList, ShoppingCart,
-  RefreshCw, Scale, PawPrint, ShoppingBag,
+  RefreshCw, Scale, PawPrint, ShoppingBag, Users,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import DashboardPage from "./DashboardPage";
@@ -27,6 +27,7 @@ import AdminLogin from "./AdminLogin";
 import InventorySyncPage from "./InventorySyncPage";
 import VetMedicinesPage from "./VetMedicinesPage";
 import GeneralProductsPage from "./GeneralProductsPage";
+import TeamPage from "./TeamPage";
 
 type NavItemDef = {
   divider?: string;
@@ -61,6 +62,8 @@ function buildNavItems(newInquiries: number, pendingRequests: number): NavItemDe
     { icon: Settings,    label: "Settings",     href: "/admin/settings" },
     { divider: "Inventory" },
     { icon: RefreshCw,   label: "Inventory Sync", href: "/admin/inventory-sync" },
+    { divider: "Access" },
+    { icon: Users,       label: "Team Access",    href: "/admin/team" },
   ];
 }
 
@@ -267,15 +270,64 @@ function Sidebar({
   );
 }
 
+type AdminAccessState = "checking" | "granted" | "denied" | "error";
+
 export default function AdminLayout() {
   const { user, loading, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newInquiries, setNewInquiries] = useState(0);
   const [pendingRequests, setPendingRequests] = useState(0);
+  // Admin rights live in the admin_users table and are resolved by the API, so
+  // adding a staff member never needs an env change or a frontend rebuild.
+  const [access, setAccess] = useState<AdminAccessState>("checking");
+  const [accessEmail, setAccessEmail] = useState<string | null>(null);
+  const [accessError, setAccessError] = useState("");
+  const [accessAttempt, setAccessAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!user) {
+      setAccess("checking");
+      return;
+    }
+    let cancelled = false;
+    setAccess("checking");
+    setAccessError("");
+
+    (async () => {
+      try {
+        const token = await user.getIdToken?.();
+        const res = await fetch("/api/admin/accounts/me", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (cancelled) return;
+        if (!res.ok) {
+          setAccessEmail(user.email ?? null);
+          setAccess("error");
+          setAccessError(
+            res.status === 401
+              ? "Your session has expired. Sign out and sign in again."
+              : "The server could not confirm your admin access. Please try again.",
+          );
+          return;
+        }
+        const data = (await res.json()) as { isAdmin?: boolean; email?: string | null };
+        if (cancelled) return;
+        setAccessEmail(data.email ?? user.email ?? null);
+        setAccess(data.isAdmin ? "granted" : "denied");
+      } catch {
+        if (cancelled) return;
+        setAccessEmail(user.email ?? null);
+        setAccess("error");
+        setAccessError("We could not reach the server. Check your connection and try again.");
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [user, accessAttempt]);
 
   // Poll PostgreSQL inquiry counts for sidebar badges (replaces Firestore subscription)
   useEffect(() => {
-    if (!user) return;
+    if (!user || access !== "granted") return;
     let cancelled = false;
     const fetchCounts = async () => {
       try {
@@ -294,7 +346,7 @@ export default function AdminLayout() {
     fetchCounts();
     const interval = setInterval(fetchCounts, 30_000); // refresh every 30s
     return () => { cancelled = true; clearInterval(interval); };
-  }, [user]);
+  }, [user, access]);
 
   if (loading) {
     return (
@@ -308,42 +360,63 @@ export default function AdminLayout() {
     return <AdminLogin />;
   }
 
-  // Keep the browser check identical to the API middleware: comma-separated,
-  // case-insensitive, whitespace-tolerant allowlist entries are supported.
-  const allowedEmails = String(import.meta.env.VITE_ADMIN_EMAIL ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-  if (allowedEmails.length === 0) {
+  if (access === "checking") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (access === "error") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-6 text-center">
         <Shield size={40} className="text-amber-500" />
-        <p className="text-lg font-semibold text-foreground">Admin access is not configured</p>
-        <p className="text-sm text-muted-foreground max-w-md">
-          Set the <span className="font-mono">VITE_ADMIN_EMAIL</span> environment variable to the
-          intended Firebase admin email before using this panel.
-        </p>
+        <p className="text-lg font-semibold text-foreground">Could not verify admin access</p>
+        <p className="text-sm text-muted-foreground max-w-md">{accessError}</p>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setAccessAttempt((attempt) => attempt + 1)}
+            className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            Try again
+          </button>
           <button
             onClick={() => void signOut()}
             className="px-4 py-2 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors"
           >
             Sign Out
           </button>
-          <a href="/" className="text-sm text-primary hover:underline">Back to website</a>
         </div>
+        <a href="/" className="text-sm text-primary hover:underline">← Back to website</a>
       </div>
     );
   }
 
-  if (!user.email || !allowedEmails.includes(user.email.toLowerCase())) {
+  if (access === "denied") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-6 text-center">
         <Shield size={40} className="text-destructive" />
-        <p className="text-lg font-semibold text-foreground">Access denied</p>
-        <p className="text-sm text-muted-foreground max-w-xs">
-          Your account (<span className="font-mono">{user.email}</span>) is not authorised to access the admin panel.
+        <p className="text-lg font-semibold text-foreground">No admin access yet</p>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          Your account (<span className="font-mono">{accessEmail ?? "unknown"}</span>) is not on the
+          admin list. Ask the store owner to add this exact email in{" "}
+          <span className="font-semibold">Admin → Team Access</span>, then sign in again.
         </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setAccessAttempt((attempt) => attempt + 1)}
+            className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            I was added — retry
+          </button>
+          <button
+            onClick={() => void signOut()}
+            className="px-4 py-2 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+          >
+            Sign Out
+          </button>
+        </div>
         <a href="/" className="text-sm text-primary hover:underline">← Back to website</a>
       </div>
     );
@@ -436,6 +509,7 @@ export default function AdminLayout() {
             <Route path="/admin/testimonials" component={TestimonialsPage} />
             <Route path="/admin/settings" component={SettingsPage} />
             <Route path="/admin/inventory-sync" component={InventorySyncPage} />
+            <Route path="/admin/team" component={TeamPage} />
             <Route path="/admin/login" component={AdminLogin} />
           </Switch>
         </main>

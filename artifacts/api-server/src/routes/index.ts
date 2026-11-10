@@ -10,6 +10,7 @@ import usersRouter from "./users.js";
 import couponsRouter from "./coupons.js";
 import syncRouter from "./sync.js";
 import adminRouter from "./admin.js";
+import adminAccountsRouter from "./adminAccounts.js";
 import inquiriesRouter from "./inquiries.js";
 import addressesRouter from "./addresses.js";
 import testimonialsRouter from "./testimonials.js";
@@ -32,6 +33,7 @@ router.use("/vet-medicines",    vetMedicinesRouter);
 router.use("/general-products", generalProductsRouter);
 
 // ── Admin CRUD ────────────────────────────────────────────────────────────────
+router.use("/admin/accounts", adminAccountsRouter); // admin allowlist management
 router.use("/admin/categories", categoriesRouter); // moved to /admin/ to avoid conflict
 router.use("/admin",     adminRouter);    // stats, companies, drug-groups, medicines
 router.use("/products",  productsRouter);

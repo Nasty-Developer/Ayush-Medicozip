@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { usersTable, adminUsersTable, type InsertUser, type InsertAdminUser } from "@workspace/db";
+import { usersTable, type InsertUser, type InsertAdminUser } from "@workspace/db";
+import { recordAdminLogin } from "../lib/adminAccounts.js";
 import { eq, or } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { requireAuth, requireAdminEmail, isAdminEmail, type AuthenticatedRequest } from "../middlewares/authMiddleware.js";
@@ -72,23 +73,19 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response): 
   }
 });
 
-// Admin: sync admin user record after login
+// Admin: sync admin user record after login.
+// Delegates to the shared registry so an admin that the owner added by email
+// (uid not known yet) is linked instead of colliding on the unique email.
 router.post("/admin/sync", requireAuth, requireAdminEmail, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const body = req.body as Partial<InsertAdminUser>;
     const firebaseUid = req.firebaseUser!.uid;
     const email = req.firebaseUser!.email;
     if (!email) { res.status(400).json({ error: "Verified token email is required" }); return; }
-    const data: InsertAdminUser = { firebaseUid, email, displayName: typeof body.displayName === "string" ? body.displayName : null };
-    const [upserted] = await db
-      .insert(adminUsersTable)
-      .values(data)
-      .onConflictDoUpdate({
-        target: adminUsersTable.firebaseUid,
-        set: { displayName: data.displayName, lastLoginAt: new Date(), updatedAt: new Date() },
-      })
-      .returning();
-    res.status(201).json(upserted);
+    const displayName = typeof body.displayName === "string" ? body.displayName : null;
+    const synced = await recordAdminLogin(firebaseUid, email, displayName);
+    if (!synced) { res.status(403).json({ error: "Forbidden: admin access required" }); return; }
+    res.status(201).json(synced);
   } catch (err) {
     logger.error({ err }, "Failed to sync admin user");
     res.status(500).json({ error: "Failed to sync admin user" });

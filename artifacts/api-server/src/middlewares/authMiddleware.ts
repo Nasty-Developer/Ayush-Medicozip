@@ -6,6 +6,7 @@ import {
   getAuth,
 } from "../lib/firebaseAdmin.js";
 import { logger } from "../lib/logger.js";
+import { isDatabaseAdmin, isEnvAdmin } from "../lib/adminAccounts.js";
 
 export interface AuthenticatedRequest extends Request {
   firebaseUser?: DecodedIdToken;
@@ -53,29 +54,17 @@ export async function requireAuth(req: AuthenticatedRequest, res: any, next: any
  */
 export function isAdminEmail(email: string | undefined | null): boolean {
   if (!email) return false;
-  const allowlist = process.env["VITE_ADMIN_EMAIL"] ?? process.env["ADMIN_EMAIL"] ?? "";
-  const allowed = allowlist
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  return allowed.includes(email.toLowerCase());
+  // Env allowlist is the bootstrap/break-glass path; the admin_users table is
+  // the normal source of truth so the owner can add staff without a rebuild.
+  return isEnvAdmin(email) || isDatabaseAdmin(email);
 }
 
 /**
- * requireAdminEmail — after requireAuth, checks the verified email against
- * the VITE_ADMIN_EMAIL/ADMIN_EMAIL allowlist (comma-separated). Admin access
- * fails closed when no allowlist is configured.
+ * requireAdminEmail — after requireAuth, checks the verified email against the
+ * admin_users table and the VITE_ADMIN_EMAIL/ADMIN_EMAIL allowlist. Access
+ * fails closed.
  */
 export function requireAdminEmail(req: AuthenticatedRequest, res: any, next: any): void {
-  const allowlist = process.env["VITE_ADMIN_EMAIL"] ?? process.env["ADMIN_EMAIL"] ?? "";
-  if (!allowlist.trim()) {
-    logger.error("Admin email allowlist is not configured; refusing admin access");
-    res.status(503).json({
-      error: "Admin access is not configured",
-      code: "admin_not_configured",
-    });
-    return;
-  }
   if (!isAdminEmail(req.firebaseUser?.email)) {
     res.status(403).json({ error: "Forbidden: admin access required" });
     return;

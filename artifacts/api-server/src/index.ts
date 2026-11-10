@@ -1,6 +1,7 @@
 import app from "./app.js";
 import { logger } from "./lib/logger.js";
 import { ensureSchema, reportSchemaDrift } from "./lib/schemaSync.js";
+import { refreshAdminCache } from "./lib/adminAccounts.js";
 
 const rawPort = process.env["PORT"];
 
@@ -33,6 +34,19 @@ async function main(): Promise<void> {
   } catch (err) {
     logger.error({ err }, "Schema drift check could not run");
   }
+
+  // Admin access is decided by the admin_users table, so warm the snapshot
+  // before serving traffic and keep it fresh for multi-instance deploys.
+  try {
+    await refreshAdminCache({ force: true });
+  } catch (err) {
+    logger.error({ err }, "Admin account cache could not be loaded");
+  }
+
+  const adminCacheTimer = setInterval(() => {
+    void refreshAdminCache();
+  }, 60_000);
+  adminCacheTimer.unref();
 
   app.listen(port, (err) => {
     if (err) {

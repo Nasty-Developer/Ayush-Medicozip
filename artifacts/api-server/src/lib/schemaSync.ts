@@ -53,6 +53,22 @@ const IDEMPOTENT_DDL: string[] = [
   `ALTER TABLE addresses ADD COLUMN IF NOT EXISTS updated_at timestamp DEFAULT now()`,
   // 20261026_allow_email_less_users.sql: phone-only customers have no email claim.
   `ALTER TABLE users ALTER COLUMN email DROP NOT NULL`,
+  // Admin access registry: lets the owner add staff without rebuilding the
+  // frontend bundle (the allowlist used to live in VITE_ADMIN_EMAIL).
+  `CREATE TABLE IF NOT EXISTS admin_users (
+     id serial PRIMARY KEY,
+     firebase_uid text UNIQUE,
+     email text NOT NULL UNIQUE,
+     display_name text,
+     role text DEFAULT 'admin' NOT NULL,
+     is_active boolean DEFAULT true NOT NULL,
+     last_login_at timestamp,
+     created_at timestamp DEFAULT now() NOT NULL,
+     updated_at timestamp DEFAULT now() NOT NULL
+   )`,
+  // An admin is added by email before they ever sign in, so the uid is
+  // optional until their first login.
+  `ALTER TABLE admin_users ALTER COLUMN firebase_uid DROP NOT NULL`,
 ];
 
 export async function ensureSchema(): Promise<void> {

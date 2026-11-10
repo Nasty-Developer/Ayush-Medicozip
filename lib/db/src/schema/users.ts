@@ -17,7 +17,8 @@ export type User = typeof usersTable.$inferSelect;
 
 export const adminUsersTable = pgTable("admin_users", {
   id: serial("id").primaryKey(),
-  firebaseUid: text("firebase_uid").notNull().unique(),
+  // Optional: an admin is added by email before their first sign-in.
+  firebaseUid: text("firebase_uid").unique(),
   email: text("email").notNull().unique(),
   displayName: text("display_name"),
   role: text("role", { enum: ["admin", "superadmin"] }).default("admin").notNull(),

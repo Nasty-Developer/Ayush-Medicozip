@@ -16,13 +16,36 @@ import {
 } from "lucide-react";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 import { subscribeToCustomerOrders, type Order } from "@/lib/orderService";
+import { ApiResponseError } from "@/lib/apiAuth";
 import { ORDER_STATUS_LABELS, type OrderStatus, isNegativeOrderStatus } from "@/lib/orderStatus";
 import SignInModal from "@/components/customer/SignInModal";
 import { InvoiceActions } from "@/components/customer/Invoice";
 
 type Filter = "all" | "active" | "delivered" | "cancelled";
 
+/**
+ * Turns a load failure into something the customer can act on. A 5xx means the
+ * store's ordering backend is unavailable, which is worth separating from a
+ * transient network blip or an expired session.
+ */
+function orderHistoryErrorMessage(error: unknown): string {
+  if (error instanceof ApiResponseError) {
+    if (error.status === 401 || error.status === 403) {
+      return "Your session has expired. Please sign in again to see your orders.";
+    }
+    if (error.status >= 500) {
+      return "Our order system is temporarily unavailable, so your history can't load right now. Please try again in a few minutes.";
+    }
+  }
+  const message = error instanceof Error ? error.message : "";
+  if (/not authenticated|firebase|sign in again/i.test(message)) {
+    return message;
+  }
+  return "We couldn’t load your order history. Please try again.";
+}
+
 function formatDate(order: Order): string {
+  if (!order.createdAt?.seconds) return "—";
   return new Date(order.createdAt.seconds * 1000).toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
@@ -108,7 +131,7 @@ export default function OrdersPage() {
     const unsubscribe = subscribeToCustomerOrders(
       user.uid,
       (nextOrders) => setOrders(nextOrders),
-      () => setError("We couldn’t load your order history. Please try again."),
+      (err) => setError(orderHistoryErrorMessage(err)),
     );
     return unsubscribe;
   }, [user, reloadKey]);
