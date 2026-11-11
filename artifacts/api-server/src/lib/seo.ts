@@ -27,6 +27,9 @@ export type SeoMeta = {
   canonical: string;
   robots: string;
   jsonLd?: Record<string, unknown>[];
+  keywords?: string;
+  ogImage?: string;
+  verification?: string;
 };
 
 type StaticEntry = {
@@ -144,6 +147,74 @@ export const STATIC_ROUTES: Record<string, StaticEntry> = {
     description:
       "Medical disclaimer for content and product information published by Ayush Medico.",
     priority: 0.2,
+  },
+};
+
+/** Local landing pages — one per real search intent around Kurla West. */
+export const LOCAL_ROUTES: Record<string, { title: string; description: string }> = {
+  "/pharmacy-kurla-west": {
+    title: "Pharmacy in Kurla West, Mumbai – Ayush Medico",
+    description:
+      "Licensed pharmacy on Halav Pool Road, Kurla West. Prescription medicines, OTC remedies, health devices and baby care, open 8 AM to 10 PM every day. Call +91 98332 73838.",
+  },
+  "/medical-store-kurla-west": {
+    title: "Medical Store in Kurla West – Daily & Chronic Care | Ayush Medico",
+    description:
+      "Medical store in Kurla West for monthly prescriptions, diabetes and BP medicines, surgical supplies and clinic orders. Licensed pharmacy open seven days, 8 AM to 10 PM.",
+  },
+  "/medicine-delivery-kurla-west": {
+    title: "Medicine Delivery in Kurla West – 4 km Radius | Ayush Medico",
+    description:
+      "Medicine home delivery within about 4 km of Kurla West: Kurla East, Chunabhatti, Sion, Kalina, Vidyavihar, Saki Naka, Ghatkopar and western Chembur. Send your prescription on WhatsApp.",
+  },
+  "/chemist-kurla-west": {
+    title: "Chemist Shop Near Kurla Station, Kurla West | Ayush Medico",
+    description:
+      "Chemist near Kurla station west, open until 10 PM every day. Call ahead to check stock, send prescriptions on WhatsApp, or collect from the counter on Halav Pool Road.",
+  },
+  "/medicine-availability": {
+    title: "Check Medicine Availability Before You Travel | Ayush Medico",
+    description:
+      "Send the medicine name, strength and quantity and Ayush Medico confirms stock, price and delivery before you leave home. Licensed pharmacy in Kurla West, Mumbai.",
+  },
+};
+
+/** Guides published under /blog. */
+export const BLOG_ROUTES: Record<string, { title: string; description: string; published: string; minutes: number }> = {
+  "how-to-choose-a-reliable-pharmacy-in-kurla-west": {
+    title: "How to Choose a Reliable Pharmacy in Kurla West | Ayush Medico",
+    description:
+      "Licences, batch numbers, bills and cold-chain handling: the checks that separate a dependable Mumbai chemist from a risky one.",
+    published: "2026-11-11",
+    minutes: 5,
+  },
+  "understanding-medicine-availability": {
+    title: "Why a Medicine Is Unavailable – and What to Do | Ayush Medico",
+    description:
+      "Stock-outs, distributor gaps, discontinued brands and recalls all look the same at the counter. How medicine availability actually works in Mumbai.",
+    published: "2026-11-11",
+    minutes: 4,
+  },
+  "how-to-store-medicines-safely-at-home": {
+    title: "How to Store Medicines Safely at Home in Mumbai | Ayush Medico",
+    description:
+      "Mumbai heat and humidity damage medicines faster than most people expect. Where to keep them, what belongs in the fridge, and when to discard a strip.",
+    published: "2026-11-11",
+    minutes: 4,
+  },
+  "prescription-rules-at-a-pharmacy": {
+    title: "Why Pharmacies Ask for a Prescription | Ayush Medico",
+    description:
+      "What makes a prescription valid, why a pharmacist may refuse to dispense, and what to do when the original is lost.",
+    published: "2026-11-11",
+    minutes: 4,
+  },
+  "how-to-contact-ayush-medico": {
+    title: "How to Contact Ayush Medico for a Medicine Enquiry",
+    description:
+      "Call, WhatsApp or walk in: what to send for a fast, accurate answer about stock, price and 4 km delivery in Kurla West.",
+    published: "2026-11-11",
+    minutes: 3,
   },
 };
 
@@ -272,7 +343,7 @@ function availabilityOf(stockStatus: string, stockQty: number): string {
  * Build the head for one storefront path. Unknown paths fall back to a generic
  * but still useful set of tags, and app screens are marked noindex.
  */
-export async function buildSeo(pathname: string): Promise<SeoMeta> {
+async function buildBaseSeo(pathname: string): Promise<SeoMeta> {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : "/";
   const canonical = absolute(path);
 
@@ -295,6 +366,81 @@ export async function buildSeo(pathname: string): Promise<SeoMeta> {
       robots: "index, follow, max-image-preview:large, max-snippet:-1",
       jsonLd: [breadcrumb(path, "Home"), webPage(path, staticEntry.title, staticEntry.description)],
     };
+  }
+
+  const localEntry = LOCAL_ROUTES[path];
+  if (localEntry) {
+    return {
+      title: titleWith(path, localEntry.title, false),
+      description: clamp(localEntry.description),
+      canonical,
+      robots: "index, follow, max-image-preview:large, max-snippet:-1",
+      jsonLd: [
+        breadcrumb(path, localEntry.title.split("–")[0]!.trim()),
+        webPage(path, localEntry.title, localEntry.description),
+        localService(path, localEntry.title),
+      ],
+    };
+  }
+
+  if (path === "/blog") {
+    const title = titleWith(path, "Pharmacy Guides for Kurla West, Mumbai", false);
+    const description = clamp(
+      "Practical guides from the Ayush Medico counter team: choosing a dependable chemist, checking medicine availability, storing medicines safely and understanding prescriptions.",
+    );
+    return {
+      title,
+      description,
+      canonical,
+      robots: "index, follow, max-image-preview:large",
+      jsonLd: [
+        breadcrumb(path, "Pharmacy guides"),
+        {
+          "@type": "Blog",
+          "@id": `${canonical}#blog`,
+          name: "Ayush Medico pharmacy guides",
+          url: canonical,
+          inLanguage: "en-IN",
+          publisher: { "@id": `${SITE_URL}/#organization` },
+          blogPost: Object.entries(BLOG_ROUTES).map(([slug, post]) => ({
+            "@type": "BlogPosting",
+            headline: post.title,
+            url: `${SITE_URL}/blog/${slug}`,
+            datePublished: post.published,
+          })),
+        },
+      ],
+    };
+  }
+
+  const blogMatch = path.match(/^\/blog\/([a-z0-9-]+)$/);
+  if (blogMatch) {
+    const post = BLOG_ROUTES[blogMatch[1]!];
+    if (post) {
+      return {
+        title: titleWith(path, post.title, false),
+        description: clamp(post.description),
+        canonical,
+        robots: "index, follow, max-image-preview:large, max-snippet:-1",
+        jsonLd: [
+          breadcrumb(path, post.title.split("|")[0]!.trim()),
+          {
+            "@type": "BlogPosting",
+            "@id": `${canonical}#article`,
+            headline: post.title,
+            description: post.description,
+            url: canonical,
+            mainEntityOfPage: canonical,
+            datePublished: post.published,
+            dateModified: post.published,
+            inLanguage: "en-IN",
+            author: { "@id": `${SITE_URL}/#organization` },
+            publisher: { "@id": `${SITE_URL}/#organization` },
+            about: { "@id": `${SITE_URL}/#pharmacy` },
+          },
+        ],
+      };
+    }
   }
 
   const medicineMatch = path.match(/^\/medicine\/(\d+)$/);
@@ -410,6 +556,24 @@ function stockLabel(status: string, qty: number): string {
   return "Currently out of stock, request availability";
 }
 
+/** Ties a local landing page to the pharmacy entity without inventing new facts. */
+function localService(path: string, name: string): Record<string, unknown> {
+  return {
+    "@type": "Service",
+    "@id": `${absolute(path)}#service`,
+    name,
+    serviceType: "Pharmacy and medicine delivery",
+    url: absolute(path),
+    provider: { "@id": `${SITE_URL}/#pharmacy` },
+    areaServed: { "@type": "Place", name: "Kurla West, Mumbai" },
+    availableChannel: {
+      "@type": "ServiceChannel",
+      serviceUrl: absolute(path),
+      servicePhone: { "@type": "ContactPoint", telephone: "+919833273838", contactType: "customer service" },
+    },
+  };
+}
+
 function webPage(path: string, name: string, description: string): Record<string, unknown> {
   return {
     "@type": "WebPage",
@@ -421,6 +585,88 @@ function webPage(path: string, name: string, description: string): Record<string
     about: { "@id": `${SITE_URL}/#pharmacy` },
     inLanguage: "en-IN",
   };
+}
+
+/* ── Admin overrides ───────────────────────────────────────────────────────── */
+
+export type SeoOverride = {
+  title?: string;
+  description?: string;
+  keywords?: string;
+  canonical?: string;
+  robots?: string;
+  ogImage?: string;
+  focusKeyword?: string;
+};
+
+type OverrideStore = {
+  pages: Record<string, SeoOverride>;
+  verification?: string;
+};
+
+let overrideCache: { value: OverrideStore; loadedAt: number } | null = null;
+const OVERRIDE_TTL_MS = 60_000;
+
+/** Admin edits live in the settings table as a single JSON value. */
+export async function loadOverrides(force = false): Promise<OverrideStore> {
+  if (!force && overrideCache && Date.now() - overrideCache.loadedAt < OVERRIDE_TTL_MS) {
+    return overrideCache.value;
+  }
+  try {
+    const { rows } = await pool.query<{ value: string }>(
+      "SELECT value FROM settings WHERE key = 'seo:overrides' LIMIT 1",
+    );
+    const raw = rows[0]?.value;
+    const parsed = raw ? (JSON.parse(raw) as OverrideStore) : { pages: {} };
+    const value: OverrideStore = {
+      pages: parsed.pages && typeof parsed.pages === "object" ? parsed.pages : {},
+      verification: parsed.verification || process.env["GOOGLE_SITE_VERIFICATION"] || undefined,
+    };
+    overrideCache = { value, loadedAt: Date.now() };
+    return value;
+  } catch (err) {
+    logger.warn({ err }, "SEO: override lookup failed");
+    const fallback: OverrideStore = {
+      pages: {},
+      verification: process.env["GOOGLE_SITE_VERIFICATION"] || undefined,
+    };
+    overrideCache = { value: fallback, loadedAt: Date.now() };
+    return fallback;
+  }
+}
+
+export function invalidateOverrides(): void {
+  overrideCache = null;
+}
+
+function applyOverride(meta: SeoMeta, override: SeoOverride | undefined): SeoMeta {
+  if (!override) return meta;
+  return {
+    ...meta,
+    title: override.title?.trim() || meta.title,
+    description: override.description?.trim() || meta.description,
+    canonical: override.canonical?.trim() || meta.canonical,
+    robots: override.robots?.trim() || meta.robots,
+    keywords: override.keywords?.trim() || meta.keywords,
+    ogImage: override.ogImage?.trim() || meta.ogImage,
+  };
+}
+
+/**
+ * Public entry point: base metadata for the route, then any override an admin
+ * saved in the SEO panel, then verification tokens for Search Console.
+ */
+export async function buildSeo(pathname: string): Promise<SeoMeta> {
+  const base = await buildBaseSeo(pathname);
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : "/";
+  let store: OverrideStore = { pages: {} };
+  try {
+    store = await loadOverrides();
+  } catch {
+    /* metadata must still render if the settings table is unavailable */
+  }
+  const merged = applyOverride(base, store.pages[path]);
+  return { ...merged, verification: store.verification };
 }
 
 /* ── HTML injection ─────────────────────────────────────────────────────────── */
@@ -487,6 +733,32 @@ export function applySeo(html: string, meta: SeoMeta): string {
     /<meta\s+name="twitter:description"\s+content="[\s\S]*?"\s*\/?>/,
     `<meta name="twitter:description" content="${description}" />`,
   );
+
+  if (meta.keywords) {
+    out = replaceTag(
+      out,
+      /<meta\s+name="keywords"\s+content="[\s\S]*?"\s*\/?>/,
+      `<meta name="keywords" content="${escapeHtml(meta.keywords)}" />`,
+    );
+  }
+  if (meta.ogImage) {
+    out = replaceTag(
+      out,
+      /<meta\s+property="og:image"\s+content="[\s\S]*?"\s*\/?>/,
+      `<meta property="og:image" content="${escapeHtml(meta.ogImage)}" />`,
+    );
+    out = replaceTag(
+      out,
+      /<meta\s+name="twitter:image"\s+content="[\s\S]*?"\s*\/?>/,
+      `<meta name="twitter:image" content="${escapeHtml(meta.ogImage)}" />`,
+    );
+  }
+  if (meta.verification && !out.includes('name="google-site-verification"')) {
+    out = out.replace(
+      "</head>",
+      `  <meta name="google-site-verification" content="${escapeHtml(meta.verification)}" />\n  </head>`,
+    );
+  }
 
   const hreflang =
     `<link rel="alternate" hreflang="en-IN" href="${canonical}" />\n` +

@@ -19,6 +19,7 @@ import notificationsRouter from "./notifications.js";
 import settingsRouter from "./settings.js";
 import paymentRouter from "./payment.js";
 import porterRouter from "./porter.js";
+import seoRouter from "./seo.js";
 
 const router = Router();
 
@@ -35,6 +36,7 @@ router.use("/general-products", generalProductsRouter);
 // ── Admin CRUD ────────────────────────────────────────────────────────────────
 router.use("/admin/accounts", adminAccountsRouter); // admin allowlist management
 router.use("/admin/categories", categoriesRouter); // moved to /admin/ to avoid conflict
+router.use("/admin/seo", seoRouter);
 router.use("/admin",     adminRouter);    // stats, companies, drug-groups, medicines
 router.use("/products",  productsRouter);
 router.use("/orders",    ordersRouter);

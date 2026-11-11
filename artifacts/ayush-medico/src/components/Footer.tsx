@@ -3,15 +3,16 @@ import { Link } from "wouter";
 import { useStoreSettings } from "@/hooks/useStoreSettings";
 
 const quickLinks = [
-  { label: "Home", href: "#home" },
-  { label: "About Us", href: "#about" },
-  { label: "Services", href: "#services" },
+  { label: "Home", href: "/" },
+  { label: "Pharmacy in Kurla West", href: "/pharmacy-kurla-west" },
+  { label: "Medical Store in Kurla West", href: "/medical-store-kurla-west" },
+  { label: "Medicine Delivery in Kurla West", href: "/medicine-delivery-kurla-west" },
+  { label: "Chemist Shop in Kurla West", href: "/chemist-kurla-west" },
   { label: "Medicine Catalog", href: "/categories" },
-  { label: "Why Choose Us", href: "#why-us" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Testimonials", href: "#testimonials" },
-  { label: "FAQ", href: "#faq" },
-  { label: "Contact", href: "#contact" },
+  { label: "Check Availability", href: "/medicine-availability" },
+  { label: "Pharmacy Guides", href: "/blog" },
+  { label: "About Us", href: "/about" },
+  { label: "Contact", href: "/contact" },
 ];
 
 const categories = [

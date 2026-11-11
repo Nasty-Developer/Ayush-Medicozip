@@ -63,6 +63,9 @@ const CompliancePage      = lazy(() => import("@/pages/CompliancePage"));
 const ContactPage         = lazy(() => import("@/pages/ContactPage"));
 const RequestMedicinePage = lazy(() => import("@/pages/RequestMedicinePage"));
 const GeneralInquiryPage  = lazy(() => import("@/pages/GeneralInquiryPage"));
+const LocalSeoPage        = lazy(() => import("@/pages/LocalSeoPage"));
+const BlogIndexPage       = lazy(() => import("@/pages/BlogPages").then((m) => ({ default: m.BlogIndexPage })));
+const BlogPostPage        = lazy(() => import("@/pages/BlogPages").then((m) => ({ default: m.BlogPostPage })));
 
 // Legal pages
 const PrivacyPolicyPage      = lazy(() => import("@/pages/legal/PrivacyPolicyPage"));
@@ -329,6 +332,55 @@ function App() {
                             {() => (
                               <PublicLayout>
                                 <ServicesPage />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/pharmacy-kurla-west">
+                            {() => (
+                              <PublicLayout>
+                                <LocalSeoPage slug="pharmacy-kurla-west" />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/medical-store-kurla-west">
+                            {() => (
+                              <PublicLayout>
+                                <LocalSeoPage slug="medical-store-kurla-west" />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/medicine-delivery-kurla-west">
+                            {() => (
+                              <PublicLayout>
+                                <LocalSeoPage slug="medicine-delivery-kurla-west" />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/chemist-kurla-west">
+                            {() => (
+                              <PublicLayout>
+                                <LocalSeoPage slug="chemist-kurla-west" />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/medicine-availability">
+                            {() => (
+                              <PublicLayout>
+                                <LocalSeoPage slug="medicine-availability" />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/blog">
+                            {() => (
+                              <PublicLayout>
+                                <BlogIndexPage />
+                              </PublicLayout>
+                            )}
+                          </Route>
+                          <Route path="/blog/:slug">
+                            {(params) => (
+                              <PublicLayout>
+                                <BlogPostPage slug={params.slug} />
                               </PublicLayout>
                             )}
                           </Route>

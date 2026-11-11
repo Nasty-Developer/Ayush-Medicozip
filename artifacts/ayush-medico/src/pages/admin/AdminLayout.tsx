@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Pill, Megaphone, MessageSquare, HelpCircle,
   Star, Settings, LogOut, Menu, X, ChevronRight, ExternalLink,
   Shield, Tag, Building2, Sparkles, Award, Home, ClipboardList, ShoppingCart,
-  RefreshCw, Scale, PawPrint, ShoppingBag, Users,
+  RefreshCw, Scale, PawPrint, ShoppingBag, Users, Search,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import DashboardPage from "./DashboardPage";
@@ -22,6 +22,7 @@ import OrdersPage from "./OrdersPage";
 import FAQPage from "./FAQPage";
 import TestimonialsPage from "./TestimonialsPage";
 import SettingsPage from "./SettingsPage";
+import SeoPage from "./SeoPage";
 import LegalCompliancePage from "./LegalCompliancePage";
 import AdminLogin from "./AdminLogin";
 import InventorySyncPage from "./InventorySyncPage";
@@ -60,6 +61,7 @@ function buildNavItems(newInquiries: number, pendingRequests: number): NavItemDe
     { icon: HelpCircle,  label: "FAQ",          href: "/admin/faq" },
     { icon: Star,        label: "Testimonials", href: "/admin/testimonials" },
     { icon: Settings,    label: "Settings",     href: "/admin/settings" },
+    { icon: Search, label: "SEO", href: "/admin/seo" },
     { divider: "Inventory" },
     { icon: RefreshCw,   label: "Inventory Sync", href: "/admin/inventory-sync" },
     { divider: "Access" },
@@ -508,6 +510,7 @@ export default function AdminLayout() {
             <Route path="/admin/faq" component={FAQPage} />
             <Route path="/admin/testimonials" component={TestimonialsPage} />
             <Route path="/admin/settings" component={SettingsPage} />
+            <Route path="/admin/seo" component={SeoPage} />
             <Route path="/admin/inventory-sync" component={InventorySyncPage} />
             <Route path="/admin/team" component={TeamPage} />
             <Route path="/admin/login" component={AdminLogin} />
