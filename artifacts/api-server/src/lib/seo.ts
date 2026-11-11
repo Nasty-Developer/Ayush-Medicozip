@@ -43,7 +43,7 @@ type StaticEntry = {
 /** keyword-focused copy for the routes people actually search for */
 export const STATIC_ROUTES: Record<string, StaticEntry> = {
   "/": {
-    title: "Ayush Medico – Online Medicine Delivery in Kurla West",
+    title: "Pharmacy in Kurla West | Order Medicine Online – Ayush Medico",
     description:
       "Order medicines online with home delivery in Kurla, Ghatkopar, Sion and Chembur from our licensed Kurla West pharmacy. 50,000+ genuine medicines.",
     priority: 1,

@@ -48,12 +48,11 @@ export default function Hero() {
             className="mb-5 max-w-lg text-3xl font-bold leading-tight tracking-tight text-slate-900 sm:text-4xl lg:text-[3.25rem]"
             style={{ fontFamily: "'Poppins', sans-serif" }}
           >
-            Care you can trust,{" "}
-            <span className="text-primary">right when you need it.</span>
+            Pharmacy in <span className="text-primary">Kurla West</span>, online and around the corner.
           </motion.h1>
 
           <motion.p {...fadeUp(0.16)} className="mb-7 max-w-lg text-base leading-relaxed text-slate-600 sm:text-lg">
-            Genuine medicines, helpful pharmacists, and dependable same-day delivery for families across Kurla West.
+            Order medicines online from a licensed chemist in Kurla West. Genuine stock, pharmacist-checked prescriptions, and home delivery within 4 km.
           </motion.p>
 
           <motion.div {...fadeUp(0.24)} className="mb-5 flex flex-wrap gap-3">

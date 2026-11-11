@@ -24,6 +24,7 @@ import BackToTop from "@/components/BackToTop";
 import Hero from "@/components/Hero";
 import PromoBanner from "@/components/PromoBanner";
 import Categories from "@/components/Categories";
+import LocalSeoIntro from "@/components/LocalSeoIntro";
 
 // ── Homepage sections (lazy — below-the-fold, non-critical) ──────────────────
 const WhyChooseUs         = lazy(() => import("@/components/WhyChooseUs"));
@@ -140,6 +141,7 @@ function HomeSections() {
       <Hero />
       <PromoBanner />
       <Categories />
+      <LocalSeoIntro />
       <Suspense fallback={<div className="h-24" />}>
         <FeaturedMedicines />
         <WhyChooseUs />
