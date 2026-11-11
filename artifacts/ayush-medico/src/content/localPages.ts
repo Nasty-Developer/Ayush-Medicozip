@@ -49,6 +49,13 @@ export const LOCAL_PAGES: LocalPage[] = [
         ],
       },
       {
+        heading: "Finding us if you searched for a pharmacy near you",
+        body: [
+          "We sit on Halav Pool Road in Kurla West, pincode 400070, a short walk from Kurla station on the west side. If a map search brought you here, call the shop before you set out and we will tell you exactly what is on the shelf.",
+          "Search results for a chemist near you depend on where you are standing, so the honest advice is this: check the distance on the map listing first, then call to confirm the medicine is in stock. We would rather save you a trip than have you arrive for something we do not have.",
+        ],
+      },
+      {
         heading: "Checking stock before you travel",
         body: [
           "The fastest way to avoid a wasted trip is a phone call or a WhatsApp message with the medicine name and quantity. We check the shelf and the batch while you are on the line, and we tell you honestly when something is unavailable instead of holding you in a queue.",
