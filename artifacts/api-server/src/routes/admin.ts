@@ -32,6 +32,102 @@ const router = Router();
 
 // ── GET /api/admin/stats ──────────────────────────────────────────────────────
 
+/* ── Free-text company / category from the admin form ────────────────────────
+ * The Add Medicine form lets the owner type a brand or category name instead of
+ * picking one from a dropdown. An existing name (case-insensitive) is reused so
+ * typo-free repeats do not create duplicates, and a new name is created on the
+ * fly. Slugs are required and unique on categories, so they are derived from the
+ * name and de-duplicated.
+ */
+function slugifyCategory(name: string): string {
+  const base = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return base || "category";
+}
+
+async function resolveCompanyId(rawName: unknown): Promise<number | null> {
+  const name = typeof rawName === "string" ? rawName.trim() : "";
+  if (!name) return null;
+
+  const [existing] = await db
+    .select({ id: companiesTable.id })
+    .from(companiesTable)
+    .where(sql`lower(${companiesTable.name}) = ${name.toLowerCase()}`)
+    .limit(1);
+  if (existing) return existing.id;
+
+  const [created] = await db
+    .insert(companiesTable)
+    .values({ name })
+    .onConflictDoNothing()
+    .returning({ id: companiesTable.id });
+  if (created) return created.id;
+
+  const [raced] = await db
+    .select({ id: companiesTable.id })
+    .from(companiesTable)
+    .where(sql`lower(${companiesTable.name}) = ${name.toLowerCase()}`)
+    .limit(1);
+  return raced?.id ?? null;
+}
+
+async function resolveCategoryId(rawName: unknown): Promise<number | null> {
+  const name = typeof rawName === "string" ? rawName.trim() : "";
+  if (!name) return null;
+
+  const [existing] = await db
+    .select({ id: categoriesTable.id })
+    .from(categoriesTable)
+    .where(sql`lower(${categoriesTable.name}) = ${name.toLowerCase()}`)
+    .limit(1);
+  if (existing) return existing.id;
+
+  const baseSlug = slugifyCategory(name);
+  const [created] = await db
+    .insert(categoriesTable)
+    .values({ name, slug: baseSlug })
+    .onConflictDoNothing()
+    .returning({ id: categoriesTable.id });
+  if (created) return created.id;
+
+  // Either the name or the slug already exists (two names that slugify alike).
+  const [byName] = await db
+    .select({ id: categoriesTable.id })
+    .from(categoriesTable)
+    .where(sql`lower(${categoriesTable.name}) = ${name.toLowerCase()}`)
+    .limit(1);
+  if (byName) return byName.id;
+
+  const [bySlug] = await db
+    .select({ id: categoriesTable.id })
+    .from(categoriesTable)
+    .where(eq(categoriesTable.slug, baseSlug))
+    .limit(1);
+  if (bySlug) return bySlug.id;
+
+  const [retry] = await db
+    .insert(categoriesTable)
+    .values({ name, slug: `${baseSlug}-${Date.now().toString(36)}` })
+    .returning({ id: categoriesTable.id });
+  return retry?.id ?? null;
+}
+
+/** Keeps the badge in step with a typed quantity unless a status was chosen. */
+function withStockDefaults(body: Partial<InsertMedicine>): Partial<InsertMedicine> {
+  const patch = { ...body };
+  if (patch.stockQty == null) patch.stockQty = 0;
+  const qty = Number(patch.stockQty);
+  if (!Number.isFinite(qty) || qty < 0) patch.stockQty = 0;
+  if (!patch.stockStatus) {
+    const safeQty = Number(patch.stockQty);
+    patch.stockStatus = safeQty <= 0 ? "out_of_stock" : safeQty <= 10 ? "low_stock" : "in_stock";
+  }
+  return patch;
+}
+
 router.get("/stats", requireAuth, requireAdminEmail, async (_req: Request, res: Response): Promise<void> => {
   try {
     const [[medRow], [catRow], [coRow], [dgRow], [inqRow], [newInqRow], [faqRow], [testRow]] = await Promise.all([
@@ -230,12 +326,19 @@ router.get("/medicines", requireAuth, requireAdminEmail, async (req: Request, re
 
 router.post("/medicines", requireAuth, requireAdminEmail, async (req: Request, res: Response): Promise<void> => {
   try {
-    const body = req.body as Partial<InsertMedicine>;
+    const { companyName, categoryName, ...rest } = req.body as Partial<InsertMedicine> & {
+      companyName?: string | null;
+      categoryName?: string | null;
+    };
+    const body = withStockDefaults(rest);
     if (!body.name?.trim()) { res.status(400).json({ error: "name is required" }); return; }
     // Auto-generate productCode for manually-created medicines (avoid SDF range)
     if (body.productCode == null) {
       body.productCode = Math.floor(Date.now() / 100) % 2_000_000_000;
     }
+    // A typed brand or category is created when it does not exist yet.
+    if (companyName !== undefined) body.companyId = await resolveCompanyId(companyName);
+    if (categoryName !== undefined) body.categoryId = await resolveCategoryId(categoryName);
     const [created] = await db.insert(medicinesTable).values(body as InsertMedicine).returning();
     res.status(201).json(created);
   } catch (err: any) {
@@ -249,9 +352,15 @@ router.put("/medicines/:id", requireAuth, requireAdminEmail, async (req: Request
   try {
     const id = Number(req.params["id"]);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-    const body = { ...(req.body as Partial<InsertMedicine>) };
+    const { companyName, categoryName, ...rest } = req.body as Partial<InsertMedicine> & {
+      companyName?: string | null;
+      categoryName?: string | null;
+    };
+    const body = withStockDefaults(rest);
     delete body.productCode; // never overwrite the SDF key
     delete body.id;
+    if (companyName !== undefined) body.companyId = await resolveCompanyId(companyName);
+    if (categoryName !== undefined) body.categoryId = await resolveCategoryId(categoryName);
     const [updated] = await db
       .update(medicinesTable)
       .set({ ...body, updatedAt: new Date() })

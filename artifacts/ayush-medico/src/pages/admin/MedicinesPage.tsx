@@ -22,7 +22,6 @@ import {
 import { auth } from "@/lib/firebase";
 import { uploadMedicineImage } from "@/lib/storageHelpers";
 import { useCategories } from "@/hooks/useCategories";
-import { useBrands, invalidateBrandsCache } from "@/hooks/useBrands";
 import { useToast } from "@/hooks/use-toast";
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
@@ -92,8 +91,6 @@ function MedicineDialog({
   onClose: () => void;
   onSave: (data: Partial<AdminMedicine>) => Promise<void>;
 }) {
-  const { categories, loading: catsLoading } = useCategories();
-  const { brands,     loading: brandsLoading } = useBrands();
   const { toast } = useToast();
 
   const [name,           setName]           = useState(medicine?.name          ?? "");
@@ -108,8 +105,10 @@ function MedicineDialog({
   const [newArrival,     setNewArrival]     = useState(medicine?.newArrival    ?? false);
   const [special,        setSpecial]        = useState(medicine?.special       ?? false);
   const [status,         setStatus]         = useState<MedStatus>(medicine?.status ?? "active");
-  const [companyId,      setCompanyId]      = useState<string>(medicine?.companyId ? String(medicine.companyId) : "");
-  const [categoryId,     setCategoryId]     = useState<string>(medicine?.categoryId ? String(medicine.categoryId) : "");
+  const [companyName,    setCompanyName]    = useState<string>(medicine?.companyName ?? "");
+  const [categoryName,   setCategoryName]   = useState<string>(medicine?.categoryName ?? "");
+  const [stockQty,       setStockQty]       = useState<string>(medicine ? String(medicine.stockQty ?? 0) : "0");
+  const [stockStatus,    setStockStatus]    = useState<StockStatus>(medicine?.stockStatus ?? "in_stock");
 
   const [uploading,  setUploading]  = useState(false);
   const [uploadPct,  setUploadPct]  = useState(0);
@@ -151,14 +150,14 @@ function MedicineDialog({
         newArrival,
         special,
         status,
-        companyId:           companyId  ? Number(companyId)  : null,
-        categoryId:          categoryId ? Number(categoryId) : null,
+        companyName:         companyName.trim() || null,
+        categoryName:        categoryName.trim() || null,
+        stockQty:            Math.max(0, Math.floor(Number(stockQty) || 0)),
+        stockStatus,
       });
       onClose();
     } finally { setSaving(false); }
   };
-
-  const formLoading = catsLoading || brandsLoading;
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -175,12 +174,7 @@ function MedicineDialog({
           </button>
         </div>
 
-        {formLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 size={24} className="animate-spin text-primary" />
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5">
             <SectionHeader>Product Identity</SectionHeader>
 
             {/* Name */}
@@ -201,26 +195,41 @@ function MedicineDialog({
                 className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
             </div>
 
-            {/* Company + Category */}
+            {/* Company + Category — free text, new names are created on save */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Company / Brand</label>
-                <div className="relative">
-                  <select value={companyId} onChange={(e) => setCompanyId(e.target.value)}
-                    className="w-full px-3 py-2.5 pr-8 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all appearance-none">
-                    <option value="">— None —</option>
-                    {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                </div>
+                <input value={companyName} onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="Type any company name"
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+                <p className="text-[10px] text-muted-foreground mt-1">New name is added automatically</p>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Category</label>
+                <input value={categoryName} onChange={(e) => setCategoryName(e.target.value)}
+                  placeholder="Type any category"
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+                <p className="text-[10px] text-muted-foreground mt-1">New name is added automatically</p>
+              </div>
+            </div>
+
+            {/* Stock */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Stock Quantity</label>
+                <input type="number" min="0" step="1" value={stockQty}
+                  onChange={(e) => setStockQty(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Stock Status</label>
                 <div className="relative">
-                  <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}
+                  <select value={stockStatus} onChange={(e) => setStockStatus(e.target.value as StockStatus)}
                     className="w-full px-3 py-2.5 pr-8 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all appearance-none">
-                    <option value="">— None —</option>
-                    {categories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                    <option value="in_stock">In Stock</option>
+                    <option value="low_stock">Low Stock</option>
+                    <option value="out_of_stock">Out of Stock</option>
                   </select>
                   <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 </div>
@@ -347,7 +356,6 @@ function MedicineDialog({
               </button>
             </div>
           </form>
-        )}
       </motion.div>
     </div>
   );
