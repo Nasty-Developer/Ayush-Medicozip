@@ -306,7 +306,7 @@ export default function CategoriesPage() {
     setLoading(true);
     try {
       const token = await auth?.currentUser?.getIdToken();
-      const resp  = await fetch("/api/admin/categories", {
+      const resp  = await fetch("/api/admin/categories/all", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) throw new Error(`API error ${resp.status}`);

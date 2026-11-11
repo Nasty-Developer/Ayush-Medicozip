@@ -34,6 +34,37 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
   }
 });
 
+/**
+ * Admin list — every category, including unpublished ones, with medicine counts.
+ * The public GET above only returns enabled categories and wraps them in
+ * { data }, which the admin screen could not read; it asked for a bare array.
+ * Kept as an authenticated route so unpublished categories stay private.
+ */
+router.get("/all", requireAuth, requireAdminEmail, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const rows = await db
+      .select({
+        ...getTableColumns(categoriesTable),
+        count: sql<number>`cast(count(${medicinesTable.id}) as int)`,
+      })
+      .from(categoriesTable)
+      .leftJoin(
+        medicinesTable,
+        and(
+          eq(medicinesTable.categoryId, categoriesTable.id),
+          eq(medicinesTable.status, "active"),
+        ),
+      )
+      .groupBy(categoriesTable.id)
+      .orderBy(categoriesTable.displayOrder, categoriesTable.name);
+
+    res.json(rows);
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch admin categories");
+    res.status(500).json({ error: "Failed to fetch categories" });
+  }
+});
+
 router.get("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
     const id = Number(req.params["id"]);
