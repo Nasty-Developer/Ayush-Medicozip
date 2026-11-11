@@ -96,16 +96,6 @@ function CategoryCard({
             />
           )}
 
-          {/* emoji seal */}
-          {!showEmojiFallback && (
-            <span
-              aria-hidden
-              className="absolute left-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/85 text-base shadow-sm ring-1 ring-black/5 backdrop-blur-sm dark:bg-card/85"
-            >
-              {cat.icon || "💊"}
-            </span>
-          )}
-
           {/* count badge */}
           <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold text-primary shadow-sm ring-1 ring-primary/10 backdrop-blur-sm dark:bg-card/90">
             {typeof count === "number" && count > 0
