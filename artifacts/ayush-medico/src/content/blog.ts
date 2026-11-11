@@ -23,6 +23,369 @@ export type BlogPost = {
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "medicine-home-delivery-kurla-west",
+    title: "Medicine Home Delivery in Kurla West: How the 4 KM Radius Works",
+    h1: "Medicine Home Delivery in Kurla West: How Our 4 KM Radius Works",
+    excerpt:
+      "What our 4 kilometre delivery area actually covers, what to send on WhatsApp for a quick confirmation, and the items we will not send by bike.",
+    published: "2026-11-11",
+    readingMinutes: 4,
+    sections: [
+      {
+        heading: "Why the radius is 4 km and not the whole city",
+        body: [
+          "A pharmacy delivers medicine, not parcels. Delivery has to be handled by someone who can answer a question about what is in the bag, keep a cold-chain item cold, and come back if the address is wrong. That is only practical inside a short radius of the shop, which is why Ayush Medico delivers within roughly 4 km of Kurla West.",
+          "If you are in Kurla West and the neighbouring pockets of the Kurla, Sion and Chunabhatti side, you are almost certainly inside it. If you are further out, we will say so honestly when you message us rather than take the order and keep you waiting.",
+        ],
+      },
+      {
+        heading: "Message first with these four details",
+        body: [
+          "Delivery works best when the first message is complete. Send your name, the delivery address with a landmark, the medicine list or a clear photo of the prescription, and whether you need it today.",
+          "A photo of the strip you already have is often faster than typing a name, because it shows the strength and pack size. If it is a repeat order, say so; we keep a record of what was dispensed to you before.",
+        ],
+        bullets: [
+          "Name and a reachable phone number",
+          "Full address with a building name or landmark",
+          "Prescription photo for anything that needs one",
+          "Whether it is urgent or can wait for the evening",
+        ],
+      },
+      {
+        heading: "What counts as a valid prescription",
+        body: [
+          "For Schedule H and H1 medicines we need a prescription from a registered medical practitioner, with the patient's name, the medicine and strength, the doctor's signature, registration number and date. A photograph of the original is fine; a screenshot of a WhatsApp forward with no patient name is not.",
+          "If a prescription is unclear or looks altered, the pharmacist will call you before dispatching. That call is not an obstacle. It is the reason a licensed pharmacy exists.",
+        ],
+      },
+      {
+        heading: "What we do not send by delivery",
+        body: [
+          "Some items we will only hand over at the counter, and a few we do not handle at all. Insulin and other refrigerated items depend on the weather and how long the trip is, so we confirm case by case instead of promising a cold bag we cannot guarantee.",
+          "We do not deliver narcotics or any medicine that requires special licensing, we do not send emergency or life-saving treatment by bike, and we do not deliver outside the service radius to look accommodating. For an emergency, go to the nearest hospital.",
+        ],
+      },
+      {
+        heading: "Payment, bill and what arrives with the order",
+        body: [
+          "Every delivery carries a proper bill showing the batch number and expiry date of each item, along with the total before the bag leaves the shop. We share the amount on WhatsApp for approval first, so there is no surprise at the door.",
+          "If something in the bag is not what you expected, tell us on the same number straight away. Batch traceability only works if you keep the bill, so please keep it until the course is finished.",
+        ],
+      },
+      {
+        heading: "If you are just outside the radius",
+        body: [
+          "You have two options that still work. Place the order and collect it from the counter at a time we confirm, or ask us whether a one-off arrangement is possible when the distance is only slightly over.",
+          "What we will not do is quietly accept an out-of-radius order and deliver it hours later. A pharmacy that overpromises delivery is usually a pharmacy that is not checking its own stock either.",
+        ],
+      },
+      {
+        heading: "What “urgent” means for a pharmacy delivery",
+        body: [
+          "If a dose is due in the next hour, delivery is the wrong tool. Come to the counter, or send someone who can. A bike in Kurla traffic during the evening peak cannot beat a ten-minute walk, and promising otherwise would be dishonest.",
+          "For a routine refill, a same-day slot almost always works. For something the shop does not stock, the honest answer is tomorrow or later, and we would rather say that on the first message than after the bag is packed.",
+        ],
+      },
+      {
+        heading: "If something is wrong with the order",
+        body: [
+          "Wrong strength, wrong brand, a strip damaged in transit: message the same number with a photo and the bill reference. Nothing about that conversation should be difficult, and the item is replaced or refunded as the bill shows it.",
+          "Please keep the bill until the course is finished. Without the batch number there is very little a pharmacy or a manufacturer can do to trace a problem.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "chemist-near-kurla-station",
+    title: "Chemist Near Kurla Station: What to Carry Before You Visit",
+    h1: "Visiting a Chemist Near Kurla Station: A Short Practical Checklist",
+    excerpt:
+      "Kurla station is one of Mumbai's busiest junctions, and the shops around it are busiest at exactly the wrong hours. Here is how to make one trip enough.",
+    published: "2026-11-11",
+    readingMinutes: 4,
+    sections: [
+      {
+        heading: "Carry more than the prescription slip",
+        body: [
+          "The single biggest reason a chemist trip fails is an incomplete prescription: a missing strength, a page left at home, a medicine the doctor wrote in shorthand for a brand that has three variants. Before you leave, photograph the prescription. If the chemist has to keep the original, you still have a copy.",
+          "If you are buying a refill rather than a new course, bring the old strip or the last bill. The pack size and strength on it remove all guesswork.",
+        ],
+        bullets: [
+          "The full prescription, all pages, front and back",
+          "A photo of it on your phone",
+          "The old strip or last bill for refills",
+          "A list of any other medicines being taken",
+          "The doctor's number, in case something is unclear",
+        ],
+      },
+      {
+        heading: "Ask ahead if you are coming for one specific item",
+        body: [
+          "Kurla station Road sees thousands of people an hour, and a pharmacy near a junction cannot keep every brand of every molecule on the shelf. If you need one particular medicine, especially an imported, insulin or rare item, message or call before travelling.",
+          "A two-line message gets a two-line answer: available, or the date it can be arranged. That is faster than standing at a counter in the evening rush.",
+        ],
+      },
+      {
+        heading: "Time the visit away from the crowd",
+        body: [
+          "The stretch around the station is at its worst between roughly 6 pm and 9 pm, when offices close and long-distance passengers move through. Mornings are calmer, and early afternoon is usually the quietest window for a conversation at the counter.",
+          "If you are buying for an elderly parent or a child, go when you can actually talk. Rushing a medicine purchase is how the wrong strength gets picked up.",
+        ],
+      },
+      {
+        heading: "The four questions worth asking at the counter",
+        body: [
+          "A good chemist will answer all four without irritation. If any of them is brushed aside, that is information about the shop.",
+          "Ask whether the item is in stock in the strength written, what the expiry date is, whether the bill will show the batch number, and how the item should be stored once you get home. For a refrigerated item, ask how it will be packed for the journey.",
+        ],
+      },
+      {
+        heading: "When your medicine is not available",
+        body: [
+          "Ask for three things: the expected date, whether another branch or distributor can supply it, and whether the doctor needs to approve an alternative brand or strength. The third one matters most. A pharmacist can suggest that a substitute exists; only your doctor can decide that it is right for you.",
+          "Do not accept a different strength 'because it is the same medicine' without checking with the prescriber. Same molecule at double the strength is a different dose, not a convenience.",
+        ],
+      },
+      {
+        heading: "Getting to Ayush Medico without a wasted trip",
+        body: [
+          "Ayush Medico sits in Kurla West, on the station side of the suburb, and handles enquiries by phone and WhatsApp as well as at the counter. Send the prescription photo first and we will confirm stock, price and, if you are within 4 km, delivery.",
+          "If you are coming in person from the station side, call before you set out during peak hours and we will tell you whether the item is on the shelf.",
+        ],
+      },
+      {
+        heading: "Buying for a parent or a child",
+        body: [
+          "When you are buying for someone else, carry three things: their age, their weight if it is a child, and a list of anything else they take. A pharmacist cannot check for overlap or confirm a paediatric dose without them.",
+          "If the patient is elderly and takes four or five regular medicines, ask for the whole list to be checked in one visit rather than buying one item at a time across the month. Duplication is easier to spot when the whole picture is on the counter.",
+        ],
+      },
+      {
+        heading: "What to avoid near a busy junction",
+        body: [
+          "Two habits cause most trouble around a crowded station area. The first is buying a prescription medicine from a shop that does not ask for the prescription. The second is accepting a strip with no bill and no batch number because the queue is long.",
+          "Neither is worth the five minutes saved. A licensed chemist who refuses both is not being difficult; that is the standard the licence requires.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "reading-prescription-abbreviations",
+    title: "Reading Your Prescription: What the Abbreviations Stand For",
+    h1: "Reading Your Prescription: What the Abbreviations Actually Stand For",
+    excerpt:
+      "OD, BD, TDS, HS, SOS, 1-0-1 — the shorthand on an Indian prescription is a shared convention, not a secret code. Here is how to read it.",
+    published: "2026-11-11",
+    readingMinutes: 4,
+    sections: [
+      {
+        heading: "The symbols at the top",
+        body: [
+          "A prescription usually opens with Rx, from the Latin recipe, meaning 'take'. Below it come the medicine names, then the directions, then the prescriber's signature, registration number and date. If the date or the registration number is missing, the prescription is not complete.",
+          "The patient's name and age matter too. A paediatric dose written without an age is exactly the kind of prescription a pharmacist should query before dispensing.",
+        ],
+      },
+      {
+        heading: "Frequency: the Latin leftovers",
+        body: [
+          "Most of the shorthand on an Indian prescription comes from Latin, which is why it looks strange until you know the pattern. OD means once a day, BD twice a day, TDS three times a day, QDS four times a day. HS means at bedtime, and SOS means only if needed.",
+          "These are frequency instructions written by your doctor. They are not something to adjust yourself, and they are not interchangeable. If a prescription says BD and you have been taking it once, that is a question for the prescriber, not a decision to make quietly.",
+        ],
+        bullets: [
+          "OD — once a day",
+          "BD — twice a day",
+          "TDS — three times a day",
+          "QDS — four times a day",
+          "HS — at bedtime",
+          "SOS — only when required",
+          "STAT — to be given immediately",
+        ],
+      },
+      {
+        heading: "The 1-0-1 pattern",
+        body: [
+          "Instead of letters, many doctors write a row of numbers: 1-0-1 means one in the morning, none at midday, one at night. The positions follow morning, afternoon, night. A dash is a skipped dose.",
+          "This format is compact and easy to misread, especially with three positions. Read it back to the pharmacist before you leave the counter: 'morning and night, nothing in the afternoon, correct?' A five-second confirmation prevents a month of the wrong schedule.",
+        ],
+      },
+      {
+        heading: "AC, PC and the food instructions",
+        body: [
+          "AC means before food and PC means after food, from the Latin ante cibum and post cibum. Some medicines are marked before food because absorption changes, others after food because they irritate the stomach. This is not a suggestion to rearrange.",
+          "If the prescription says before food and you have already eaten, do not double up later. Ask the pharmacist what to do about the missed timing.",
+        ],
+      },
+      {
+        heading: "Duration and form",
+        body: [
+          "'x 5 days' or 'x 1 month' is the course length. A course length is not a target to beat: stopping early because you feel better is one of the most common reasons a treatment fails, and continuing a course longer than written is its own problem.",
+          "The form is usually abbreviated too. Tab for tablet, cap for capsule, syr for syrup, inj for injection, oint for ointment, and drops for eye or ear preparations. Eye and ear drops look identical in print and are not interchangeable, so check the label wording at the counter.",
+        ],
+      },
+      {
+        heading: "When the handwriting defeats you",
+        body: [
+          "Ask. A pharmacist reads prescriptions all day and will tell you what the letters say. What a pharmacist should not do is guess at a strength or a frequency and dispense anyway.",
+          "At Ayush Medico we will call the prescriber or ask you to, rather than fill in a blank ourselves. If a prescription is illegible, the safe outcome is a phone call, not a best guess.",
+        ],
+      },
+      {
+        heading: "Repeat prescriptions need a date and a signature too",
+        body: [
+          "A line saying 'continue same' is not a prescription on its own. For a repeat, the prescriber should still date it and sign it, and for a Schedule H medicine, note how long the course continues.",
+          "Many clinics issue a monthly slip for exactly this reason. If you are asked to bring the old strip and a fresh slip, that is normal practice in Maharashtra, not a shop being awkward.",
+        ],
+      },
+      {
+        heading: "Keep the paper somewhere it survives",
+        body: [
+          "Photograph the prescription the day you receive it, front and back, and keep the image in a folder you will find again. Paper prescriptions fade, get left in a bag, or go through a wash cycle.",
+          "Keep the original too, at least until the course ends. A photograph is a convenience for ordering; the original is what the law asks for when a pharmacist dispenses.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "generic-vs-branded-medicines",
+    title: "Generic vs Branded Medicines: What the Difference Actually Means",
+    h1: "Generic vs Branded Medicines: What the Difference Actually Means",
+    excerpt:
+      "Same salt, different price tag, and a few cases where switching brands is a bad idea. A plain explanation of how generic medicines work in India.",
+    published: "2026-11-11",
+    readingMinutes: 4,
+    sections: [
+      {
+        heading: "The medicine is the salt, not the name on the box",
+        body: [
+          "Every medicine has two names. The generic name is the molecule itself, for example paracetamol or metformin. The brand name is what one manufacturer calls its version of that molecule. Ten companies can sell the same molecule under ten different names, in ten different boxes, at ten different prices.",
+          "When a prescription is written by brand, the prescriber has chosen one manufacturer's version. When it is written by molecule, any approved version of that molecule should be equivalent, provided the strength and the dosage form match.",
+        ],
+      },
+      {
+        heading: "Why the price gap is so wide",
+        body: [
+          "A brand pays for decades of marketing, a sales force visiting doctors, and packaging that has become familiar. A generic manufacturer sells largely on price and rarely advertises. The molecule may cost the same to produce in both cases.",
+          "That does not automatically make the cheaper box the better buy, and it does not make the expensive one better either. What matters is that the product is approved, that it is stored properly, and that you stay on the same product where consistency is clinically important.",
+        ],
+      },
+      {
+        heading: "What approval actually requires in India",
+        body: [
+          "Medicines sold in India need approval from the Central Drugs Standard Control Organisation, with manufacturing inspected against good manufacturing practice standards by central or state authorities. A licensed pharmacy buys through authorised distributors so that every strip can be traced back to a batch.",
+          "That traceability is the practical value of buying from a chemist rather than an unverified online seller. Batch numbers and expiry dates on the bill are not bureaucracy; they are how a recall reaches you.",
+        ],
+      },
+      {
+        heading: "When not to switch brands casually",
+        body: [
+          "For most common medicines, a switch between approved versions of the same salt at the same strength is routine. For some categories it is not, because small differences in formulation or absorption matter more than the price difference.",
+          "This is a conversation for your doctor, not a decision at the counter. If you have been stable on a particular brand for a long time, ask before changing it, especially for medicines taken for heart conditions, epilepsy, thyroid problems, transplant care, or insulin and inhalers, where consistency is part of the treatment.",
+        ],
+        bullets: [
+          "Ask whether the prescription is written by brand or by molecule",
+          "Never change the strength to match what is in stock",
+          "Insulin, inhalers and narrow-margin medicines deserve the same brand",
+          "Keep the same product for a stable long-term medicine unless your doctor agrees",
+        ],
+      },
+      {
+        heading: "What a pharmacist may and may not do",
+        body: [
+          "A pharmacist can tell you that a generic version of the same molecule exists, what it costs, and whether it is in stock. A pharmacist cannot substitute a different molecule, a different strength, or a different dosage form on their own authority, and cannot dispense a prescription medicine without a valid prescription.",
+          "If the prescribed brand is unavailable, the honest options are to arrange it, to ask your doctor about an alternative, or to wait. Discounts offered in place of that conversation are worth treating with suspicion.",
+        ],
+      },
+      {
+        heading: "Buying by molecule without losing safety",
+        body: [
+          "If your doctor is comfortable with a generic, the safest habit is to keep one product rather than shopping by whichever box is cheapest that week. Note the brand and strength you are using, and tell the pharmacy each time so the record stays consistent.",
+          "At Ayush Medico we will tell you both names for anything you buy, and we will not swap a brand without your prescriber's agreement.",
+        ],
+      },
+      {
+        heading: "How to read the label without a pharmacology degree",
+        body: [
+          "Look for three things on any box: the molecule name, the strength in milligrams, and the dosage form. A 500 mg tablet and a 650 mg tablet of the same molecule are not interchangeable at the counter, and neither is a syrup and a tablet.",
+          "Then look at the batch number and expiry date. Those two lines are what make a strip traceable, and they are the first things a pharmacist checks when a patient reports a problem.",
+        ],
+      },
+      {
+        heading: "Cheap is not a quality claim, and expensive is not one either",
+        body: [
+          "A low price and a high price are both marketing decisions as much as manufacturing ones. The useful questions are whether the product is approved, whether it was stored correctly, and whether the pack is genuine.",
+          "Buying from a licensed pharmacy with a proper bill is the practical way to answer all three, which is what the extra rupee at the counter is actually paying for.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "monthly-medicine-refills-for-seniors",
+    title: "Monthly Medicine Refills for Seniors in Kurla West: A Simple System",
+    h1: "A Simple Monthly Refill System for Seniors in Kurla West",
+    excerpt:
+      "Most missed doses in long-term treatment start with an empty strip, not forgetfulness. A five-step refill routine that families can run from anywhere.",
+    published: "2026-11-11",
+    readingMinutes: 4,
+    sections: [
+      {
+        heading: "Start with one list, not six boxes",
+        body: [
+          "Long-term treatment usually means several medicines, often from different specialists, sometimes with one stopped and another started without the old strip being thrown away. The first useful step is a single written list: medicine name, strength, what it is for, and who prescribed it.",
+          "Keep that list with the medicines, photograph it, and share it with the family member who handles refills. When a doctor changes something, the list changes the same day. A list that is three months old is worse than no list, because it looks authoritative.",
+        ],
+      },
+      {
+        heading: "Refill on a date, not when the strip runs out",
+        body: [
+          "The common failure is discovering an empty strip at 9 pm on a Sunday. Set the refill date five to seven days before the last tablet is due, which leaves room for a stock-out, a distributor gap, or a doctor's appointment.",
+          "Pick one fixed day a month, ideally a quiet weekday morning, and treat it as the refill day for everything. A single recurring date is far easier to keep than six separate calculations.",
+        ],
+      },
+      {
+        heading: "Keep a week in reserve, not a year",
+        body: [
+          "A small buffer of about a week protects against a delayed supply. A cupboard full of surplus does the opposite: medicines expire quietly, and an expired strip looks exactly like a usable one until you read the date.",
+          "Check expiry dates at every refill, and remove anything expired from the box immediately. Do not keep expired medicines 'for emergencies'. Dispose of them properly rather than flushing them.",
+        ],
+      },
+      {
+        heading: "Send the prescription photo before the visit",
+        body: [
+          "For an elderly parent, one trip to a pharmacy is a real outing. Messaging a photograph of the prescription ahead of time turns it into a confirmation: we check stock, tell you the amount, and have the bag ready.",
+          "If the patient is within 4 km of Kurla West, delivery to the building saves the trip entirely. Tell us the floor and whether there is a lift, because the last fifty metres is where these deliveries actually succeed or fail.",
+        ],
+      },
+      {
+        heading: "The questions worth asking once a year",
+        body: [
+          "Once a year, or whenever a new doctor is involved, it is worth asking whether every medicine on the list is still needed, whether any dose has drifted, and whether two prescriptions overlap on the same molecule.",
+          "Those are questions for the prescriber, but a pharmacy can help by pointing out duplication on the list and by keeping a clean dispensing record. It is one of the few genuinely useful things a neighbourhood chemist can do beyond selling the strip.",
+        ],
+      },
+      {
+        heading: "A routine that survives a bad week",
+        body: [
+          "Systems fail during weddings, hospital admissions and travel. If the person is going to be away, refill before they leave rather than after. If someone else is managing the house for a fortnight, hand them the list and the refill date, not a verbal summary.",
+          "None of this is medical advice. It is logistics, and logistics is where most long-term treatment quietly goes wrong.",
+        ],
+      },
+      {
+        heading: "Mumbai humidity and the medicine box",
+        body: [
+          "Between June and September, a kitchen shelf becomes a bad place for tablets. Humidity softens strips, and a bathroom cabinet is worse. Keep medicines in a dry room, in the original strip and box, away from sunlight.",
+          "Only items labelled for refrigeration belong in the fridge, and never in the freezer or the door shelf where the temperature swings each time it opens.",
+        ],
+      },
+      {
+        heading: "Who to call, and when",
+        body: [
+          "For a refill, a stock question or a delivery in Kurla West, a message with the prescription photo is enough. For anything about the dose, a side effect or a missed tablet, call the prescriber.",
+          "It is worth saving both numbers on the phone of whoever manages the medicines. Most refill failures are not stock problems; they are the wrong person discovering an empty strip at the wrong time.",
+        ],
+      },
+    ],
+  },
+  {
     slug: "how-to-choose-a-reliable-pharmacy-in-kurla-west",
     title: "How to Choose a Reliable Pharmacy in Kurla West",
     h1: "How to Choose a Reliable Pharmacy in Kurla West",

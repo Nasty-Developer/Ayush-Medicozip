@@ -181,6 +181,41 @@ export const LOCAL_ROUTES: Record<string, { title: string; description: string }
 
 /** Guides published under /blog. */
 export const BLOG_ROUTES: Record<string, { title: string; description: string; published: string; minutes: number }> = {
+  "medicine-home-delivery-kurla-west": {
+    title: "Medicine Home Delivery in Kurla West | Ayush Medico",
+    description:
+      "How our 4 km home delivery works in Kurla West: what to send on WhatsApp, prescription rules, timings, and the items we will not send by bike.",
+    published: "2026-11-11",
+    minutes: 4,
+  },
+  "chemist-near-kurla-station": {
+    title: "Chemist Near Kurla Station: What to Carry | Ayush Medico",
+    description:
+      "Kurla station is busiest at the worst hours. A short checklist of what to carry, what to ask at the counter, and what to avoid.",
+    published: "2026-11-11",
+    minutes: 4,
+  },
+  "reading-prescription-abbreviations": {
+    title: "Prescription Abbreviations Explained | Ayush Medico",
+    description:
+      "OD, BD, TDS, HS, SOS, 1-0-1: the shorthand on an Indian prescription explained, and why the pharmacist reads it back to you.",
+    published: "2026-11-11",
+    minutes: 4,
+  },
+  "generic-vs-branded-medicines": {
+    title: "Generic vs Branded Medicines: What It Means | Ayush Medico",
+    description:
+      "Same salt, different price. How generic and branded medicines differ, when switching is routine, and when consistency matters more.",
+    published: "2026-11-11",
+    minutes: 4,
+  },
+  "monthly-medicine-refills-for-seniors": {
+    title: "Monthly Medicine Refills for Seniors | Ayush Medico",
+    description:
+      "A five-step monthly refill routine for long-term medicines: one list, a fixed date, a week of buffer, and monsoon storage that works.",
+    published: "2026-11-11",
+    minutes: 4,
+  },
   "how-to-choose-a-reliable-pharmacy-in-kurla-west": {
     title: "How to Choose a Reliable Pharmacy in Kurla West | Ayush Medico",
     description:
