@@ -1,5 +1,6 @@
 import { useRef, useState, useMemo } from "react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { ChevronDown, Search, X } from "lucide-react";
 
 const faqs = [
@@ -87,7 +88,7 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
 
 export default function FAQ() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {

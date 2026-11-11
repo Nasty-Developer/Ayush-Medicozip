@@ -1,5 +1,6 @@
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { ShieldCheck, Building2, BadgeDollarSign, Users, Zap, ThumbsUp } from "lucide-react";
 
 const reasons = [
@@ -61,7 +62,7 @@ const reasons = [
 
 export default function WhyChooseUs() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
 
   return (
     <section id="why-us" ref={ref} className="py-14 lg:py-20 bg-muted/30">

@@ -8,6 +8,13 @@
 
 import { pool } from "@workspace/db";
 import { logger } from "./logger.js";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
+/** Built frontend template, the same file app.ts injects heads into. */
+const HERE = import.meta.dirname ?? process.cwd();
+const INDEX_HTML =
+  process.env.SEO_INDEX_HTML ?? path.resolve(HERE, "../../ayush-medico/dist/public/index.html");
 import {
   SITE_URL,
   STATIC_ROUTES,
@@ -191,6 +198,24 @@ const duplicates = (items: string[]): string[] => {
  * uniqueness, canonical shape, schema presence and private-page blocking.
  * Read-only; safe to call from the admin dashboard.
  */
+/** JSON-LD blocks baked into the built index.html template. */
+async function readStaticGraph(): Promise<unknown[]> {
+  try {
+    const html = await readFile(INDEX_HTML, "utf8");
+    const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
+    return blocks.flatMap((m) => {
+      try {
+        const parsed = JSON.parse(m[1] as string) as Record<string, unknown>;
+        return parsed["@graph"] ? (parsed["@graph"] as unknown[]) : [parsed];
+      } catch {
+        return [];
+      }
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function auditSeo(): Promise<SeoHealth> {
   const checks: HealthCheck[] = [];
   const push = (id: string, label: string, status: HealthStatus, detail: string): void => {
@@ -315,8 +340,12 @@ export async function auditSeo(): Promise<SeoHealth> {
 
   // 6. Structured data
   try {
+    // The site-wide graph (Pharmacy, Organization, WebSite, FAQ) ships inside
+    // index.html and is served with every page; per-page nodes come from
+    // buildSeo. Both have to be inspected or the check under-reports.
     const home = await buildSeo("/");
     const types = new Set<string>();
+    const staticGraph = await readStaticGraph();
     const walk = (node: unknown): void => {
       if (Array.isArray(node)) return node.forEach(walk);
       if (node && typeof node === "object") {
@@ -327,6 +356,7 @@ export async function auditSeo(): Promise<SeoHealth> {
       }
     };
     walk(home.jsonLd ?? []);
+    walk(staticGraph);
     const wanted = ["Pharmacy", "LocalBusiness"];
     const hasLocal = wanted.some((t) => types.has(t));
     push(
@@ -389,13 +419,23 @@ export async function auditSeo(): Promise<SeoHealth> {
     overrides = 0;
   }
 
+  let categoryTotal: number = categories;
+  try {
+    const { rows } = await pool.query<{ n: string }>(
+      "SELECT count(*)::int AS n FROM categories WHERE enabled = true",
+    );
+    categoryTotal = Number(rows[0]?.n ?? categories);
+  } catch {
+    /* keep the sampled figure */
+  }
+
   return {
     generatedAt: new Date().toISOString(),
     checks,
     stats: {
       pagesInSitemap: pages?.urlCount ?? 0,
       productsInSitemap: products?.urlCount ?? 0,
-      categories,
+      categories: categoryTotal,
       guides: Object.keys(BLOG_ROUTES).length,
       blockedPrefixes: NOINDEX_PREFIXES.length,
       overrides,

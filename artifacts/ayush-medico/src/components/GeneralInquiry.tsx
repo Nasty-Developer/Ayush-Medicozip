@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -48,7 +49,7 @@ const CONTACT_OPTIONS = [
 
 export default function GeneralInquiry() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
   const { toast } = useToast();
   const { user: customerUser, loading: customerLoading } = useCustomerAuth();
   const [submitting, setSubmitting] = useState<"send" | "whatsapp" | "email" | null>(null);

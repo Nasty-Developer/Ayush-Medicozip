@@ -1,5 +1,6 @@
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { Pill, ShoppingBag, Baby, Sparkles, Dumbbell, Activity, HeartPulse, Stethoscope, ShoppingCart, Leaf } from "lucide-react";
 
 const services = [
@@ -17,7 +18,7 @@ const services = [
 
 export default function Services() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
 
   return (
     <section id="services" ref={ref} className="py-20 lg:py-28 bg-muted/30">

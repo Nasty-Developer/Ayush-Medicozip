@@ -1,5 +1,6 @@
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { Search, LogIn, FileImage, Send, ClipboardCheck, CreditCard, CheckCircle2, Package } from "lucide-react";
 
 const steps = [
@@ -15,7 +16,7 @@ const steps = [
 
 export default function HowItWorks() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
 
   return (
     <section ref={ref} id="how-it-works" className="py-14 lg:py-20 bg-muted/30">

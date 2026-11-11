@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -73,7 +74,7 @@ const WA_NUMBER = "919833273838";
 
 export default function RequestMedicine() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
   const { toast } = useToast();
   const { prefillMedicine, prefillBrand, prefillCategory, prescriptionRequired, requestToken } = useRequestMedicine();
   const { user: customerUser, loading: customerLoading } = useCustomerAuth();

@@ -12,7 +12,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearch, useLocation } from "wouter";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import {
   Tag, Loader2, Search, X, SlidersHorizontal,
   Package, PackageSearch, Layers, ChevronDown,
@@ -130,7 +131,7 @@ function MedicinesGrid({
 
 export default function CategoriesPage() {
   const headerRef = useRef(null);
-  const inView    = useInView(headerRef, { once: true, margin: "-80px" });
+  const inView    = useRevealInView(headerRef, { once: true, margin: "-80px" });
   const { enabled: announcementEnabled } = useAnnouncement();
 
   // ── Data ──────────────────────────────────────────────────────────────────

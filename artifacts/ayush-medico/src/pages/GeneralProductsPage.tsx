@@ -4,7 +4,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import {
   ShoppingBag, Search, X, Package,
   Loader2, ChevronDown, ShoppingCart, Plus, Minus, PackageSearch,
@@ -46,7 +47,7 @@ const SUB_CATEGORIES = [
 /* ── Product card ────────────────────────────────────────────────────────── */
 function GeneralProductCard({ item, index }: { item: GeneralProduct; index: number }) {
   const ref    = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const inView = useRevealInView(ref, { once: true, margin: "-40px" });
   const inStock = item.stockStatus === "in_stock";
   const [imageFailed, setImageFailed] = useState(false);
   const { addItem, items, updateQuantity, removeItem } = useCart();
@@ -192,7 +193,7 @@ function GeneralProductCard({ item, index }: { item: GeneralProduct; index: numb
 /* ── Page ─────────────────────────────────────────────────────────────────── */
 export default function GeneralProductsPage() {
   const headerRef = useRef(null);
-  const inView    = useInView(headerRef, { once: true, margin: "-80px" });
+  const inView    = useRevealInView(headerRef, { once: true, margin: "-80px" });
   const { enabled: announcementEnabled } = useAnnouncement();
 
   const [products,    setProducts]    = useState<GeneralProduct[]>([]);

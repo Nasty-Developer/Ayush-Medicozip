@@ -8,7 +8,8 @@
 
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import {
   Star, PackageCheck, PackageX, Clock, ShieldCheck,
   ShoppingCart, Plus, Minus, PackageSearch, Sparkles,
@@ -253,7 +254,7 @@ function FeaturedCard({ item, index }: { item: Medicine; index: number }) {
 
 export default function FeaturedMedicines() {
   const sectionRef = useRef(null);
-  const inView     = useInView(sectionRef, { once: true, margin: "-60px" });
+  const inView     = useRevealInView(sectionRef, { once: true, margin: "-60px" });
 
   const { data: resp, isLoading } = useQuery<{ data: Medicine[] }>({
     queryKey: ["featuredMedicines"],

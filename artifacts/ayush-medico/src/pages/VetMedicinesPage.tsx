@@ -4,7 +4,8 @@
  */
 
 import { useEffect, useRef, useState, useMemo } from "react";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import {
   PawPrint, Search, X, Package, PackageSearch,
   Loader2, ChevronDown, ShoppingCart, Phone, Plus, Minus,
@@ -47,7 +48,7 @@ const ANIMAL_TYPES = ["All", "Dog", "Cat", "Cow", "Buffalo", "Bird", "Goat", "Ho
 /* ── Product card ────────────────────────────────────────────────────────── */
 function VetMedicineCard({ item, index }: { item: VetMedicine; index: number }) {
   const ref    = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const inView = useRevealInView(ref, { once: true, margin: "-40px" });
 
   const inStock = item.stockStatus === "in_stock";
   const lowStock = item.stockStatus === "low_stock";
@@ -198,7 +199,7 @@ function VetMedicineCard({ item, index }: { item: VetMedicine; index: number }) 
 /* ── Page ─────────────────────────────────────────────────────────────────── */
 export default function VetMedicinesPage() {
   const headerRef = useRef(null);
-  const inView    = useInView(headerRef, { once: true, margin: "-80px" });
+  const inView    = useRevealInView(headerRef, { once: true, margin: "-80px" });
   const { enabled: announcementEnabled } = useAnnouncement();
 
   const [products,    setProducts]    = useState<VetMedicine[]>([]);

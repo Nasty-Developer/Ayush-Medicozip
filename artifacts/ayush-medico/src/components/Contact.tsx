@@ -1,10 +1,11 @@
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { MapPin, Phone, MessageCircle, Clock, ExternalLink, Mail } from "lucide-react";
 
 export default function Contact() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
 
   return (
     <section id="contact" ref={ref} className="py-20 lg:py-28">

@@ -45,37 +45,37 @@ export const STATIC_ROUTES: Record<string, StaticEntry> = {
   "/": {
     title: "Ayush Medico – Online Medicine Delivery in Kurla West",
     description:
-      "Order medicines online with home delivery in Kurla, Ghatkopar, Sion and Chembur. Ayush Medico is a licensed pharmacy in Kurla West, Mumbai with 50,000+ genuine medicines, OTC products, baby care and health devices. Open 7 days, 8 AM to 10 PM.",
+      "Order medicines online with home delivery in Kurla, Ghatkopar, Sion and Chembur from our licensed Kurla West pharmacy. 50,000+ genuine medicines.",
     priority: 1,
   },
   "/categories": {
     title: "Buy Medicines Online by Category | Ayush Medico Kurla, Mumbai",
     description:
-      "Browse prescription medicines, OTC drugs, Ayurvedic products, baby care, supplements and healthcare devices online. Genuine stock from a licensed Mumbai pharmacy with delivery in Kurla, Ghatkopar and Chembur.",
+      "Browse prescription medicines, OTC drugs, Ayurvedic products, baby care, supplements and health devices. Genuine stock, delivered around Kurla West.",
     priority: 0.9,
   },
   "/delivery": {
-    title: "Medicine Home Delivery in Kurla, Ghatkopar & Chembur | Ayush Medico",
+    title: "Medicine Home Delivery in Kurla & Ghatkopar | Ayush Medico",
     description:
-      "Same-day medicine home delivery across Kurla West, Kurla East, Ghatkopar, Sion, Chembur and nearby Mumbai localities. Upload your prescription and our licensed pharmacist arranges your order.",
+      "Same-day medicine delivery across Kurla West, Kurla East, Ghatkopar, Sion and Chembur. Send your prescription and our pharmacist arranges the order.",
     priority: 0.9,
   },
   "/request-medicine": {
-    title: "Request a Medicine Online – Hard To Find Medicines | Ayush Medico",
+    title: "Request a Medicine We Don’t List | Ayush Medico",
     description:
-      "Cannot find a medicine near you? Send the name or prescription to Ayush Medico and we will source it from our licensed distributor network, usually within 24 hours.",
+      "Looking for a medicine we do not stock? Send the name, strength and quantity and our Kurla West pharmacy team replies with availability and price.",
     priority: 0.8,
   },
   "/services": {
-    title: "Pharmacy Services – Prescription Refills & Health Checks | Ayush Medico",
+    title: "Pharmacy Services – Refills & Health Checks | Ayush Medico",
     description:
-      "Prescription refills, medicine availability checks, BP and sugar monitoring, home delivery and healthcare device support from a licensed pharmacy in Kurla West, Mumbai.",
+      "Prescription refills, stock checks, BP and sugar monitoring, home delivery and device support from a licensed pharmacy in Kurla West, Mumbai.",
     priority: 0.7,
   },
   "/about": {
     title: "About Ayush Medico – Licensed Pharmacy in Kurla West, Mumbai",
     description:
-      "Ayush Medico & General Stores is a licensed retail pharmacy in Kurla West, Mumbai (FDA licences MH-MZ4-518856 and MH-MZ4-518857) serving families and clinics since inception.",
+      "Ayush Medico & General Stores is a licensed retail pharmacy in Kurla West, Mumbai (FDA licences MH-MZ4-518856 and MH-MZ4-518857) serving families and clinics.",
     priority: 0.6,
   },
   "/contact": {
@@ -84,9 +84,9 @@ export const STATIC_ROUTES: Record<string, StaticEntry> = {
     priority: 0.7,
   },
   "/faq": {
-    title: "Medicine Delivery FAQ – Ordering, Prescriptions & Timings | Ayush Medico",
+    title: "Medicine Delivery FAQ – Orders & Timings | Ayush Medico",
     description:
-      "Answers about online medicine orders, prescription requirements, delivery areas and timings, payment options and returns at Ayush Medico, Kurla West, Mumbai.",
+      "Visit or call Ayush Medico on Halav Pool Road, Kurla West, Mumbai. Phone, WhatsApp, directions, opening hours and prescription upload all in one place.",
     priority: 0.6,
   },
   "/compliance": {
@@ -155,27 +155,27 @@ export const LOCAL_ROUTES: Record<string, { title: string; description: string }
   "/pharmacy-kurla-west": {
     title: "Pharmacy in Kurla West, Mumbai – Ayush Medico",
     description:
-      "Licensed pharmacy on Halav Pool Road, Kurla West. Prescription medicines, OTC remedies, health devices and baby care, open 8 AM to 10 PM every day. Call +91 98332 73838.",
+      "Licensed pharmacy on Halav Pool Road, Kurla West. Prescription medicines, OTC remedies, devices and baby care. Open 8 AM to 10 PM, seven days.",
   },
   "/medical-store-kurla-west": {
     title: "Medical Store in Kurla West | Ayush Medico",
     description:
-      "Medical store in Kurla West for monthly prescriptions, diabetes and BP medicines, surgical supplies and clinic orders. Licensed pharmacy open seven days, 8 AM to 10 PM.",
+      "Medical store in Kurla West for monthly prescriptions, diabetes and BP medicines, surgical supplies and clinic orders. Open seven days, 8 AM to 10 PM.",
   },
   "/medicine-delivery-kurla-west": {
     title: "Medicine Delivery in Kurla West – 4 km Radius | Ayush Medico",
     description:
-      "Medicine home delivery within about 4 km of Kurla West: Kurla East, Chunabhatti, Sion, Kalina, Vidyavihar, Saki Naka, Ghatkopar and western Chembur. Send your prescription on WhatsApp.",
+      "Medicine delivery within about 4 km of Kurla West: Kurla East, Sion, Kalina, Vidyavihar, Saki Naka and Ghatkopar. Send your prescription on WhatsApp.",
   },
   "/chemist-kurla-west": {
     title: "Chemist Shop Near Kurla Station, Kurla West | Ayush Medico",
     description:
-      "Chemist near Kurla station west, open until 10 PM every day. Call ahead to check stock, send prescriptions on WhatsApp, or collect from the counter on Halav Pool Road.",
+      "Chemist near Kurla station west, open until 10 PM daily. Call ahead to check stock, send prescriptions on WhatsApp, or collect on Halav Pool Road.",
   },
   "/medicine-availability": {
     title: "Check Medicine Availability Before You Travel | Ayush Medico",
     description:
-      "Send the medicine name, strength and quantity and Ayush Medico confirms stock, price and delivery before you leave home. Licensed pharmacy in Kurla West, Mumbai.",
+      "Send the medicine name, strength and quantity and Ayush Medico confirms stock, price and delivery before you leave home. Licensed pharmacy in Kurla West,.",
   },
 };
 

@@ -1,5 +1,6 @@
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { Truck, MapPin, Pill, ShieldCheck, Clock, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useRequestMedicine } from "@/context/RequestMedicineContext";
 
@@ -50,7 +51,7 @@ const highlights = [
 
 export default function DeliveryFeatures() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
   const { triggerRequest } = useRequestMedicine();
 
   return (

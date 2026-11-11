@@ -11,7 +11,8 @@
 
 import { useRef, useState } from "react";
 import { Link } from "wouter";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { resolveCategoryPlaceholder } from "@/lib/medicineImage";
@@ -138,7 +139,7 @@ function CategoryCard({
 /* ── Main component ───────────────────────────────────────────────────────── */
 export default function Categories() {
   const ref    = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
   const { categories, loading } = useCategories(true);
 
   if (loading)                 return <SkeletonGrid />;

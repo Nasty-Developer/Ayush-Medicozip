@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { Award, Users, Package, Heart } from "lucide-react";
 
 const stats = [
@@ -12,7 +13,7 @@ const stats = [
 function CountUp({ target, suffix }: { target: number; suffix: string }) {
   const [count, setCount] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true });
+  const inView = useRevealInView(ref, { once: true });
 
   useEffect(() => {
     if (!inView) return;
@@ -42,7 +43,7 @@ function CountUp({ target, suffix }: { target: number; suffix: string }) {
 
 export default function About() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
 
   return (
     <section id="about" ref={ref} className="py-20 lg:py-28">

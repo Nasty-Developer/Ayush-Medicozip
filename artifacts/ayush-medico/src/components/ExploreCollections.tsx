@@ -10,7 +10,8 @@
  */
 
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
 
@@ -61,7 +62,7 @@ const COLLECTIONS = [
 
 export default function ExploreCollections() {
   const ref    = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const inView = useRevealInView(ref, { once: true, margin: "-80px" });
 
   return (
     <section className="py-14 lg:py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">

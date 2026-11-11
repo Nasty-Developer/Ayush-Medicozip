@@ -1,5 +1,6 @@
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import {
   ShieldCheck, BadgeCheck, UserCheck, FileCheck, Lock, Zap,
   FileText, MapPin, User, Scale,
@@ -68,7 +69,7 @@ const trustCards = [
 /* ── Main component ────────────────────────────────────────────────────────── */
 export default function TrustCompliance() {
   const sectionRef = useRef(null);
-  const inView = useInView(sectionRef, { once: true, margin: "-60px" });
+  const inView = useRevealInView(sectionRef, { once: true, margin: "-60px" });
   const { settings, loading } = useStoreSettings();
 
   /* Only show items that have actual values — never show placeholders publicly */

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { Sparkles, PackageCheck, PackageX, Clock, ChevronLeft, ChevronRight, ShoppingCart, Plus, Minus, PackageSearch } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useRequestMedicine } from "@/context/RequestMedicineContext";
@@ -260,7 +261,7 @@ const DEFAULTS = {
 export default function NewArrivals() {
   const ref = useRef(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
 
   const { data: medicinesData, isLoading: medicinesLoading } = useQuery({
     queryKey: ["new-arrivals"],

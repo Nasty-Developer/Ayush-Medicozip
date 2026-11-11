@@ -1,5 +1,6 @@
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
+import { useRevealInView } from "@/hooks/useReveal";
 import { ShieldCheck, CreditCard, FileCheck, Zap, Award, Clock, BadgeCheck } from "lucide-react";
 
 const stats = [
@@ -20,7 +21,7 @@ const badges = [
 
 export default function TrustBadges() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px" });
+  const inView = useRevealInView(ref, { once: true, margin: "0px" });
 
   return (
     <section ref={ref} className="relative overflow-hidden">
