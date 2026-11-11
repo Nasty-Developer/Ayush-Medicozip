@@ -111,7 +111,7 @@ router.post("/", requireAuth, requireAdminEmail, async (req: Request, res: Respo
     const [created] = await db.insert(categoriesTable).values(data as InsertCategory).returning();
     res.status(201).json(created);
   } catch (err: any) {
-    if (err?.code === "23505") {
+    if (err?.code === "23505" || err?.cause?.code === "23505") {
       res.status(409).json({ error: "A category with this name already exists" });
       return;
     }
@@ -133,7 +133,7 @@ router.put("/:id", requireAuth, requireAdminEmail, async (req: Request, res: Res
     if (!updated) { res.status(404).json({ error: "Category not found" }); return; }
     res.json(updated);
   } catch (err: any) {
-    if (err?.code === "23505") {
+    if (err?.code === "23505" || err?.cause?.code === "23505") {
       res.status(409).json({ error: "Another category already uses this name" });
       return;
     }
