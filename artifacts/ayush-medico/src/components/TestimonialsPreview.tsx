@@ -89,7 +89,7 @@ export default function TestimonialsPreview() {
   return (
     <section
       id="testimonials"
-      className="relative py-20 lg:py-28 overflow-hidden bg-gradient-to-br from-background via-primary/3 to-secondary/3"
+      className="relative py-14 lg:py-20 overflow-hidden bg-gradient-to-br from-background via-primary/3 to-secondary/3"
     >
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute top-0 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />

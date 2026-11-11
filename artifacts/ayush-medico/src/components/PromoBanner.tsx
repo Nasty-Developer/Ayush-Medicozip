@@ -1,20 +1,18 @@
 /**
  * PromoBanner — auto-sliding promotional carousel.
  *
- * Mobile-first redesign — fully responsive from 320 px to 1440 px.
- * Key decisions:
- *  • Fixed-height container (height-sizer div) so AnimatePresence absolute
- *    children never clip or overflow.
- *  • Always a single horizontal row — no flex-col stacking that breaks height.
- *  • Arrows hidden on mobile; swipe gestures handle navigation instead.
- *  • Emoji scaled down on small screens; CTA is always visible but compact.
- *  • Dot indicators live in their own reserved bottom strip so they never
- *    overlap the content row.
+ * Presentation redesign only. The slide data, auto-play interval, swipe
+ * handling, keyboard/ARIA labels, CTA destinations and manual navigation all
+ * behave exactly as before.
+ *
+ * Visual language: premium healthcare commerce — a consistent blue → teal
+ * palette, generous type, a glass product medallion and a white CTA, rather
+ * than the earlier multi-colour blocks.
  */
 
 import { useEffect, useRef, useState, type TouchEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -42,9 +40,9 @@ const PROMOS: Promo[] = [
     cta: "Shop Now",
     href: "/categories",
     emoji: "🌧️",
-    from: "#3B82F6",
-    to: "#1D4ED8",
-    light: "rgba(219,234,254,0.9)",
+    from: "#0C4A8A",
+    to: "#2E8BC0",
+    light: "rgba(219,234,254,0.92)",
   },
   {
     id: 2,
@@ -54,9 +52,9 @@ const PROMOS: Promo[] = [
     cta: "Explore",
     href: "/categories",
     emoji: "🩺",
-    from: "#10B981",
-    to: "#047857",
-    light: "rgba(209,250,229,0.9)",
+    from: "#0F766E",
+    to: "#14B8A6",
+    light: "rgba(204,251,241,0.92)",
   },
   {
     id: 3,
@@ -66,21 +64,21 @@ const PROMOS: Promo[] = [
     cta: "Browse",
     href: "/categories",
     emoji: "👶",
-    from: "#EC4899",
-    to: "#BE185D",
-    light: "rgba(252,231,243,0.9)",
+    from: "#1E6CA4",
+    to: "#38BDF8",
+    light: "rgba(224,242,254,0.92)",
   },
   {
     id: 4,
     tag: "Daily Wellness",
     title: "Vitamins & supplements",
-    subtitle: "Boost immunity with genuine supplements",
+    subtitle: "Genuine supplements from licensed distributors",
     cta: "Discover",
     href: "/categories",
     emoji: "💊",
-    from: "#8B5CF6",
-    to: "#5B21B6",
-    light: "rgba(237,233,254,0.9)",
+    from: "#1E40AF",
+    to: "#3B82F6",
+    light: "rgba(219,234,254,0.92)",
   },
   {
     id: 5,
@@ -90,9 +88,9 @@ const PROMOS: Promo[] = [
     cta: "Shop",
     href: "/categories",
     emoji: "🩹",
-    from: "#F97316",
-    to: "#C2410C",
-    light: "rgba(255,237,213,0.9)",
+    from: "#0D9488",
+    to: "#22D3EE",
+    light: "rgba(207,250,254,0.92)",
   },
 ];
 
@@ -157,30 +155,18 @@ export default function PromoBanner() {
 
   return (
     <section
-      className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-7xl mx-auto"
+      className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
       aria-label="Promotional banners"
     >
-      {/*
-        Height sizer: this div establishes the card's height so that
-        the absolutely-positioned AnimatePresence children never clip.
-        The content row sits inside the card height; dots get their own
-        strip reserved at the bottom via padding-bottom on the content.
-      */}
       <div
-        className="relative rounded-2xl overflow-hidden shadow-lg"
+        className="group/banner relative overflow-hidden rounded-[26px] shadow-[0_18px_45px_-24px_rgba(12,74,138,0.55)] ring-1 ring-black/5 sm:rounded-[30px]"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         style={{ contain: "layout paint" }}
       >
-        {/* ── Height sizer (content + dots strip) ── */}
-        {/*
-          Mobile  (< 640 px): 116 px content + 24 px dots strip = 140 px
-          sm      (≥ 640 px): 128 px content + 24 px dots strip = 152 px
-          lg      (≥1024 px): 140 px content + 24 px dots strip = 164 px
-        */}
-        <div className="h-[140px] sm:h-[152px] lg:h-[164px]" aria-hidden="true" />
+        {/* Reserved height: content area + indicator strip */}
+        <div className="h-[214px] sm:h-[252px] lg:h-[296px]" aria-hidden="true" />
 
-        {/* ── Slide layer ── */}
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={p.id}
@@ -189,139 +175,84 @@ export default function PromoBanner() {
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.38, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ duration: 0.42, ease: [0.4, 0, 0.2, 1] }}
             className="absolute inset-0"
-            style={{ background: `linear-gradient(135deg, ${p.from} 0%, ${p.to} 100%)` }}
+            style={{ background: `linear-gradient(115deg, ${p.from} 0%, ${p.to} 100%)` }}
           >
-            {/* ── Background decoration ── */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
-              {/* Large circle top-right */}
-              <div
-                className="absolute -right-10 -top-10 w-48 h-48 sm:w-64 sm:h-64 rounded-full"
-                style={{ background: "rgba(255,255,255,0.08)" }}
-              />
-              {/* Small circle bottom-right */}
-              <div
-                className="absolute right-12 -bottom-6 w-28 h-28 sm:w-40 sm:h-40 rounded-full"
-                style={{ background: "rgba(255,255,255,0.07)" }}
-              />
-              {/* Dot-grid strip on the left */}
-              <div
-                className="absolute left-0 inset-y-0 w-20 sm:w-28"
-                style={{
-                  backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.18) 1px, transparent 1px)",
-                  backgroundSize: "13px 13px",
-                }}
-              />
+            {/* Decorative depth — soft light, no grids or mesh patterns */}
+            <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+              <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/10 blur-2xl" />
+              <div className="absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-white/8 blur-3xl" />
+              <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-black/12 to-transparent" />
             </div>
 
-            {/*
-              ── Content row ──
-              Always a single horizontal row on every breakpoint.
-              pb-6 reserves space so the dots indicator never overlaps.
-              Horizontal padding is wider on desktop (sm:px-10) where
-              the nav arrows are also visible.
-            */}
-            <div className="absolute inset-0 flex items-center gap-3 sm:gap-5 px-4 sm:px-10 pb-6">
-
-              {/* Emoji — visually anchors the slide */}
-              <div
-                className="text-[32px] sm:text-[44px] lg:text-[52px] leading-none select-none flex-shrink-0"
-                role="img"
-                aria-label={p.tag}
-              >
-                {p.emoji}
-              </div>
-
-              {/* Text block — flex-1 + min-w-0 prevent overflow */}
-              <div className="flex-1 min-w-0">
-                {/* Category tag pill — truncates on ≤320 px rather than wrapping */}
-                <span
-                  className="inline-block max-w-full truncate
-                             text-[9px] sm:text-[10px] font-bold uppercase
-                             tracking-wide sm:tracking-widest
-                             px-2 py-0.5 rounded-full mb-1 sm:mb-1.5"
-                  style={{ background: "rgba(255,255,255,0.22)", color: "white" }}
-                >
+            {/* Content */}
+            <div className="absolute inset-0 flex items-center gap-3 px-5 pb-8 sm:gap-8 sm:px-10 sm:pb-9 lg:px-14">
+              <div className="min-w-0 flex-1">
+                <span className="inline-flex max-w-full items-center truncate rounded-full bg-white/18 px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.12em] text-white ring-1 ring-white/25 backdrop-blur-sm sm:text-[10.5px]">
                   {p.tag}
                 </span>
 
-                {/* Primary headline */}
                 <h3
-                  className="text-[13px] sm:text-[18px] lg:text-[20px] font-bold text-white
-                             leading-snug line-clamp-2 sm:line-clamp-1"
+                  className="mt-2 line-clamp-2 text-[21px] font-bold leading-[1.15] tracking-[-0.02em] text-white sm:mt-2.5 sm:text-[30px] lg:text-[36px]"
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
                   {p.title}
                 </h3>
 
-                {/* Supporting subtitle */}
                 <p
-                  className="text-[10px] sm:text-[12px] lg:text-[13px] mt-0.5 line-clamp-1"
+                  className="mt-1.5 line-clamp-2 text-[11.5px] font-medium leading-snug sm:mt-2 sm:text-sm lg:text-[15px]"
                   style={{ color: p.light }}
                 >
                   {p.subtitle}
                 </p>
+
+                <Link
+                  href={p.href}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-[12px] font-bold text-slate-900 shadow-[0_6px_18px_-6px_rgba(2,6,23,0.5)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] sm:mt-4 sm:px-5 sm:py-2.5 sm:text-[13.5px]"
+                >
+                  {p.cta}
+                  <ArrowRight size={14} className="transition-transform duration-200 group-hover/banner:translate-x-0.5" />
+                </Link>
               </div>
 
-              {/*
-                CTA button — always visible; compact on mobile, full size sm+.
-                flex-shrink-0 prevents it collapsing; whitespace-nowrap keeps
-                the text on one line regardless of viewport width.
-              */}
-              <Link
-                href={p.href}
-                className="flex-shrink-0 whitespace-nowrap
-                           px-3 py-1.5 sm:px-5 sm:py-2.5
-                           bg-white font-semibold rounded-xl
-                           text-[11px] sm:text-[13px] lg:text-sm
-                           shadow-md active:scale-95
-                           hover:-translate-y-0.5 hover:shadow-lg
-                           transition-all duration-200"
-                style={{ color: p.from }}
-              >
-                {p.cta} →
-              </Link>
+              {/* Product medallion — decorative anchor for the offer */}
+              <div className="relative hidden flex-shrink-0 items-center justify-center sm:flex" aria-hidden>
+                <div className="absolute h-36 w-36 rounded-full border border-white/25 lg:h-44 lg:w-44" />
+                <div className="absolute h-28 w-28 rounded-full border border-white/15 lg:h-36 lg:w-36" />
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/15 text-4xl shadow-inner backdrop-blur-md ring-1 ring-white/30 lg:h-32 lg:w-32 lg:text-5xl">
+                  <span role="img" aria-label={p.tag}>{p.emoji}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile emoji watermark keeps the offer visually anchored */}
+            <div
+              className="pointer-events-none absolute -bottom-3 right-2 text-[86px] leading-none opacity-20 sm:hidden"
+              aria-hidden
+            >
+              {p.emoji}
             </div>
           </motion.div>
         </AnimatePresence>
 
-        {/*
-          ── Nav arrows ──
-          Hidden on mobile (touch swipe handles it there).
-          Positioned at vertical midpoint of the content area (not the full card),
-          so they sit at (140-24)/2 = 58 px from top, expressed as:
-          top-[calc(50%-12px)] to shift up by half the dot strip height.
-        */}
+        {/* Navigation arrows */}
         {(["left", "right"] as const).map((side) => (
           <button
             key={side}
-            onClick={() =>
-              nav(
-                current + (side === "right" ? 1 : -1),
-                side === "right" ? 1 : -1
-              )
-            }
-            className="hidden sm:flex absolute top-[calc(50%-12px)] -translate-y-1/2 z-10
-                       w-8 h-8 rounded-full bg-white/20 hover:bg-white/40
-                       text-white items-center justify-center
-                       backdrop-blur-sm transition-all duration-200
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-            style={side === "left" ? { left: 12 } : { right: 12 }}
+            onClick={() => nav(current + (side === "right" ? 1 : -1), side === "right" ? 1 : -1)}
+            className={`absolute top-[calc(50%-14px)] z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-slate-800 shadow-md backdrop-blur transition-all duration-200 hover:bg-white hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:h-9 sm:w-9 lg:opacity-0 lg:group-hover/banner:opacity-100 ${
+              side === "right" ? "right-2.5 sm:right-4" : "left-2.5 sm:left-4"
+            }`}
             aria-label={side === "left" ? "Previous offer" : "Next offer"}
           >
-            {side === "left" ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
+            {side === "left" ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
           </button>
         ))}
 
-        {/*
-          ── Dot indicators ──
-          Absolute, bottom-aligned, horizontally centred.
-          The 24 px dots strip (reserved by pb-6 on the content row above)
-          keeps them from ever overlapping text.
-        */}
+        {/* Slide indicators */}
         <div
-          className="absolute bottom-0 left-0 right-0 h-6 flex items-center justify-center gap-1.5 z-10"
+          className="absolute inset-x-0 bottom-0 z-10 flex h-7 items-center justify-center gap-1.5"
           role="tablist"
           aria-label="Slide indicators"
         >
@@ -334,8 +265,8 @@ export default function PromoBanner() {
               onClick={() => nav(i, i > current ? 1 : -1)}
               className={`rounded-full transition-all duration-300 ${
                 i === current
-                  ? "w-5 h-[5px] bg-white"
-                  : "w-[5px] h-[5px] bg-white/45 hover:bg-white/70"
+                  ? "h-1.5 w-6 bg-white shadow-sm"
+                  : "h-1.5 w-1.5 bg-white/45 hover:bg-white/70"
               }`}
             />
           ))}

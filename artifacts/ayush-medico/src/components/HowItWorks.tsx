@@ -18,7 +18,7 @@ export default function HowItWorks() {
   const inView = useInView(ref, { once: true, margin: "0px" });
 
   return (
-    <section ref={ref} id="how-it-works" className="py-20 lg:py-28 bg-muted/30">
+    <section ref={ref} id="how-it-works" className="py-14 lg:py-20 bg-muted/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div

@@ -54,7 +54,7 @@ export default function DeliveryFeatures() {
   const { triggerRequest } = useRequestMedicine();
 
   return (
-    <section ref={ref} id="delivery-features" className="relative py-20 lg:py-28 overflow-hidden">
+    <section ref={ref} id="delivery-features" className="relative py-14 lg:py-20 overflow-hidden">
       {/* Gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
       <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-primary/8 blur-3xl pointer-events-none" />

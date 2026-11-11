@@ -7,7 +7,7 @@ import { Link } from "wouter";
 
 export default function ContactCTA() {
   return (
-    <section id="contact-cta" className="relative py-20 lg:py-24 overflow-hidden">
+    <section id="contact-cta" className="relative py-14 lg:py-20 overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-background to-secondary/6" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />

@@ -1,47 +1,29 @@
 /**
  * Categories — Homepage section
  *
- * Premium PharmEasy-inspired category grid, unique Ayush Medico design.
- * • Large rounded cards with gradient accent top-bar
- * • Live medicine count from API
- * • Smooth hover lift + shadow animations
- * • Horizontal scroll on mobile, grid on desktop
- * • "View All Categories" CTA button
+ * Premium pharmacy category grid.
+ * • Large, roomy cards with a consistent blue → teal identity
+ * • Real medicine counts straight from the API (never hardcoded)
+ * • Admin-uploaded image first, keyword-matched artwork second, emoji last
+ * • Two-column touch grid on mobile, responsive grid on desktop
+ * • Every card still links to /category/<slug>
  */
 
 import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { motion, useInView } from "framer-motion";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
-import { getCategoryColors } from "@/lib/categoryColors";
 import { resolveCategoryPlaceholder } from "@/lib/medicineImage";
-
-/* ── Color stripe map ─────────────────────────────────────────────────────── */
-const STRIPE: Record<string, { from: string; to: string; text: string; pill: string }> = {
-  primary:   { from: "#3B82F6", to: "#1D4ED8", text: "#DBEAFE", pill: "bg-blue-100/80 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-  secondary: { from: "#10B981", to: "#047857", text: "#D1FAE5", pill: "bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-  accent:    { from: "#06B6D4", to: "#0369A1", text: "#CFFAFE", pill: "bg-cyan-100/80 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300" },
-  purple:    { from: "#8B5CF6", to: "#5B21B6", text: "#EDE9FE", pill: "bg-violet-100/80 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" },
-  orange:    { from: "#F97316", to: "#B45309", text: "#FEF3C7", pill: "bg-amber-100/80 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
-  pink:      { from: "#EC4899", to: "#BE185D", text: "#FCE7F3", pill: "bg-pink-100/80 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300" },
-  red:       { from: "#EF4444", to: "#B91C1C", text: "#FEE2E2", pill: "bg-red-100/80 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
-  yellow:    { from: "#F59E0B", to: "#D97706", text: "#FEF9C3", pill: "bg-yellow-100/80 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" },
-};
-const STRIPE_CYCLE = ["primary","secondary","accent","purple","orange","pink","red","yellow"];
-function getStripe(color: string, index: number) {
-  return STRIPE[color] ?? STRIPE[STRIPE_CYCLE[index % STRIPE_CYCLE.length]];
-}
 
 /* ── Skeleton ─────────────────────────────────────────────────────────────── */
 function SkeletonCard() {
   return (
-    <div className="flex-shrink-0 w-44 sm:w-48 rounded-3xl bg-card border border-border overflow-hidden animate-pulse">
-      <div className="h-2 bg-muted-foreground/20" />
-      <div className="p-5">
-        <div className="w-14 h-14 rounded-2xl bg-muted mx-auto mb-4" />
-        <div className="h-4 w-3/4 bg-muted rounded-lg mx-auto mb-2" />
-        <div className="h-3 w-1/2 bg-muted rounded-lg mx-auto" />
+    <div className="overflow-hidden rounded-3xl border border-border/60 bg-card animate-pulse">
+      <div className="aspect-[4/3] bg-muted" />
+      <div className="space-y-2 p-4">
+        <div className="h-4 w-3/4 rounded-lg bg-muted" />
+        <div className="h-3 w-1/2 rounded-lg bg-muted" />
       </div>
     </div>
   );
@@ -49,15 +31,14 @@ function SkeletonCard() {
 
 function SkeletonGrid() {
   return (
-    <section className="py-20 lg:py-28">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <div className="h-6 w-36 rounded-full bg-muted animate-pulse mx-auto mb-4" />
-          <div className="h-10 w-72 rounded-xl bg-muted animate-pulse mx-auto mb-3" />
-          <div className="h-4 w-80 rounded-lg bg-muted animate-pulse mx-auto" />
+    <section className="py-14 lg:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-10 space-y-3">
+          <div className="h-6 w-32 rounded-full bg-muted animate-pulse" />
+          <div className="h-10 w-64 rounded-xl bg-muted animate-pulse" />
         </div>
-        <div className="flex gap-4 overflow-hidden pb-4">
-          {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {[...Array(10)].map((_, i) => <SkeletonCard key={i} />)}
         </div>
       </div>
     </section>
@@ -65,94 +46,101 @@ function SkeletonGrid() {
 }
 
 /* ── Category Card ────────────────────────────────────────────────────────── */
-function CategoryCard({ cat, index, inView }: { cat: ReturnType<typeof useCategories>["categories"][0]; index: number; inView: boolean }) {
+function CategoryCard({
+  cat,
+  index,
+  inView,
+}: {
+  cat: ReturnType<typeof useCategories>["categories"][0];
+  index: number;
+  inView: boolean;
+}) {
   const [imgErr, setImgErr] = useState(false);
-  const stripe = getStripe(cat.color, index);
-  const href   = `/category/${cat.slug ?? cat.id}`;
-  const count  = (cat as any).count as number | undefined;
+  const href  = `/category/${cat.slug ?? cat.id}`;
+  const count = (cat as { count?: number }).count;
 
-  // Use admin-uploaded imageUrl first, then keyword-matched PNG, then emoji fallback
-  const imgSrc = cat.imageUrl && !imgErr
-    ? cat.imageUrl
-    : resolveCategoryPlaceholder(cat.name);
+  // Admin-uploaded image → keyword-matched artwork → emoji only if both fail
+  const imgSrc = cat.imageUrl && !imgErr ? cat.imageUrl : resolveCategoryPlaceholder(cat.name);
+  const showEmojiFallback = Boolean(cat.imageUrl) && imgErr;
 
   return (
-    <Link href={href} className="flex-shrink-0 w-40 sm:w-44 lg:w-auto block">
-      <motion.div
-        initial={{ y: 16 }}
-        animate={inView ? { y: 0 } : {}}
-        transition={{ duration: 0.4, delay: index * 0.04 }}
-        whileHover={{ y: -6, scale: 1.02 }}
-        className="group relative bg-card dark:bg-card border border-border/60 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-black/10 transition-all duration-300 cursor-pointer h-full"
+    <Link href={href} className="group block min-w-0 focus-visible:outline-none">
+      <motion.article
+        initial={{ opacity: 0, y: 18 }}
+        animate={inView ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.45, delay: Math.min(index * 0.04, 0.4), ease: [0.22, 1, 0.36, 1] }}
+        className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/25 hover:shadow-[0_18px_40px_-18px_rgba(30,108,164,0.45)] group-focus-visible:ring-2 group-focus-visible:ring-primary/40"
       >
-        {/* Top gradient accent stripe */}
-        <div
-          className="h-1 w-full flex-shrink-0"
-          style={{ background: `linear-gradient(90deg, ${stripe.from}, ${stripe.to})` }}
-        />
-
-        {/* Category image area */}
-        <div
-          className="relative h-28 overflow-hidden flex items-center justify-center"
-          style={{ background: `linear-gradient(135deg, ${stripe.from}14, ${stripe.to}20)` }}
-        >
-          <img
-            src={imgSrc}
-            alt={cat.name}
-            loading="lazy"
-            onError={() => setImgErr(true)}
-            className="h-24 w-24 object-contain group-hover:scale-110 transition-transform duration-400 drop-shadow-md"
-          />
-          {/* Soft glow under image */}
+        {/* Media */}
+        <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-sky-50 via-white to-teal-50 dark:from-sky-950/30 dark:via-card dark:to-teal-950/20">
+          {/* soft concentric wash */}
           <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-6 blur-xl opacity-40"
-            style={{ background: stripe.from }}
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/60 blur-2xl dark:bg-white/5"
           />
-        </div>
 
-        {/* Card body */}
-        <div className="px-3 pt-3 pb-4 flex flex-col items-center text-center gap-2">
+          {showEmojiFallback ? (
+            <div className="flex h-full w-full items-center justify-center">
+              <span role="img" aria-label={cat.name} className="text-5xl leading-none sm:text-6xl">
+                {cat.icon || "💊"}
+              </span>
+            </div>
+          ) : (
+            <img
+              src={imgSrc}
+              alt={`${cat.name} medicines at Ayush Medico, Kurla West`}
+              loading="lazy"
+              decoding="async"
+              onError={() => setImgErr(true)}
+              className="absolute inset-0 m-auto h-[74%] w-[74%] object-contain drop-shadow-[0_10px_18px_rgba(15,23,42,0.14)] transition-transform duration-500 ease-out group-hover:scale-[1.07]"
+            />
+          )}
 
-          {/* Icon badge over the image-to-text transition */}
-          <div
-            className="inline-flex items-center justify-center w-8 h-8 rounded-xl text-lg -mt-7 ring-2 ring-card shadow-md"
-            style={{ background: `linear-gradient(135deg, ${stripe.from}, ${stripe.to})` }}
-          >
-            <span role="img" aria-label={cat.name} className="text-base leading-none">
+          {/* emoji seal */}
+          {!showEmojiFallback && (
+            <span
+              aria-hidden
+              className="absolute left-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/85 text-base shadow-sm ring-1 ring-black/5 backdrop-blur-sm dark:bg-card/85"
+            >
               {cat.icon || "💊"}
             </span>
-          </div>
+          )}
 
-          {/* Name */}
-          <h3
-            className="font-bold text-foreground text-xs sm:text-sm leading-tight group-hover:text-primary transition-colors duration-200"
-            style={{ fontFamily: "'Poppins', sans-serif" }}
-          >
-            {cat.name}
-          </h3>
-
-          {/* Medicine count pill */}
-          <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${stripe.pill}`}>
+          {/* count badge */}
+          <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold text-primary shadow-sm ring-1 ring-primary/10 backdrop-blur-sm dark:bg-card/90">
             {typeof count === "number" && count > 0
-              ? `${count.toLocaleString()} items`
-              : "View all"}
-          </div>
-
-          {/* Arrow — slides in on hover */}
-          <div
-            className="flex items-center gap-0.5 text-[10px] font-semibold opacity-0 group-hover:opacity-100 -translate-y-1 group-hover:translate-y-0 transition-all duration-200"
-            style={{ color: stripe.from }}
-          >
-            Shop now <ChevronRight size={11} />
-          </div>
+              ? `${count.toLocaleString()} medicines`
+              : "Browse all"}
+          </span>
         </div>
 
-        {/* Hover wash */}
-        <div
-          className="absolute inset-0 opacity-0 group-hover:opacity-[0.03] transition-opacity duration-300 pointer-events-none rounded-3xl"
-          style={{ background: `linear-gradient(135deg, ${stripe.from}, ${stripe.to})` }}
+        {/* Body */}
+        <div className="flex flex-1 items-start justify-between gap-2 p-4 pt-3.5">
+          <div className="min-w-0">
+            <h3
+              className="line-clamp-2 text-sm font-bold leading-snug tracking-[-0.01em] text-foreground transition-colors duration-200 group-hover:text-primary sm:text-[15px]"
+              style={{ fontFamily: "'Poppins', sans-serif" }}
+            >
+              {cat.name}
+            </h3>
+            <p className="mt-1 text-[11px] font-medium text-muted-foreground">
+              {typeof count === "number" && count > 0 ? "In stock · delivery in 4 km" : "Explore the range"}
+            </p>
+          </div>
+          <span
+            aria-hidden
+            className="mt-0.5 inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/8 text-primary opacity-0 transition-all duration-300 group-hover:bg-primary group-hover:text-white group-hover:opacity-100"
+          >
+            <ArrowUpRight size={14} />
+          </span>
+        </div>
+
+        {/* bottom accent */}
+        <span
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-[3px] scale-x-0 bg-gradient-to-r from-primary via-teal-400 to-secondary transition-transform duration-300 group-hover:scale-x-100"
         />
-      </motion.div>
+      </motion.article>
     </Link>
   );
 }
@@ -166,79 +154,70 @@ export default function Categories() {
   if (loading)                 return <SkeletonGrid />;
   if (categories.length === 0) return null;
 
-  return (
-    <section id="categories" ref={ref} className="py-16 lg:py-24 bg-muted/20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  const totalMedicines = (categories as { count?: number }[]).reduce(
+    (sum, category) => sum + (category.count || 0),
+    0,
+  );
 
+  return (
+    <section id="categories" ref={ref} className="relative bg-gradient-to-b from-background via-muted/25 to-background py-14 lg:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Heading */}
         <motion.div
-          initial={{ y: 24 }}
-          animate={inView ? { y: 0 } : {}}
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
-          className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10"
+          className="mb-9 flex flex-col gap-5 sm:mb-11 sm:flex-row sm:items-end sm:justify-between"
         >
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-semibold border border-secondary/20 mb-3">
+          <div className="max-w-2xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-secondary/20 bg-secondary/10 px-3.5 py-1.5 text-xs font-semibold text-secondary">
               Browse by Category
             </div>
             <h2
-              className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground"
+              className="text-[26px] font-bold leading-tight tracking-[-0.02em] text-foreground sm:text-4xl"
               style={{ fontFamily: "'Poppins', sans-serif" }}
             >
               Shop by{" "}
-              <span className="bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary via-teal-500 to-secondary bg-clip-text text-transparent">
                 Category
               </span>
             </h2>
-            <p className="text-muted-foreground text-sm mt-1.5">
-              {categories.length} categories · {(categories as any[]).reduce((s, c) => s + ((c.count as number) || 0), 0).toLocaleString()} medicines available
+            <p className="mt-2 text-sm text-muted-foreground sm:text-[15px]">
+              {categories.length} categories · {totalMedicines.toLocaleString()} medicines available in Kurla West
             </p>
           </div>
 
           <Link
             href="/categories"
-            className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-secondary text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-200 flex-shrink-0"
+            className="hidden flex-shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-primary/35 sm:inline-flex"
           >
             View All
             <ArrowRight size={15} />
           </Link>
         </motion.div>
 
-        {/* Cards — horizontal scroll on mobile, wrapping grid on desktop */}
-        <div className="relative">
-          {/* Mobile horizontal scroll */}
-          <div className="flex lg:hidden gap-3.5 overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide">
-            {categories.map((cat, i) => (
-              <div key={cat.id} className="snap-start">
-                <CategoryCard cat={cat} index={i} inView={inView} />
-              </div>
-            ))}
-          </div>
-
-          {/* Desktop grid */}
-          <div className="hidden lg:grid grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
-            {categories.map((cat, i) => (
-              <CategoryCard key={cat.id} cat={cat} index={i} inView={inView} />
-            ))}
-          </div>
+        {/* Grid — 2 columns on phones so cards stay large without side-scrolling */}
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+          {categories.map((cat, i) => (
+            <CategoryCard key={cat.id} cat={cat} index={i} inView={inView} />
+          ))}
         </div>
 
-        {/* View All button — mobile only (desktop has it inline with heading) */}
+        {/* Mobile CTA */}
         <motion.div
-          initial={{ y: 16 }}
-          animate={inView ? { y: 0 } : {}}
+          initial={{ opacity: 0, y: 14 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="flex justify-center mt-8 sm:hidden"
+          className="mt-8 flex justify-center sm:hidden"
         >
           <Link
             href="/categories"
-            className="inline-flex items-center gap-2 px-7 py-3 bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-200 text-sm"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-primary/40"
           >
             View All Categories
             <ArrowRight size={15} />
           </Link>
         </motion.div>
-
       </div>
     </section>
   );
