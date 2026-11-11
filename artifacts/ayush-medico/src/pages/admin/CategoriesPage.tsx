@@ -34,6 +34,15 @@ interface Category {
 const PRESET_ICONS  = ["💊","🩺","🩹","💉","🧬","🫀","🫁","🧠","👶","🌿","💪","🔬","❤️‍🩹","🏥","⚕️","🍀","🌡️","🧪","🦷","👁️"];
 const PRESET_COLORS = ["primary","secondary","accent","purple","orange","pink","red","yellow"];
 
+/** Surfaces the API's error text so the dialog can explain a failed save. */
+async function serverError(resp: Response): Promise<string> {
+  try {
+    const body = await resp.json() as { error?: string };
+    if (body?.error) return body.error;
+  } catch { /* non-JSON body */ }
+  return `Server error ${resp.status}`;
+}
+
 function slugify(s: string) {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
@@ -366,19 +375,23 @@ export default function CategoriesPage() {
           method: "PUT",
           body: JSON.stringify({ ...data, displayOrder: data.order }),
         });
-        if (!resp.ok) throw new Error(`API error ${resp.status}`);
+        if (!resp.ok) throw new Error(await serverError(resp));
         toast({ title: "Category updated ✓" });
       } else {
         const resp = await adminFetch("/api/admin/categories", {
           method: "POST",
           body: JSON.stringify({ ...data, displayOrder: data.order ?? 0 }),
         });
-        if (!resp.ok) throw new Error(`API error ${resp.status}`);
+        if (!resp.ok) throw new Error(await serverError(resp));
         toast({ title: "Category added ✓" });
       }
       await fetchCategories();
-    } catch {
-      toast({ variant: "destructive", title: "Failed to save category" });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Failed to save category",
+        description: err instanceof Error && err.message !== "save failed" ? err.message : undefined,
+      });
       throw new Error("save failed");
     }
   };

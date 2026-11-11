@@ -47,14 +47,62 @@ router.get("/:id", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+/**
+ * The admin form posts display fields (`order`, and sometimes `slug`) straight
+ * from the browser. `order` is not a column — the category table stores
+ * display_order — so inserting the body verbatim failed with a 500 and the
+ * dialog only ever said "Failed to save category". Only known columns are
+ * forwarded, and a slug is derived from the name when the client omits it.
+ */
+function slugifyCategoryName(name: string): string {
+  const base = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return base || "category";
+}
+
+function categoryPayload(body: Record<string, unknown>, requireSlug: boolean): Partial<InsertCategory> {
+  const payload: Partial<InsertCategory> = {};
+  const name = typeof body["name"] === "string" ? body["name"].trim() : "";
+  if (name) payload.name = name;
+
+  const rawSlug = typeof body["slug"] === "string" ? body["slug"].trim() : "";
+  if (rawSlug) payload.slug = slugifyCategoryName(rawSlug);
+  else if (requireSlug && name) payload.slug = slugifyCategoryName(name);
+
+  if (typeof body["description"] === "string") payload.description = body["description"].trim();
+  if (typeof body["imageUrl"] === "string" || body["imageUrl"] === null) {
+    payload.imageUrl = (body["imageUrl"] as string | null) ?? null;
+  }
+  if (typeof body["icon"] === "string" && body["icon"].trim()) payload.icon = body["icon"].trim();
+  if (typeof body["color"] === "string" && body["color"].trim()) payload.color = body["color"].trim();
+  if (typeof body["enabled"] === "boolean") payload.enabled = body["enabled"];
+
+  const order = body["displayOrder"] ?? body["order"];
+  if (typeof order === "number" && Number.isFinite(order)) payload.displayOrder = Math.trunc(order);
+
+  const collection = body["collectionType"];
+  if (collection === "medicine" || collection === "veterinary" || collection === "general") {
+    payload.collectionType = collection;
+  }
+  return payload;
+}
+
 // Admin-only writes
 router.post("/", requireAuth, requireAdminEmail, async (req: Request, res: Response): Promise<void> => {
   try {
-    const data = req.body as InsertCategory;
-    if (!data.name || !data.slug) { res.status(400).json({ error: "name and slug are required" }); return; }
-    const [created] = await db.insert(categoriesTable).values(data).returning();
+    const data = categoryPayload(req.body as Record<string, unknown>, true);
+    if (!data.name) { res.status(400).json({ error: "name is required" }); return; }
+    if (!data.slug) data.slug = slugifyCategoryName(data.name);
+    const [created] = await db.insert(categoriesTable).values(data as InsertCategory).returning();
     res.status(201).json(created);
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      res.status(409).json({ error: "A category with this name already exists" });
+      return;
+    }
     logger.error({ err }, "Failed to create category");
     res.status(500).json({ error: "Failed to create category" });
   }
@@ -64,14 +112,19 @@ router.put("/:id", requireAuth, requireAdminEmail, async (req: Request, res: Res
   try {
     const id = Number(req.params["id"]);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const patch = categoryPayload(req.body as Record<string, unknown>, false);
     const [updated] = await db
       .update(categoriesTable)
-      .set({ ...(req.body as Partial<InsertCategory>), updatedAt: new Date() })
+      .set({ ...patch, updatedAt: new Date() })
       .where(eq(categoriesTable.id, id))
       .returning();
     if (!updated) { res.status(404).json({ error: "Category not found" }); return; }
     res.json(updated);
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      res.status(409).json({ error: "Another category already uses this name" });
+      return;
+    }
     logger.error({ err }, "Failed to update category");
     res.status(500).json({ error: "Failed to update category" });
   }
