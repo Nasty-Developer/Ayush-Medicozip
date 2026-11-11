@@ -249,8 +249,19 @@ export default function BrandsPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center h-40">
-          <Loader2 size={24} className="animate-spin text-primary" />
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm" aria-busy="true" aria-label="Loading brands">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+            <div className="h-3 w-24 rounded bg-muted animate-pulse" />
+            <div className="h-3 w-28 rounded bg-muted animate-pulse" />
+          </div>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-3.5 border-b border-border last:border-0">
+              <div className="h-3 w-4 rounded bg-muted animate-pulse" />
+              <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />
+              <div className="h-3 flex-1 max-w-[220px] rounded bg-muted animate-pulse" />
+              <div className="ml-auto h-3 w-14 rounded bg-muted animate-pulse" />
+            </div>
+          ))}
         </div>
       ) : !pageData || pageData.data.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-40 bg-card border border-border rounded-2xl text-muted-foreground">

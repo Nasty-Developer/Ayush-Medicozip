@@ -368,3 +368,12 @@
     border-top-width: 0 !important;
   }
 }
+
+/* Branded loading bar used by the route loader (matches the boot splash). */
+@keyframes loader-slide {
+  0%   { transform: translateX(-105%); }
+  100% { transform: translateX(320%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[loader-slide_1\.15s_ease-in-out_infinite\] { animation: none; width: 100%; }
+}

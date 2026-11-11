@@ -53,6 +53,38 @@
     <meta name="twitter:image" content="https://ayushmedico.com/opengraph.jpg" />
     <meta name="twitter:image:alt" content="Ayush Medico – Trusted Pharmacy in Kurla West, Mumbai" />
 
+
+    <!-- ── Boot splash: painted before any JS, removed once React mounts ── -->
+    <style>
+      #boot-splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;gap:22px;background:#ffffff;
+        font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+        transition:opacity .35s ease,visibility .35s ease}
+      #boot-splash .bs-mark{width:74px;height:74px;border-radius:18px;
+        background:linear-gradient(135deg,#1e6ca4,#0e8f8a);display:flex;align-items:center;
+        justify-content:center;box-shadow:0 18px 38px -18px rgba(30,108,164,.55);
+        animation:bs-pop 2.6s ease-in-out infinite}
+      #boot-splash .bs-mark svg{width:38px;height:38px;display:block}
+      #boot-splash .bs-name{font-size:1.06rem;font-weight:700;letter-spacing:-.01em;color:#0f172a}
+      #boot-splash .bs-place{font-size:.72rem;font-weight:600;letter-spacing:.14em;
+        text-transform:uppercase;color:#64748b;margin-top:-14px}
+      #boot-splash .bs-bar{width:132px;height:3px;border-radius:99px;background:#e2e8f0;overflow:hidden}
+      #boot-splash .bs-bar span{display:block;width:42%;height:100%;border-radius:99px;
+        background:linear-gradient(90deg,#1e6ca4,#0e8f8a);animation:bs-slide 1.15s ease-in-out infinite}
+      @keyframes bs-slide{0%{transform:translateX(-105%)}100%{transform:translateX(320%)}}
+      @keyframes bs-pop{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+      @media (prefers-color-scheme:dark){
+        #boot-splash{background:#0b1220}
+        #boot-splash .bs-name{color:#e9eef7}
+        #boot-splash .bs-place{color:#8b9bb4}
+        #boot-splash .bs-bar{background:#1e293b}
+      }
+      @media (prefers-reduced-motion:reduce){
+        #boot-splash .bs-mark,#boot-splash .bs-bar span{animation:none}
+      }
+      html.app-ready #boot-splash{opacity:0;visibility:hidden}
+    </style>
+
     <!-- ── Icons & Manifest ──────────────────────────────────────────── -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
@@ -293,6 +325,17 @@
 
   </head>
   <body>
+    <div id="boot-splash" role="status" aria-live="polite" aria-label="Loading Ayush Medico">
+      <div class="bs-mark" aria-hidden="true">
+        <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none">
+          <rect x="192" y="96" width="128" height="320" rx="26" fill="#fff"/>
+          <rect x="96" y="192" width="320" height="128" rx="26" fill="#fff"/>
+        </svg>
+      </div>
+      <div class="bs-name">Ayush Medico</div>
+      <div class="bs-place">Kurla West</div>
+      <div class="bs-bar" aria-hidden="true"><span></span></div>
+    </div>
     <div id="root"></div>
     <script>
       // A previous development session may have installed the production PWA
@@ -317,6 +360,19 @@
           if (results.some(Boolean)) location.reload();
         }).catch(function () {});
       })();
+    </script>
+    <script>
+      // The splash must never outlive a broken bundle: hide it on a timer too.
+      window.__hideBootSplash = function () {
+        document.documentElement.classList.add("app-ready");
+        window.setTimeout(function () {
+          var el = document.getElementById("boot-splash");
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        }, 400);
+      };
+      window.setTimeout(function () {
+        if (window.__hideBootSplash) window.__hideBootSplash();
+      }, 7000);
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

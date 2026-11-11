@@ -85,14 +85,28 @@ const queryClient = new QueryClient({
   },
 });
 
-/** Thin fallback shown while a lazy chunk loads. */
-function PageLoader() {
+/**
+ * RouteLoader — branded placeholder while a lazy route chunk downloads.
+ * Same mark and bar as the boot splash so the hand-off looks like one screen.
+ */
+function RouteLoader({ label = "Loading" }: { label?: string }) {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4" role="status" aria-live="polite">
+      <div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-[#1e6ca4] to-[#0e8f8a] shadow-[0_18px_38px_-20px_rgba(30,108,164,0.6)]">
+        <svg viewBox="0 0 512 512" className="h-8 w-8" aria-hidden="true">
+          <rect x="192" y="96" width="128" height="320" rx="26" fill="#fff" />
+          <rect x="96" y="192" width="320" height="128" rx="26" fill="#fff" />
+        </svg>
+      </div>
+      <div className="h-[3px] w-28 overflow-hidden rounded-full bg-muted">
+        <div className="h-full w-2/5 animate-[loader-slide_1.15s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-[#1e6ca4] to-[#0e8f8a]" />
+      </div>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
     </div>
   );
 }
+
+const PageLoader = RouteLoader;
 
 /**
  * PublicLayout — shared shell for every public-facing page.

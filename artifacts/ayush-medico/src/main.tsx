@@ -33,4 +33,14 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+declare global {
+  interface Window { __hideBootSplash?: () => void }
+}
+
+const rootEl = document.getElementById("root");
+if (rootEl) {
+  createRoot(rootEl).render(<App />);
+  // Hand over from the static splash to the real app on the next paint, so the
+  // first React frame is already on screen (no white flash between the two).
+  requestAnimationFrame(() => requestAnimationFrame(() => window.__hideBootSplash?.()));
+}

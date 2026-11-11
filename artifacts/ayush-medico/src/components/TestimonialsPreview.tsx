@@ -70,12 +70,14 @@ export default function TestimonialsPreview() {
     fetch(apiPath, { signal: controller.signal, headers: { Accept: "application/json" } })
       .then((response) => {
         if (!response.ok) throw new Error(`Testimonials request failed (${response.status})`);
-        return response.json() as Promise<unknown>;
+        // A deploy in flight can briefly answer with the HTML shell; never let
+        // that surface as a hard error in the console.
+        return response.text().then((text) => (text.trim() ? JSON.parse(text) : [])) as Promise<unknown>;
       })
       .then((body) => setState({ status: "ready", items: normalizeTestimonials(body) }))
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        console.error("[Testimonials] Could not load published reviews", {
+        console.warn("[Testimonials] Could not load published reviews", {
           message: error instanceof Error ? error.message : "Unknown error",
         });
         setState({ status: "error" });
