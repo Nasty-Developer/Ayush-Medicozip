@@ -137,14 +137,6 @@ export default function CategoriesPage() {
   // ── Data ──────────────────────────────────────────────────────────────────
   const { categories, loading: categoriesLoading, error: categoriesError } = useCategories(true);
 
-  const {
-    medicines: allMedicines,
-    initialLoading: allInitialLoading,
-    loadingMore: allLoadingMore,
-    hasMore: allHasMore,
-    loadMore: allLoadMore,
-    totalLoaded,
-  } = useAllMedicines();
 
   // ── URL-driven filter state — survives browser back navigation ────────────
   const rawSearch    = useSearch();
@@ -176,6 +168,20 @@ export default function CategoriesPage() {
 
   const medicineCounts = useMedicineCounts();
 
+  // Debounce search — the query goes to the API, which searches the whole
+  // catalogue (name and generic name), not just the page already loaded.
+  const debouncedSearch = useDebounce(search, 300);
+
+  const {
+    medicines: allMedicines,
+    initialLoading: allInitialLoading,
+    loadingMore: allLoadingMore,
+    hasMore: allHasMore,
+    loadMore: allLoadMore,
+    totalLoaded,
+  } = useAllMedicines({ search: debouncedSearch });
+
+
   const catQueryName = selectedCatName === "all" ? "" : selectedCatName;
   const {
     medicines: catMedicines,
@@ -184,9 +190,6 @@ export default function CategoriesPage() {
     hasMore: catHasMore,
     loadMore: catLoadMore,
   } = useMedicinesByCategory(catQueryName);
-
-  // Debounce search — avoid filtering on every keystroke
-  const debouncedSearch = useDebounce(search, 300);
 
   const selectedCategory = categories.find((c) => c.name === selectedCatName);
 
@@ -199,7 +202,10 @@ export default function CategoriesPage() {
   const visibleMedicines = useMemo(() => {
     let list = activeMedicines;
     const q = debouncedSearch.trim().toLowerCase();
-    if (q) {
+    // The API already matched name and generic name for the query, so a second
+    // client pass would hide real matches (a search for "paracetamol" should
+    // find CALPOL). Only the category view still filters locally.
+    if (q && selectedCatName !== "all") {
       list = list.filter(
         (m) =>
           m.name.toLowerCase().includes(q) ||
@@ -218,7 +224,7 @@ export default function CategoriesPage() {
       return (a.order ?? 0) - (b.order ?? 0);
     });
     return sorted;
-  }, [activeMedicines, debouncedSearch, sort]);
+  }, [activeMedicines, debouncedSearch, sort, selectedCatName]);
 
   const selectedColors = selectedCategory ? getCategoryColors(selectedCategory.color) : null;
 
