@@ -11,26 +11,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Pencil, Trash2, X, Loader2, Building2, Search, AlertCircle, RefreshCw,
 } from "lucide-react";
-import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateBrandsCache } from "@/hooks/useBrands";
+import { adminFetch, adminJson, AdminApiError } from "@/lib/adminApi";
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
 type Company = { id: number; name: string; createdAt: string };
 type PageData = { data: Company[]; total: number; page: number; limit: number };
-
-/* ── Auth helper ─────────────────────────────────────────────────────────── */
-async function adminFetch(path: string, init: RequestInit = {}) {
-  const token = await auth?.currentUser?.getIdToken();
-  return fetch(path, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init.headers as Record<string, string> ?? {}),
-    },
-  });
-}
 
 /* ── Dialog ──────────────────────────────────────────────────────────────── */
 function CompanyDialog({
@@ -79,7 +66,7 @@ function CompanyDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Company Name *</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Brand Name *</label>
             <input
               value={name}
               onChange={(e) => { setName(e.target.value); validate(e.target.value); }}
@@ -104,7 +91,7 @@ function CompanyDialog({
             <button type="submit" disabled={saving || !!nameError}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-70 transition-all">
               {saving && <Loader2 size={14} className="animate-spin" />}
-              {company ? "Save" : "Add Company"}
+              {company ? "Save" : "Add Brand"}
             </button>
           </div>
         </form>
@@ -123,6 +110,7 @@ export default function BrandsPage() {
   const [page,      setPage]      = useState(1);
   const [dialog,    setDialog]    = useState<{ open: boolean; company: Company | null }>({ open: false, company: null });
   const [deleting,  setDeleting]  = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { toast } = useToast();
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -131,11 +119,19 @@ export default function BrandsPage() {
     try {
       const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) });
       if (q.trim()) params.set("search", q.trim());
-      const res  = await fetch(`/api/admin/companies?${params}`);
-      const data = await res.json() as PageData;
-      setPageData(data);
-    } catch {
-      toast({ variant: "destructive", title: "Failed to load companies" });
+      const data = await adminJson<PageData>(`/api/admin/companies?${params}`);
+      // Never trust the shape: an error body must not become the list payload.
+      setPageData({
+        data:  Array.isArray(data?.data) ? data.data : [],
+        total: typeof data?.total === "number" ? data.total : 0,
+        page:  typeof data?.page === "number" ? data.page : p,
+        limit: typeof data?.limit === "number" ? data.limit : PAGE_SIZE,
+      });
+      setLoadError(null);
+    } catch (err) {
+      setPageData({ data: [], total: 0, page: p, limit: PAGE_SIZE });
+      setLoadError(err instanceof AdminApiError ? err.message : "Could not load brands. Check your connection and try again.");
+      toast({ variant: "destructive", title: "Failed to load brands" });
     } finally {
       setLoading(false);
     }
@@ -166,7 +162,7 @@ export default function BrandsPage() {
       const err = await res.json().catch(() => ({})) as { error?: string };
       throw new Error(err.error ?? "Save failed");
     }
-    toast({ title: isEdit ? "Company renamed ✓" : "Company added ✓" });
+    toast({ title: isEdit ? "Brand renamed ✓" : "Brand added ✓" });
     invalidateBrandsCache();
     load(search, page);
   };
@@ -176,11 +172,11 @@ export default function BrandsPage() {
     try {
       const res = await adminFetch(`/api/admin/companies/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
-      toast({ title: "Company removed" });
+      toast({ title: "Brand removed" });
       invalidateBrandsCache();
       load(search, page);
     } catch {
-      toast({ variant: "destructive", title: "Failed to delete company" });
+      toast({ variant: "destructive", title: "Failed to delete brand" });
     } finally {
       setDeleting(null);
     }
@@ -194,11 +190,11 @@ export default function BrandsPage() {
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            Companies
+            Brands
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             {pageData ? (
-              <>{pageData.total.toLocaleString()} companies · populated via Inventory Sync</>
+              <>{pageData.total.toLocaleString()} brands · used in the medicine brand field</>
             ) : "Loading…"}
           </p>
         </div>
@@ -214,7 +210,7 @@ export default function BrandsPage() {
             onClick={() => setDialog({ open: true, company: null })}
             className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 hover:bg-primary/90 transition-all flex-shrink-0"
           >
-            <Plus size={16} /> Add Company
+            <Plus size={16} /> Add Brand
           </button>
         </div>
       </div>
@@ -225,7 +221,7 @@ export default function BrandsPage() {
         <input
           value={search}
           onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Search companies…"
+          placeholder="Search brands…"
           className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
         />
       </div>
@@ -236,6 +232,22 @@ export default function BrandsPage() {
         from MediVision Gold. Manually add or rename companies that aren't in the catalogue.
       </div>
 
+      {loadError && !loading && (
+        <div className="mb-4 flex items-start gap-3 p-4 rounded-2xl border border-destructive/30 bg-destructive/5">
+          <AlertCircle size={18} className="text-destructive mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Brands could not be loaded</p>
+            <p className="text-xs text-muted-foreground mt-0.5 break-words">{loadError}</p>
+          </div>
+          <button
+            onClick={() => load(search, page)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted transition-colors flex-shrink-0"
+          >
+            <RefreshCw size={13} /> Retry
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center h-40">
           <Loader2 size={24} className="animate-spin text-primary" />
@@ -244,7 +256,7 @@ export default function BrandsPage() {
         <div className="flex flex-col items-center justify-center h-40 bg-card border border-border rounded-2xl text-muted-foreground">
           <Building2 size={28} className="mb-2" />
           <p className="text-sm font-medium">
-            {search ? "No companies match your search" : "No companies yet — run an Inventory Sync or add manually"}
+            {search ? "No brands match your search" : "No brands yet — run an Inventory Sync or add one manually"}
           </p>
         </div>
       ) : (
@@ -255,7 +267,7 @@ export default function BrandsPage() {
                 <thead className="border-b border-border bg-muted/30">
                   <tr>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">#</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Company Name</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Brand Name</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
