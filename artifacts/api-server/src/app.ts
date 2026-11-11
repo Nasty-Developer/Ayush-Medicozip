@@ -4,9 +4,12 @@ import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import pinoHttp from "pino-http";
 import path from "node:path";
+import { readFile } from "node:fs/promises";
+import { pool } from "@workspace/db";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { initFirebaseAdmin } from "./lib/firebaseAdmin.js";
+import { buildSeo, applySeo, SITE_URL } from "./lib/seo.js";
 initFirebaseAdmin();
 
 // Keep the app type inferred from the callable Express factory. This avoids
@@ -31,7 +34,9 @@ const frontendDir = path.resolve(
   "../../ayush-medico/dist/public",
 );
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static(frontendDir));
+  // index:false so "/" goes through the SEO head injection below instead of
+  // being served as a bare file with the template's default tags.
+  app.use(express.static(frontendDir, { index: false }));
 }
 
 // ── Trust proxy ───────────────────────────────────────────────────────────────
@@ -194,15 +199,75 @@ app.use("/api", router);
 // Render runs one web service for this project. In production, the API process
 // also serves the already-built Vite output from the primary frontend package.
 if (process.env.NODE_ENV === "production") {
-  app.use((req: any, res: any, next: any) => {
+  const indexPath = path.join(frontendDir, "index.html");
+  let templateCache: string | null = null;
+  const loadTemplate = async (): Promise<string> => {
+    if (templateCache === null) templateCache = await readFile(indexPath, "utf8");
+    return templateCache;
+  };
+
+  // Product + category sitemap, generated from the catalogue and cached, so
+  // search engines can discover every category and the orderable medicines
+  // without listing all 50k rows in the main sitemap.
+  let sitemapCache: { xml: string; builtAt: number } | null = null;
+  app.get("/sitemap-products.xml", async (_req: any, res: any, next: any) => {
+    try {
+      const now = Date.now();
+      if (!sitemapCache || now - sitemapCache.builtAt > 6 * 60 * 60 * 1000) {
+        const cats = await pool.query<{ slug: string }>(
+          "SELECT slug FROM categories WHERE enabled = true ORDER BY display_order, name LIMIT 500",
+        );
+        const meds = await pool.query<{ id: number; updatedAt: Date | null }>(
+          `SELECT id, updated_at AS "updatedAt" FROM medicines
+            WHERE (status IS NULL OR status <> 'deleted') AND stock_qty > 0
+            ORDER BY stock_qty DESC, id ASC LIMIT 5000`,
+        );
+        const urls: string[] = [];
+        for (const row of cats.rows) {
+          urls.push(
+            `<url><loc>${SITE_URL}/category/${encodeURIComponent(row.slug)}</loc>` +
+              `<changefreq>weekly</changefreq><priority>0.8</priority></url>`,
+          );
+        }
+        for (const row of meds.rows) {
+          const lastmod = row.updatedAt ? new Date(row.updatedAt).toISOString().slice(0, 10) : undefined;
+          urls.push(
+            `<url><loc>${SITE_URL}/medicine/${row.id}</loc>` +
+              `${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}` +
+              `<changefreq>weekly</changefreq><priority>0.6</priority></url>`,
+          );
+        }
+        sitemapCache = {
+          xml:
+            `<?xml version="1.0" encoding="UTF-8"?>\n` +
+            `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`,
+          builtAt: now,
+        };
+      }
+      res.type("application/xml").send(sitemapCache.xml);
+    } catch (err) {
+      logger.warn({ err }, "sitemap-products.xml generation failed");
+      next(err);
+    }
+  });
+
+  app.use(async (req: any, res: any, next: any) => {
     if (req.method !== "GET" || req.path.startsWith("/api")) {
       next();
       return;
     }
 
-    res.sendFile(path.join(frontendDir, "index.html"), (err: any) => {
-      if (err) next(err);
-    });
+    try {
+      const [template, meta] = await Promise.all([loadTemplate(), buildSeo(req.path)]);
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+      res.send(applySeo(template, meta));
+    } catch (err) {
+      logger.warn({ err, path: req.path }, "SEO head injection failed, serving template");
+      res.sendFile(indexPath, (err2: any) => {
+        if (err2) next(err2);
+      });
+    }
   });
 }
 

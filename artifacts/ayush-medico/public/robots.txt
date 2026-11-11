@@ -1,28 +1,45 @@
-# Ayush Medico — robots.txt
-# https://YOUR-DOMAIN.com/robots.txt
-# Replace YOUR-DOMAIN.com with the real domain before launch.
-
+# Ayush Medico — https://ayushmedico.com/robots.txt
 User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /admin/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /order/
+Disallow: /order-confirmation/
+Disallow: /payment/
+Disallow: /track
+Disallow: /track/
+Disallow: /inquiry
+Disallow: /api/
 
-# Block common nuisance paths
 Disallow: /src/
 Disallow: /.git/
 Disallow: /node_modules/
 
-# Sitemap — update YOUR-DOMAIN.com before launch
-Sitemap: https://YOUR-DOMAIN.com/sitemap.xml
+Sitemap: https://ayushmedico.com/sitemap.xml
+Sitemap: https://ayushmedico.com/sitemap-products.xml
 
-# Google
 User-agent: Googlebot
 Allow: /
 Disallow: /admin
 Disallow: /admin/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /api/
 
-# Bing
 User-agent: Bingbot
 Allow: /
 Disallow: /admin
 Disallow: /admin/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /api/
+
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+
+User-agent: Google-Extended
+Allow: /

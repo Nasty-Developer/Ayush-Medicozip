@@ -1,80 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  Ayush Medico & General Stores — Sitemap
-  Replace YOUR-DOMAIN.com with the real domain before launch.
-  Re-submit to Google Search Console and Bing Webmaster after launch.
--->
 <urlset
   xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
     http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 
-  <!-- Homepage (highest priority) -->
   <url>
-    <loc>https://YOUR-DOMAIN.com/</loc>
-    <lastmod>2025-07-18</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://ayushmedico.com/</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
-
-  <!-- Medicine categories -->
   <url>
-    <loc>https://YOUR-DOMAIN.com/categories</loc>
-    <lastmod>2025-07-18</lastmod>
-    <changefreq>daily</changefreq>
+    <loc>https://ayushmedico.com/categories</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
-
-  <!-- Cart -->
   <url>
-    <loc>https://YOUR-DOMAIN.com/cart</loc>
-    <lastmod>2025-07-18</lastmod>
+    <loc>https://ayushmedico.com/delivery</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://ayushmedico.com/request-medicine</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ayushmedico.com/services</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ayushmedico.com/contact</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ayushmedico.com/about</loc>
+    <lastmod>2026-11-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
-
-  <!-- Legal pages -->
   <url>
-    <loc>https://YOUR-DOMAIN.com/privacy-policy</loc>
-    <lastmod>2025-07-18</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
+    <loc>https://ayushmedico.com/faq</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://YOUR-DOMAIN.com/terms-conditions</loc>
-    <lastmod>2025-07-18</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
-  </url>
-
-  <url>
-    <loc>https://YOUR-DOMAIN.com/refund-policy</loc>
-    <lastmod>2025-07-18</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
-  </url>
-
-  <url>
-    <loc>https://YOUR-DOMAIN.com/shipping-policy</loc>
-    <lastmod>2025-07-18</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
-  </url>
-
-  <url>
-    <loc>https://YOUR-DOMAIN.com/prescription-policy</loc>
-    <lastmod>2025-07-18</lastmod>
-    <changefreq>yearly</changefreq>
+    <loc>https://ayushmedico.com/general-products</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
-
   <url>
-    <loc>https://YOUR-DOMAIN.com/disclaimer</loc>
-    <lastmod>2025-07-18</lastmod>
+    <loc>https://ayushmedico.com/vet-medicines</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://ayushmedico.com/compliance</loc>
+    <lastmod>2026-11-11</lastmod>
     <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://ayushmedico.com/privacy-policy</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://ayushmedico.com/terms-conditions</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://ayushmedico.com/refund-policy</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://ayushmedico.com/shipping-policy</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://ayushmedico.com/prescription-policy</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://ayushmedico.com/disclaimer</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
   </url>
 
 </urlset>

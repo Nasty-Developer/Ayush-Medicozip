@@ -1,0 +1,505 @@
+/**
+ * seo.ts — per-route document head for the single-page storefront.
+ *
+ * The storefront is one Vite bundle served for every path, so without help every
+ * URL shipped the same <title>, description and canonical. That makes a search
+ * engine pick one page and ignore the rest, and it gives category and medicine
+ * pages no way to rank for what they actually sell.
+ *
+ * This module rewrites the head of index.html per request: title, description,
+ * canonical, robots, Open Graph and Twitter tags, hreflang, plus the JSON-LD
+ * that matches the page (Product on a medicine, CollectionPage on a category,
+ * BreadcrumbList everywhere).
+ */
+
+import { pool } from "@workspace/db";
+import { logger } from "./logger.js";
+
+export const SITE_URL = "https://ayushmedico.com";
+const SITE_NAME = "Ayush Medico";
+const BRAND_SUFFIX = "Ayush Medico";
+const PHONE = "+91 98332 73838";
+const LOCALITY = "Kurla West, Mumbai";
+
+export type SeoMeta = {
+  title: string;
+  description: string;
+  canonical: string;
+  robots: string;
+  jsonLd?: Record<string, unknown>[];
+};
+
+type StaticEntry = {
+  title: string;
+  description: string;
+  changeFrequency?: string;
+  priority?: number;
+  index?: boolean;
+};
+
+/** keyword-focused copy for the routes people actually search for */
+export const STATIC_ROUTES: Record<string, StaticEntry> = {
+  "/": {
+    title: "Online Medicine Delivery & Medical Store Near You | Ayush Medico Mumbai",
+    description:
+      "Order medicines online with home delivery in Kurla, Ghatkopar, Sion and Chembur. Ayush Medico is a licensed pharmacy in Kurla West, Mumbai with 50,000+ genuine medicines, OTC products, baby care and health devices. Open 7 days, 8 AM to 10 PM.",
+    priority: 1,
+  },
+  "/categories": {
+    title: "Buy Medicines Online by Category | Ayush Medico Kurla, Mumbai",
+    description:
+      "Browse prescription medicines, OTC drugs, Ayurvedic products, baby care, supplements and healthcare devices online. Genuine stock from a licensed Mumbai pharmacy with delivery in Kurla, Ghatkopar and Chembur.",
+    priority: 0.9,
+  },
+  "/delivery": {
+    title: "Medicine Home Delivery in Kurla, Ghatkopar & Chembur | Ayush Medico",
+    description:
+      "Same-day medicine home delivery across Kurla West, Kurla East, Ghatkopar, Sion, Chembur and nearby Mumbai localities. Upload your prescription and our licensed pharmacist arranges your order.",
+    priority: 0.9,
+  },
+  "/request-medicine": {
+    title: "Request a Medicine Online – Hard To Find Medicines | Ayush Medico",
+    description:
+      "Cannot find a medicine near you? Send the name or prescription to Ayush Medico and we will source it from our licensed distributor network, usually within 24 hours.",
+    priority: 0.8,
+  },
+  "/services": {
+    title: "Pharmacy Services – Prescription Refills & Health Checks | Ayush Medico",
+    description:
+      "Prescription refills, medicine availability checks, BP and sugar monitoring, home delivery and healthcare device support from a licensed pharmacy in Kurla West, Mumbai.",
+    priority: 0.7,
+  },
+  "/about": {
+    title: "About Ayush Medico – Licensed Pharmacy in Kurla West, Mumbai",
+    description:
+      "Ayush Medico & General Stores is a licensed retail pharmacy in Kurla West, Mumbai (FDA licences MH-MZ4-518856 and MH-MZ4-518857) serving families and clinics since inception.",
+    priority: 0.6,
+  },
+  "/contact": {
+    title: "Contact Ayush Medico – Pharmacy Near Kurla Station, Mumbai",
+    description: `Call ${PHONE} or message us on WhatsApp to check medicine availability, order medicines or ask about home delivery in ${LOCALITY}. Open 7 days, 8 AM to 10 PM.`,
+    priority: 0.7,
+  },
+  "/faq": {
+    title: "Medicine Delivery FAQ – Ordering, Prescriptions & Timings | Ayush Medico",
+    description:
+      "Answers about online medicine orders, prescription requirements, delivery areas and timings, payment options and returns at Ayush Medico, Kurla West, Mumbai.",
+    priority: 0.6,
+  },
+  "/compliance": {
+    title: "Drug Licences & Compliance – Ayush Medico Pharmacy Mumbai",
+    description:
+      "Ayush Medico is a licensed retail and wholesale chemist in Mumbai. View our FDA drug licences, registered pharmacist details and dispensing policy.",
+    priority: 0.4,
+  },
+  "/vet-medicines": {
+    title: "Veterinary Medicines Online in Mumbai | Ayush Medico",
+    description:
+      "Veterinary medicines, deworming, supplements and pet care products for clinics, shelters and pet parents, with delivery across Mumbai.",
+    priority: 0.5,
+  },
+  "/general-products": {
+    title: "Healthcare & General Products Online | Ayush Medico Mumbai",
+    description:
+      "Everyday health essentials, hygiene, mother and baby care, first aid and wellness products available from Ayush Medico with home delivery in Mumbai.",
+    priority: 0.5,
+  },
+  "/inquiry": {
+    title: "Send an Inquiry – Ayush Medico Pharmacy Kurla, Mumbai",
+    description:
+      "Ask a question about a medicine, an order or home delivery and the Ayush Medico pharmacy team will get back to you the same day.",
+    index: false,
+  },
+  "/privacy-policy": {
+    title: "Privacy Policy | Ayush Medico",
+    description:
+      "How Ayush Medico collects, uses and protects customer data for online medicine orders and prescriptions.",
+    priority: 0.2,
+  },
+  "/terms-conditions": {
+    title: "Terms & Conditions | Ayush Medico",
+    description: "Terms of use for the Ayush Medico online pharmacy and delivery service.",
+    priority: 0.2,
+  },
+  "/refund-policy": {
+    title: "Refund & Return Policy | Ayush Medico",
+    description:
+      "Refund and return rules for medicines and healthcare products ordered from Ayush Medico.",
+    priority: 0.2,
+  },
+  "/shipping-policy": {
+    title: "Shipping & Delivery Policy | Ayush Medico",
+    description:
+      "How and when Ayush Medico delivers medicine orders across Kurla, Ghatkopar, Chembur and the rest of Mumbai.",
+    priority: 0.2,
+  },
+  "/prescription-policy": {
+    title: "Prescription Policy | Ayush Medico",
+    description:
+      "Prescription requirements for scheduled medicines dispensed by Ayush Medico, and how to upload a valid prescription.",
+    priority: 0.2,
+  },
+  "/disclaimer": {
+    title: "Disclaimer | Ayush Medico",
+    description:
+      "Medical disclaimer for content and product information published by Ayush Medico.",
+    priority: 0.2,
+  },
+};
+
+/** app screens that must never appear in search results */
+const NOINDEX_PREFIXES = [
+  "/cart",
+  "/checkout",
+  "/orders",
+  "/order",
+  "/order-confirmation",
+  "/payment",
+  "/track",
+  "/admin",
+  "/inquiry",
+];
+
+function absolute(pathname: string): string {
+  if (pathname === "/") return `${SITE_URL}/`;
+  return `${SITE_URL}${pathname.replace(/\/+$/, "")}`;
+}
+
+function titleWith(pathname: string, title: string, includeSite: boolean): string {
+  if (!includeSite) return title;
+  // Keep titles under ~62 characters so Google does not truncate them.
+  const tail = ` | ${BRAND_SUFFIX}`;
+  if (title.length + tail.length <= 62) return `${title}${tail}`;
+  return title.length <= 62 ? title : `${title.slice(0, 59).trimEnd()}…`;
+}
+
+function breadcrumb(pathname: string, label: string): Record<string, unknown> {
+  const items: Record<string, unknown>[] = [
+    { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+  ];
+  if (pathname !== "/") {
+    const segments = pathname.split("/").filter(Boolean);
+    let acc = "";
+    segments.forEach((segment, index) => {
+      acc += `/${segment}`;
+      items.push({
+        "@type": "ListItem",
+        position: index + 2,
+        name: index === segments.length - 1 ? label : humaniseSegment(segment),
+        item: absolute(acc),
+      });
+    });
+  }
+  return { "@type": "BreadcrumbList", "@id": `${absolute(pathname)}#breadcrumb`, itemListElement: items };
+}
+
+function humaniseSegment(segment: string): string {
+  const fromTable = STATIC_ROUTES[`/${segment}`];
+  if (fromTable) return fromTable.title.split("|")[0]!.trim();
+  return segment
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function clamp(text: string, max = 158): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
+export function isIndexable(pathname: string): boolean {
+  if (NOINDEX_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+    return false;
+  }
+  return true;
+}
+
+type CategoryRow = { name: string; slug: string; description: string | null };
+type MedicineRow = {
+  id: number;
+  name: string;
+  genericName: string | null;
+  sellingPrice: string | null;
+  mrp: string | null;
+  imageUrl: string | null;
+  stockStatus: string;
+  stockQty: number;
+  companyName: string | null;
+  categoryName: string | null;
+};
+
+async function loadCategory(slug: string): Promise<CategoryRow | null> {
+  try {
+    const { rows } = await pool.query<CategoryRow>(
+      "SELECT name, slug, description FROM categories WHERE slug = $1 LIMIT 1",
+      [slug],
+    );
+    return rows[0] ?? null;
+  } catch (err) {
+    logger.warn({ err, slug }, "SEO: category lookup failed");
+    return null;
+  }
+}
+
+async function loadMedicine(id: number): Promise<MedicineRow | null> {
+  if (!Number.isFinite(id)) return null;
+  try {
+    const { rows } = await pool.query<MedicineRow>(
+      `SELECT m.id, m.name, m.generic_name AS "genericName", m.selling_price AS "sellingPrice",
+              m.mrp, m.image_url AS "imageUrl", m.stock_status AS "stockStatus", m.stock_qty AS "stockQty",
+              c.name AS "companyName", cat.name AS "categoryName"
+         FROM medicines m
+         LEFT JOIN companies c ON c.id = m.company_id
+         LEFT JOIN categories cat ON cat.id = m.category_id
+        WHERE m.id = $1 AND (m.status IS NULL OR m.status <> 'deleted')
+        LIMIT 1`,
+      [id],
+    );
+    return rows[0] ?? null;
+  } catch (err) {
+    logger.warn({ err, id }, "SEO: medicine lookup failed");
+    return null;
+  }
+}
+
+function availabilityOf(stockStatus: string, stockQty: number): string {
+  if (stockStatus === "in_stock" && stockQty > 0) return "https://schema.org/InStock";
+  if (stockStatus === "low_stock" && stockQty > 0) return "https://schema.org/LimitedAvailability";
+  return "https://schema.org/OutOfStock";
+}
+
+/**
+ * Build the head for one storefront path. Unknown paths fall back to a generic
+ * but still useful set of tags, and app screens are marked noindex.
+ */
+export async function buildSeo(pathname: string): Promise<SeoMeta> {
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : "/";
+  const canonical = absolute(path);
+
+  if (!isIndexable(path)) {
+    return {
+      title: titleWith(path, `Ayush Medico`, false),
+      description: "Ayush Medico online pharmacy, Kurla West, Mumbai.",
+      canonical,
+      robots: "noindex, nofollow",
+      jsonLd: [breadcrumb(path, "Ayush Medico")],
+    };
+  }
+
+  const staticEntry = STATIC_ROUTES[path];
+  if (staticEntry) {
+    return {
+      title: titleWith(path, staticEntry.title, false),
+      description: clamp(staticEntry.description),
+      canonical,
+      robots: "index, follow, max-image-preview:large, max-snippet:-1",
+      jsonLd: [breadcrumb(path, "Home"), webPage(path, staticEntry.title, staticEntry.description)],
+    };
+  }
+
+  const medicineMatch = path.match(/^\/medicine\/(\d+)$/);
+  if (medicineMatch) {
+    const medicine = await loadMedicine(Number(medicineMatch[1]));
+    if (medicine) {
+      const price = medicine.sellingPrice ?? medicine.mrp;
+      const priceText = price ? `₹${Number(price).toFixed(2)}` : "best price";
+      const company = medicine.companyName ? `${medicine.companyName} ` : "";
+      const title = titleWith(path, `${medicine.name}${company ? ` (${medicine.companyName})` : ""} Price & Online Delivery`, false);
+      const description = clamp(
+        `Buy ${medicine.name}${medicine.genericName ? ` (${medicine.genericName})` : ""} online at ₹${priceText} from Ayush Medico, a licensed pharmacy in Kurla West, Mumbai. ${medicine.categoryName ? `${medicine.categoryName} · ` : ""}${stockLabel(medicine.stockStatus, medicine.stockQty)} · home delivery in Kurla, Ghatkopar and Chembur.`,
+      );
+      const jsonLd: Record<string, unknown>[] = [
+        breadcrumb(path, medicine.name),
+        {
+          "@type": "Product",
+          "@id": `${canonical}#product`,
+          name: medicine.name,
+          ...(medicine.genericName ? { description: medicine.genericName } : {}),
+          ...(medicine.companyName ? { brand: { "@type": "Brand", name: medicine.companyName } } : {}),
+          ...(medicine.categoryName ? { category: medicine.categoryName } : {}),
+          ...(medicine.imageUrl ? { image: [medicine.imageUrl] } : {}),
+          sku: String(medicine.id),
+          offers: {
+            "@type": "Offer",
+            url: canonical,
+            priceCurrency: "INR",
+            ...(price ? { price: Number(price).toFixed(2) } : {}),
+            availability: availabilityOf(medicine.stockStatus, medicine.stockQty),
+            seller: { "@id": `${SITE_URL}/#pharmacy` },
+          },
+        },
+      ];
+      return {
+        title,
+        description,
+        canonical,
+        robots: "index, follow, max-image-preview:large, max-snippet:-1",
+        jsonLd,
+      };
+    }
+  }
+
+  const categoryMatch = path.match(/^\/category\/([a-z0-9-]+)$/);
+  if (categoryMatch) {
+    const category = await loadCategory(categoryMatch[1]!);
+    if (category) {
+      const title = titleWith(path, `${category.name} Online in Kurla, Mumbai – Buy & Get Delivery`, false);
+      const description = clamp(
+        `Buy ${category.name.toLowerCase()} online from Ayush Medico, a licensed pharmacy in ${LOCALITY}. ${category.description?.trim() ? `${category.description.trim()} ` : ""}Genuine products, pharmacist-checked orders and home delivery across Mumbai.`,
+      );
+      return {
+        title,
+        description,
+        canonical,
+        robots: "index, follow, max-image-preview:large, max-snippet:-1",
+        jsonLd: [
+          breadcrumb(path, category.name),
+          {
+            "@type": "CollectionPage",
+            "@id": `${canonical}#collection`,
+            name: `${category.name} – Ayush Medico`,
+            description,
+            url: canonical,
+            isPartOf: { "@id": `${SITE_URL}/#website` },
+            about: { "@id": `${SITE_URL}/#pharmacy` },
+          },
+        ],
+      };
+    }
+  }
+
+  if (path.startsWith("/general-products/")) {
+    const label = "General Product";
+    return {
+      title: titleWith(path, `${label} – Price & Delivery in Mumbai`, false),
+      description: clamp(
+        `Buy ${label.toLowerCase()} online from Ayush Medico with home delivery in Kurla, Ghatkopar and Chembur.`,
+      ),
+      canonical,
+      robots: "index, follow, max-image-preview:large",
+      jsonLd: [breadcrumb(path, label)],
+    };
+  }
+
+  if (path.startsWith("/vet-medicines/")) {
+    return {
+      title: titleWith(path, `Veterinary Medicine – Buy Online in Mumbai`, false),
+      description: clamp(
+        "Veterinary medicine and pet care supplies from Ayush Medico, delivered across Mumbai.",
+      ),
+      canonical,
+      robots: "index, follow, max-image-preview:large",
+      jsonLd: [breadcrumb(path, "Veterinary Medicine")],
+    };
+  }
+
+  return {
+    title: titleWith(path, `${SITE_NAME} – Online Pharmacy & Medical Store in ${LOCALITY}`, false),
+    description: clamp(
+      `Ayush Medico is a licensed pharmacy in ${LOCALITY} with 50,000+ medicines, OTC products and healthcare essentials. Order online, call ${PHONE} or message us on WhatsApp.`,
+    ),
+    canonical,
+    robots: "index, follow, max-image-preview:large",
+    jsonLd: [breadcrumb(path, "Home")],
+  };
+}
+
+function stockLabel(status: string, qty: number): string {
+  if (status === "in_stock" && qty > 0) return "In stock";
+  if (status === "low_stock" && qty > 0) return "Low stock";
+  return "Currently out of stock, request availability";
+}
+
+function webPage(path: string, name: string, description: string): Record<string, unknown> {
+  return {
+    "@type": "WebPage",
+    "@id": `${absolute(path)}#webpage`,
+    url: absolute(path),
+    name,
+    description,
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    about: { "@id": `${SITE_URL}/#pharmacy` },
+    inLanguage: "en-IN",
+  };
+}
+
+/* ── HTML injection ─────────────────────────────────────────────────────────── */
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+function replaceTag(html: string, pattern: RegExp, replacement: string): string {
+  return pattern.test(html) ? html.replace(pattern, replacement) : html;
+}
+
+/**
+ * Rewrite the head of the built index.html for one request. Only known tags are
+ * touched, so the icons, manifest and font preloads stay exactly as built.
+ */
+export function applySeo(html: string, meta: SeoMeta): string {
+  const title = escapeHtml(meta.title);
+  const description = escapeHtml(meta.description);
+  const canonical = escapeHtml(meta.canonical);
+
+  let out = html;
+  out = replaceTag(out, /<title>[\s\S]*?<\/title>/, `<title>${title}</title>`);
+  out = replaceTag(
+    out,
+    /<meta\s+name="description"\s+content="[\s\S]*?"\s*\/?>/,
+    `<meta name="description" content="${description}" />`,
+  );
+  out = replaceTag(
+    out,
+    /<link\s+rel="canonical"\s+href="[\s\S]*?"\s*\/?>/,
+    `<link rel="canonical" href="${canonical}" />`,
+  );
+  out = replaceTag(
+    out,
+    /<meta\s+name="robots"\s+content="[\s\S]*?"\s*\/?>/,
+    `<meta name="robots" content="${meta.robots}" />`,
+  );
+  out = replaceTag(
+    out,
+    /<meta\s+property="og:title"\s+content="[\s\S]*?"\s*\/?>/,
+    `<meta property="og:title" content="${title}" />`,
+  );
+  out = replaceTag(
+    out,
+    /<meta\s+property="og:description"\s+content="[\s\S]*?"\s*\/?>/,
+    `<meta property="og:description" content="${description}" />`,
+  );
+  out = replaceTag(
+    out,
+    /<meta\s+property="og:url"\s+content="[\s\S]*?"\s*\/?>/,
+    `<meta property="og:url" content="${canonical}" />`,
+  );
+  out = replaceTag(
+    out,
+    /<meta\s+name="twitter:title"\s+content="[\s\S]*?"\s*\/?>/,
+    `<meta name="twitter:title" content="${title}" />`,
+  );
+  out = replaceTag(
+    out,
+    /<meta\s+name="twitter:description"\s+content="[\s\S]*?"\s*\/?>/,
+    `<meta name="twitter:description" content="${description}" />`,
+  );
+
+  const hreflang =
+    `<link rel="alternate" hreflang="en-IN" href="${canonical}" />\n` +
+    `    <link rel="alternate" hreflang="x-default" href="${canonical}" />`;
+  if (!out.includes('hreflang="en-IN"')) {
+    out = out.replace("</head>", `  ${hreflang}\n  </head>`);
+  }
+
+  if (meta.jsonLd?.length) {
+    const graph = { "@context": "https://schema.org", "@graph": meta.jsonLd };
+    const script = `<script type="application/ld+json">${JSON.stringify(graph)}</script>`;
+    out = out.replace("</head>", `  ${script}\n  </head>`);
+  }
+
+  return out;
+}
