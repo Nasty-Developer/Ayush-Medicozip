@@ -43,7 +43,7 @@ type StaticEntry = {
 /** keyword-focused copy for the routes people actually search for */
 export const STATIC_ROUTES: Record<string, StaticEntry> = {
   "/": {
-    title: "Online Medicine Delivery & Medical Store Near You | Ayush Medico Mumbai",
+    title: "Ayush Medico – Online Medicine Delivery in Kurla West",
     description:
       "Order medicines online with home delivery in Kurla, Ghatkopar, Sion and Chembur. Ayush Medico is a licensed pharmacy in Kurla West, Mumbai with 50,000+ genuine medicines, OTC products, baby care and health devices. Open 7 days, 8 AM to 10 PM.",
     priority: 1,
@@ -158,7 +158,7 @@ export const LOCAL_ROUTES: Record<string, { title: string; description: string }
       "Licensed pharmacy on Halav Pool Road, Kurla West. Prescription medicines, OTC remedies, health devices and baby care, open 8 AM to 10 PM every day. Call +91 98332 73838.",
   },
   "/medical-store-kurla-west": {
-    title: "Medical Store in Kurla West – Daily & Chronic Care | Ayush Medico",
+    title: "Medical Store in Kurla West | Ayush Medico",
     description:
       "Medical store in Kurla West for monthly prescriptions, diabetes and BP medicines, surgical supplies and clinic orders. Licensed pharmacy open seven days, 8 AM to 10 PM.",
   },
@@ -613,11 +613,15 @@ export async function loadOverrides(force = false): Promise<OverrideStore> {
     return overrideCache.value;
   }
   try {
-    const { rows } = await pool.query<{ value: string }>(
+    // settings.value is jsonb, so the driver may hand back an object rather
+    // than a JSON string. Both shapes have to be accepted.
+    const { rows } = await pool.query<{ value: unknown }>(
       "SELECT value FROM settings WHERE key = 'seo:overrides' LIMIT 1",
     );
     const raw = rows[0]?.value;
-    const parsed = raw ? (JSON.parse(raw) as OverrideStore) : { pages: {} };
+    const parsed = (
+      typeof raw === "string" ? JSON.parse(raw) : (raw as OverrideStore | undefined)
+    ) ?? { pages: {} };
     const value: OverrideStore = {
       pages: parsed.pages && typeof parsed.pages === "object" ? parsed.pages : {},
       verification: parsed.verification || process.env["GOOGLE_SITE_VERIFICATION"] || undefined,
