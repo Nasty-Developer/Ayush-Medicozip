@@ -80,8 +80,14 @@ function categoryPayload(body: Record<string, unknown>, requireSlug: boolean): P
   if (typeof body["color"] === "string" && body["color"].trim()) payload.color = body["color"].trim();
   if (typeof body["enabled"] === "boolean") payload.enabled = body["enabled"];
 
+  // display_order is a 32-bit integer and the dialog sends Date.now() as the
+  // order for a new category, which overflows the column and fails the insert.
+  // Anything out of range is dropped here so the handler can pick a safe value.
   const order = body["displayOrder"] ?? body["order"];
-  if (typeof order === "number" && Number.isFinite(order)) payload.displayOrder = Math.trunc(order);
+  if (typeof order === "number" && Number.isFinite(order)) {
+    const truncated = Math.trunc(order);
+    if (truncated >= 0 && truncated <= 2_147_483_647) payload.displayOrder = truncated;
+  }
 
   const collection = body["collectionType"];
   if (collection === "medicine" || collection === "veterinary" || collection === "general") {
@@ -96,6 +102,12 @@ router.post("/", requireAuth, requireAdminEmail, async (req: Request, res: Respo
     const data = categoryPayload(req.body as Record<string, unknown>, true);
     if (!data.name) { res.status(400).json({ error: "name is required" }); return; }
     if (!data.slug) data.slug = slugifyCategoryName(data.name);
+    if (data.displayOrder === undefined) {
+      const [{ nextOrder }] = await db
+        .select({ nextOrder: sql<number>`coalesce(max(${categoriesTable.displayOrder}), 0) + 1` })
+        .from(categoriesTable);
+      data.displayOrder = Number(nextOrder) || 1;
+    }
     const [created] = await db.insert(categoriesTable).values(data as InsertCategory).returning();
     res.status(201).json(created);
   } catch (err: any) {
