@@ -181,7 +181,13 @@ function App() {
                   <OfflineGuard>
                     <ErrorBoundary label="App">
                       <Suspense fallback={<PageLoader />}>
-                        <WouterRouter base={import.meta.env.BASE_URL}>
+                        <WouterRouter
+                          // Wouter joins routes as `base + href`. With base "/" every
+                          // link rendered as "//blog/x", which browsers and crawlers
+                          // read as protocol-relative (host "blog"), so strip the
+                          // trailing slash and keep root deploys at "".
+                          base={import.meta.env.BASE_URL.replace(/\/+$/, "")}
+                        >
                           <Switch>
                           {/* ── Admin ── */}
                           <Route path="/admin/login">
