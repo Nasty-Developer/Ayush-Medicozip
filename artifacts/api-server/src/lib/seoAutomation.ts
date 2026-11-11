@@ -1,0 +1,404 @@
+/**
+ * SEO automation: sitemaps, robots.txt and a technical audit.
+ *
+ * Everything here is derived from the same route registry that powers the page
+ * head (lib/seo.ts) and from the live database, so a new category, medicine or
+ * guide appears in the sitemap without anyone editing a file.
+ */
+
+import { pool } from "@workspace/db";
+import { logger } from "./logger.js";
+import {
+  SITE_URL,
+  STATIC_ROUTES,
+  LOCAL_ROUTES,
+  BLOG_ROUTES,
+  NOINDEX_PREFIXES,
+  buildSeo,
+} from "./seo.js";
+
+/** Sitemaps are rebuilt at most this often; well inside Google's tolerance. */
+export const CACHE_MS = 15 * 60 * 1000;
+
+/** Stay under the 50,000 URL / 50 MB protocol limit for a single urlset. */
+const MAX_PRODUCT_URLS = 45_000;
+
+export type SitemapPayload = { xml: string; builtAt: number; urlCount: number };
+
+type UrlEntry = {
+  path: string;
+  lastmod?: string;
+  changefreq?: string;
+  priority?: number;
+};
+
+const xmlEscape = (value: string): string =>
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+const isoDate = (value: Date | string | null | undefined): string | undefined => {
+  if (!value) return undefined;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
+};
+
+function urlTag(entry: UrlEntry): string {
+  const loc = `${SITE_URL}${entry.path === "/" ? "/" : entry.path}`;
+  const parts = [`<loc>${xmlEscape(loc)}</loc>`];
+  if (entry.lastmod) parts.push(`<lastmod>${entry.lastmod}</lastmod>`);
+  if (entry.changefreq) parts.push(`<changefreq>${entry.changefreq}</changefreq>`);
+  if (entry.priority !== undefined) parts.push(`<priority>${entry.priority.toFixed(1)}</priority>`);
+  return `<url>${parts.join("")}</url>`;
+}
+
+const isBlocked = (path: string): boolean =>
+  NOINDEX_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+
+/** Pages, guides and categories — the small sitemap. */
+export async function buildPagesSitemap(): Promise<SitemapPayload> {
+  const entries: UrlEntry[] = [];
+
+  for (const [path, entry] of Object.entries(STATIC_ROUTES)) {
+    if (entry.index === false || isBlocked(path)) continue;
+    entries.push({ path, changefreq: entry.changeFrequency ?? "weekly", priority: entry.priority ?? 0.5 });
+  }
+
+  for (const path of Object.keys(LOCAL_ROUTES)) {
+    if (isBlocked(path)) continue;
+    entries.push({ path, changefreq: "monthly", priority: 0.9 });
+  }
+
+  entries.push({ path: "/blog", changefreq: "weekly", priority: 0.6 });
+  for (const [slug, post] of Object.entries(BLOG_ROUTES)) {
+    entries.push({ path: `/blog/${slug}`, lastmod: post.published, changefreq: "monthly", priority: 0.5 });
+  }
+
+  try {
+    const { rows } = await pool.query<{ slug: string; updatedAt: Date | string | null }>(
+      `SELECT slug, updated_at AS "updatedAt" FROM categories
+        WHERE enabled = true ORDER BY display_order, name LIMIT 500`,
+    );
+    for (const row of rows) {
+      if (!row.slug || isBlocked(`/category/${row.slug}`)) continue;
+      entries.push({
+        path: `/category/${encodeURIComponent(row.slug)}`,
+        lastmod: isoDate(row.updatedAt),
+        changefreq: "weekly",
+        priority: 0.8,
+      });
+    }
+  } catch (err) {
+    logger.warn({ err }, "category lookup failed while building the sitemap");
+  }
+
+  const seen = new Set<string>();
+  const unique = entries.filter((entry) => {
+    if (seen.has(entry.path)) return false;
+    seen.add(entry.path);
+    return true;
+  });
+
+  const xml =
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    `${unique.map(urlTag).join("\n")}\n</urlset>\n`;
+
+  return { xml, builtAt: Date.now(), urlCount: unique.length };
+}
+
+/** Orderable medicines — the large sitemap. */
+export async function buildProductsSitemap(): Promise<SitemapPayload> {
+  const { rows } = await pool.query<{ id: number; updatedAt: Date | string | null }>(
+    `SELECT id, updated_at AS "updatedAt" FROM medicines
+      WHERE (status IS NULL OR status <> 'deleted') AND stock_qty > 0
+      ORDER BY stock_qty DESC, id ASC LIMIT ${MAX_PRODUCT_URLS}`,
+  );
+
+  const entries: UrlEntry[] = rows.map((row) => ({
+    path: `/medicine/${row.id}`,
+    lastmod: isoDate(row.updatedAt),
+    changefreq: "weekly",
+    priority: 0.6,
+  }));
+
+  const xml =
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    `${entries.map(urlTag).join("\n")}\n</urlset>\n`;
+
+  return { xml, builtAt: Date.now(), urlCount: entries.length };
+}
+
+/** robots.txt, generated from the same noindex list the page head uses. */
+export function buildRobotsTxt(): string {
+  const disallow = [...NOINDEX_PREFIXES, "/api/", "/src/", "/.git/", "/node_modules/"]
+    .map((path) => `Disallow: ${path}`)
+    .join("\n");
+
+  return `# Ayush Medico — generated by the API from the route registry
+User-agent: *
+Allow: /
+${disallow}
+
+Sitemap: ${SITE_URL}/sitemap.xml
+Sitemap: ${SITE_URL}/sitemap-products.xml
+
+# AI and preview crawlers: same public surface, no private screens.
+User-agent: GPTBot
+Allow: /
+${NOINDEX_PREFIXES.map((p) => `Disallow: ${p}`).join("\n")}
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+${NOINDEX_PREFIXES.slice(0, 5).map((p) => `Disallow: ${p}`).join("\n")}
+`;
+}
+
+/* ── Audit ─────────────────────────────────────────────────────────────────── */
+
+export type HealthStatus = "pass" | "warn" | "fail";
+
+export type HealthCheck = {
+  id: string;
+  label: string;
+  status: HealthStatus;
+  detail: string;
+};
+
+export type SeoHealth = {
+  generatedAt: string;
+  checks: HealthCheck[];
+  stats: {
+    pagesInSitemap: number;
+    productsInSitemap: number;
+    categories: number;
+    guides: number;
+    blockedPrefixes: number;
+    overrides: number;
+  };
+};
+
+const duplicates = (items: string[]): string[] => {
+  const seen = new Map<string, number>();
+  for (const item of items) seen.set(item, (seen.get(item) ?? 0) + 1);
+  return [...seen.entries()].filter(([, n]) => n > 1).map(([value]) => value);
+};
+
+/**
+ * Runs the checks an SEO audit would do by hand: sitemap coverage, metadata
+ * uniqueness, canonical shape, schema presence and private-page blocking.
+ * Read-only; safe to call from the admin dashboard.
+ */
+export async function auditSeo(): Promise<SeoHealth> {
+  const checks: HealthCheck[] = [];
+  const push = (id: string, label: string, status: HealthStatus, detail: string): void => {
+    checks.push({ id, label, status, detail });
+  };
+
+  // 1. Sitemaps
+  let pages: SitemapPayload | null = null;
+  let products: SitemapPayload | null = null;
+  try {
+    [pages, products] = await Promise.all([buildPagesSitemap(), buildProductsSitemap()]);
+    push("sitemap-pages", "Pages sitemap builds", "pass", `${pages.urlCount} URLs (pages, guides, categories)`);
+  } catch (err) {
+    push("sitemap-pages", "Pages sitemap builds", "fail", `Generation threw: ${(err as Error).message}`);
+  }
+  if (products) {
+    push(
+      "sitemap-products",
+      "Product sitemap builds",
+      products.urlCount >= MAX_PRODUCT_URLS ? "warn" : "pass",
+      products.urlCount >= MAX_PRODUCT_URLS
+        ? `${products.urlCount} URLs — at the ${MAX_PRODUCT_URLS} cap, needs paging`
+        : `${products.urlCount} orderable medicines`,
+    );
+  }
+
+  // 2. Sitemap hygiene: no private URLs, no duplicates
+  if (pages) {
+    const locs = [...pages.xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]!);
+    const privateLeak = locs.filter((loc) => isBlocked(new URL(loc).pathname));
+    push(
+      "sitemap-private",
+      "No private URLs in the sitemap",
+      privateLeak.length === 0 ? "pass" : "fail",
+      privateLeak.length === 0 ? "Admin, cart, checkout and order URLs excluded" : privateLeak.slice(0, 3).join(", "),
+    );
+    const dupes = duplicates(locs);
+    push(
+      "sitemap-duplicates",
+      "No duplicate sitemap entries",
+      dupes.length === 0 ? "pass" : "warn",
+      dupes.length === 0 ? "Every URL appears once" : `${dupes.length} duplicated: ${dupes.slice(0, 3).join(", ")}`,
+    );
+  }
+
+  // 3. robots.txt
+  const robots = buildRobotsTxt();
+  const missingDisallow = NOINDEX_PREFIXES.filter((prefix) => !robots.includes(`Disallow: ${prefix}`));
+  push(
+    "robots",
+    "robots.txt blocks private areas",
+    missingDisallow.length === 0 ? "pass" : "fail",
+    missingDisallow.length === 0
+      ? `${NOINDEX_PREFIXES.length} prefixes disallowed, both sitemaps declared`
+      : `Missing: ${missingDisallow.join(", ")}`,
+  );
+
+  // 4. Titles and descriptions across the registry
+  const registry: { path: string; title: string; description: string }[] = [];
+  for (const [path, entry] of Object.entries(STATIC_ROUTES)) {
+    if (entry.index === false || isBlocked(path)) continue;
+    registry.push({ path, title: entry.title, description: entry.description });
+  }
+  for (const [path, entry] of Object.entries(LOCAL_ROUTES)) registry.push({ path, title: entry.title, description: entry.description });
+  for (const [slug, post] of Object.entries(BLOG_ROUTES)) {
+    registry.push({ path: `/blog/${slug}`, title: post.title, description: post.description });
+  }
+
+  const missingMeta = registry.filter((r) => !r.title.trim() || !r.description.trim());
+  push(
+    "meta-presence",
+    "Every page has a title and description",
+    missingMeta.length === 0 ? "pass" : "fail",
+    missingMeta.length === 0 ? `${registry.length} pages covered` : `Missing on ${missingMeta.map((m) => m.path).join(", ")}`,
+  );
+
+  const dupeTitles = duplicates(registry.map((r) => r.title));
+  const dupeDescriptions = duplicates(registry.map((r) => r.description));
+  push(
+    "meta-unique",
+    "No duplicate titles or descriptions",
+    dupeTitles.length === 0 && dupeDescriptions.length === 0 ? "pass" : "warn",
+    dupeTitles.length === 0 && dupeDescriptions.length === 0
+      ? "All unique"
+      : `${dupeTitles.length} duplicate titles, ${dupeDescriptions.length} duplicate descriptions`,
+  );
+
+  const longTitles = registry.filter((r) => r.title.length > 65).map((r) => r.path);
+  const longDescriptions = registry.filter((r) => r.description.length > 165).map((r) => r.path);
+  push(
+    "meta-length",
+    "Title and description lengths",
+    longTitles.length === 0 && longDescriptions.length === 0 ? "pass" : "warn",
+    longTitles.length === 0 && longDescriptions.length === 0
+      ? "All within Google's display limits"
+      : `Too long: ${[...longTitles, ...longDescriptions].slice(0, 4).join(", ")}`,
+  );
+
+  // 5. Live rendering of a representative sample (catches broken head logic)
+  let categories: number = 0;
+  try {
+    const { rows } = await pool.query<{ slug: string }>(
+      "SELECT slug FROM categories WHERE enabled = true ORDER BY display_order LIMIT 5",
+    );
+    categories = rows.length;
+    const samplePaths = ["/", "/categories", "/blog", ...(rows[0] ? [`/category/${rows[0].slug}`] : [])];
+    const bad: string[] = [];
+    for (const path of samplePaths) {
+      const meta = await buildSeo(path);
+      if (!meta.title || !meta.description || !meta.canonical.startsWith(SITE_URL)) bad.push(path);
+      if (/undefined|null/.test(meta.title)) bad.push(path);
+    }
+    push(
+      "head-sample",
+      "Sampled pages render complete tags",
+      bad.length === 0 ? "pass" : "fail",
+      bad.length === 0 ? `Title, description and canonical present on ${samplePaths.length} pages` : `Broken: ${[...new Set(bad)].join(", ")}`,
+    );
+  } catch (err) {
+    push("head-sample", "Sampled pages render complete tags", "warn", `Could not sample: ${(err as Error).message}`);
+  }
+
+  // 6. Structured data
+  try {
+    const home = await buildSeo("/");
+    const types = new Set<string>();
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (node && typeof node === "object") {
+        const obj = node as Record<string, unknown>;
+        if (typeof obj["@type"] === "string") types.add(obj["@type"]);
+        if (Array.isArray(obj["@type"])) obj["@type"].forEach((t) => types.add(String(t)));
+        Object.values(obj).forEach(walk);
+      }
+    };
+    walk(home.jsonLd ?? []);
+    const wanted = ["Pharmacy", "LocalBusiness"];
+    const hasLocal = wanted.some((t) => types.has(t));
+    push(
+      "schema",
+      "Local business schema present",
+      hasLocal && types.has("WebSite") ? "pass" : "warn",
+      hasLocal ? `Found: ${[...types].slice(0, 6).join(", ")}` : "Pharmacy/LocalBusiness not found on the homepage graph",
+    );
+  } catch (err) {
+    push("schema", "Local business schema present", "warn", `Could not inspect: ${(err as Error).message}`);
+  }
+
+  // 7. Private screens really return noindex
+  try {
+    const probe = ["/cart", "/checkout", "/orders", "/admin"];
+    const leaks: string[] = [];
+    for (const path of probe) {
+      const meta = await buildSeo(path);
+      if (!/noindex/i.test(meta.robots)) leaks.push(path);
+    }
+    push(
+      "noindex",
+      "Private screens send noindex",
+      leaks.length === 0 ? "pass" : "fail",
+      leaks.length === 0 ? `${probe.length} private routes blocked` : `Indexable by mistake: ${leaks.join(", ")}`,
+    );
+  } catch (err) {
+    push("noindex", "Private screens send noindex", "warn", `Could not probe: ${(err as Error).message}`);
+  }
+
+  // 8. Canonical shape
+  try {
+    const canonicalProbes = ["/", "/categories", "/pharmacy-kurla-west", "/blog"];
+    const bad: string[] = [];
+    for (const path of canonicalProbes) {
+      const meta = await buildSeo(path);
+      const expected = path === "/" ? `${SITE_URL}/` : `${SITE_URL}${path}`;
+      if (meta.canonical !== expected) bad.push(`${path} → ${meta.canonical}`);
+    }
+    push(
+      "canonical",
+      "Canonicals are self-referencing",
+      bad.length === 0 ? "pass" : "warn",
+      bad.length === 0 ? "https and no trailing slash, as declared" : bad.slice(0, 3).join(" | "),
+    );
+  } catch (err) {
+    push("canonical", "Canonicals are self-referencing", "warn", `Could not probe: ${(err as Error).message}`);
+  }
+
+  // 9. Overrides in use
+  let overrides = 0;
+  try {
+    const { rows } = await pool.query<{ value: unknown }>(
+      "SELECT value FROM settings WHERE key = 'seo:overrides' LIMIT 1",
+    );
+    const raw = rows[0]?.value;
+    const store = typeof raw === "string" ? JSON.parse(raw) : (raw as { pages?: Record<string, unknown> } | undefined);
+    overrides = Object.keys(store?.pages ?? {}).length;
+  } catch {
+    overrides = 0;
+  }
+
+  return {
+    generatedAt: new Date().toISOString(),
+    checks,
+    stats: {
+      pagesInSitemap: pages?.urlCount ?? 0,
+      productsInSitemap: products?.urlCount ?? 0,
+      categories,
+      guides: Object.keys(BLOG_ROUTES).length,
+      blockedPrefixes: NOINDEX_PREFIXES.length,
+      overrides,
+    },
+  };
+}

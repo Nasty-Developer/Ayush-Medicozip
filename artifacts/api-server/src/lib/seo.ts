@@ -219,7 +219,7 @@ export const BLOG_ROUTES: Record<string, { title: string; description: string; p
 };
 
 /** app screens that must never appear in search results */
-const NOINDEX_PREFIXES = [
+export const NOINDEX_PREFIXES = [
   "/cart",
   "/checkout",
   "/orders",

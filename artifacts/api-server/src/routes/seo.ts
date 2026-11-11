@@ -12,6 +12,7 @@
 import { Router, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
 import { logger } from "../lib/logger.js";
+import { auditSeo } from "../lib/seoAutomation.js";
 import { requireAuth, requireAdminEmail } from "../middlewares/authMiddleware.js";
 import {
   STATIC_ROUTES, LOCAL_ROUTES, BLOG_ROUTES,
@@ -31,6 +32,20 @@ function editablePaths(): string[] {
     ...Object.keys(BLOG_ROUTES).map((slug) => `/blog/${slug}`),
   ];
 }
+
+/**
+ * Technical SEO audit for the admin dashboard. Read-only: it builds the sitemaps
+ * in memory, renders a sample of heads and reports what is wrong, without ever
+ * pinging Google or submitting anything.
+ */
+router.get("/health", requireAuth, requireAdminEmail, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    res.json(await auditSeo());
+  } catch (err) {
+    logger.warn({ err }, "SEO audit failed");
+    res.status(500).json({ error: "SEO audit failed" });
+  }
+});
 
 router.get("/", requireAuth, requireAdminEmail, async (_req: Request, res: Response): Promise<void> => {
   try {

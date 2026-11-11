@@ -10,6 +10,7 @@ import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { initFirebaseAdmin } from "./lib/firebaseAdmin.js";
 import { buildSeo, applySeo, SITE_URL } from "./lib/seo.js";
+import * as seoAutomation from "./lib/seoAutomation.js";
 initFirebaseAdmin();
 
 // Keep the app type inferred from the callable Express factory. This avoids
@@ -206,49 +207,64 @@ if (process.env.NODE_ENV === "production") {
     return templateCache;
   };
 
-  // Product + category sitemap, generated from the catalogue and cached, so
-  // search engines can discover every category and the orderable medicines
-  // without listing all 50k rows in the main sitemap.
-  let sitemapCache: { xml: string; builtAt: number } | null = null;
+  // ── SEO automation ────────────────────────────────────────────────────────
+  // Sitemaps and robots.txt are generated from the route registry and the live
+  // catalogue, so new pages, categories and medicines appear on their own.
+  type Cached = { body: string; builtAt: number; count: number };
+  const sitemapCache = new Map<string, Cached>();
+
+  const cached = async (
+    key: string,
+    builder: () => Promise<{ xml: string; builtAt: number; urlCount: number }>,
+  ): Promise<Cached> => {
+    const hit = sitemapCache.get(key);
+    if (hit && Date.now() - hit.builtAt < seoAutomation.CACHE_MS) return hit;
+    try {
+      const payload = await builder();
+      const entry = { body: payload.xml, builtAt: payload.builtAt, count: payload.urlCount };
+      sitemapCache.set(key, entry);
+      return entry;
+    } catch (err) {
+      // A brief database wobble should not hand Google an error for the whole
+      // sitemap: serve the last good copy if we have one.
+      if (hit) {
+        logger.warn({ err, key }, "sitemap rebuild failed, serving the previous copy");
+        return hit;
+      }
+      throw err;
+    }
+  };
+
+  const sendXml = (res: any, body: string): void => {
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=900, stale-while-revalidate=3600");
+    res.send(body);
+  };
+
+  app.get("/sitemap.xml", async (_req: any, res: any, next: any) => {
+    try {
+      const entry = await cached("pages", seoAutomation.buildPagesSitemap);
+      sendXml(res, entry.body);
+    } catch (err) {
+      logger.warn({ err }, "sitemap.xml generation failed");
+      next(err);
+    }
+  });
+
   app.get("/sitemap-products.xml", async (_req: any, res: any, next: any) => {
     try {
-      const now = Date.now();
-      if (!sitemapCache || now - sitemapCache.builtAt > 6 * 60 * 60 * 1000) {
-        const cats = await pool.query<{ slug: string }>(
-          "SELECT slug FROM categories WHERE enabled = true ORDER BY display_order, name LIMIT 500",
-        );
-        const meds = await pool.query<{ id: number; updatedAt: Date | null }>(
-          `SELECT id, updated_at AS "updatedAt" FROM medicines
-            WHERE (status IS NULL OR status <> 'deleted') AND stock_qty > 0
-            ORDER BY stock_qty DESC, id ASC LIMIT 5000`,
-        );
-        const urls: string[] = [];
-        for (const row of cats.rows) {
-          urls.push(
-            `<url><loc>${SITE_URL}/category/${encodeURIComponent(row.slug)}</loc>` +
-              `<changefreq>weekly</changefreq><priority>0.8</priority></url>`,
-          );
-        }
-        for (const row of meds.rows) {
-          const lastmod = row.updatedAt ? new Date(row.updatedAt).toISOString().slice(0, 10) : undefined;
-          urls.push(
-            `<url><loc>${SITE_URL}/medicine/${row.id}</loc>` +
-              `${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}` +
-              `<changefreq>weekly</changefreq><priority>0.6</priority></url>`,
-          );
-        }
-        sitemapCache = {
-          xml:
-            `<?xml version="1.0" encoding="UTF-8"?>\n` +
-            `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`,
-          builtAt: now,
-        };
-      }
-      res.type("application/xml").send(sitemapCache.xml);
+      const entry = await cached("products", seoAutomation.buildProductsSitemap);
+      sendXml(res, entry.body);
     } catch (err) {
       logger.warn({ err }, "sitemap-products.xml generation failed");
       next(err);
     }
+  });
+
+  app.get("/robots.txt", (_req: any, res: any) => {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(seoAutomation.buildRobotsTxt());
   });
 
   app.use(async (req: any, res: any, next: any) => {
