@@ -10,6 +10,7 @@ import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { initFirebaseAdmin } from "./lib/firebaseAdmin.js";
 import { buildSeo, applySeo, SITE_URL } from "./lib/seo.js";
+import { buildPrerender, injectPrerendered } from "./lib/prerender.js";
 import * as seoAutomation from "./lib/seoAutomation.js";
 initFirebaseAdmin();
 
@@ -274,10 +275,20 @@ if (process.env.NODE_ENV === "production") {
     }
 
     try {
-      const [template, meta] = await Promise.all([loadTemplate(), buildSeo(req.path)]);
+      // Head tags and body copy are built together: the per-route <head> for the
+      // crawler's metadata pass, and the real page text inside #root so the page
+      // has something to rank on before any JavaScript runs.
+      const [template, meta, body] = await Promise.all([
+        loadTemplate(),
+        buildSeo(req.path),
+        buildPrerender(req.path).catch((err) => {
+          logger.warn({ err, path: req.path }, "prerender body failed, serving the shell");
+          return "";
+        }),
+      ]);
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
-      res.send(applySeo(template, meta));
+      res.send(injectPrerendered(applySeo(template, meta), body));
     } catch (err) {
       logger.warn({ err, path: req.path }, "SEO head injection failed, serving template");
       res.sendFile(indexPath, (err2: any) => {

@@ -4,15 +4,34 @@ import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
 import { rm } from "node:fs/promises";
+import { spawn } from "node:child_process";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Prerender content is generated from the frontend's own copy files so the API
+ * server never keeps a hand-copied second version of the page text. Regenerate
+ * it before every bundle so the served HTML can never drift from the site.
+ */
+function generatePrerenderContent() {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [path.resolve(artifactDir, "scripts/gen-prerender-content.mjs")], {
+      stdio: "inherit",
+    });
+    child.on("error", reject);
+    child.on("exit", (code) =>
+      code === 0 ? resolve(undefined) : reject(new Error(`gen-prerender-content exited with ${code}`)),
+    );
+  });
+}
+
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
   await rm(distDir, { recursive: true, force: true });
+  await generatePrerenderContent();
 
   await esbuild({
     entryPoints: [path.resolve(artifactDir, "src/index.ts")],
